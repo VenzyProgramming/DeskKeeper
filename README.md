@@ -59,6 +59,16 @@ And if you are having a really bad day, the **Scene** page lets you nuke your de
 
 <p align="center"><img src="docs/media/scene.png" width="70%" alt="Scene page"></p>
 
+## Coming soon™
+
+DeskKeeper's serious part is done. The unserious part is just getting started. Planned, in no particular order, added over time:
+
+- **More ways to destroy your desktop** – more weapons, more physics, more ash.
+- **More helpers than DUM-E** – other robots, and pets: a cat that knocks your icons off their spots, a dog that fetches them back, maybe a vacuum robot that sucks them up and drops them where they belong.
+- **Helpers that do more than tidy up** – some put icons back, some rearrange them, and some just move things around a little for fun. (Off by default. We are not monsters.)
+
+Got an idea for a weapon or a pet? [Open an issue](../../issues) – the sillier, the better.
+
 ## Download & install
 
 1. Grab `DeskKeeper.exe` from [Releases](../../releases). It is a single portable file; no installer, no .NET needed.
@@ -95,6 +105,10 @@ MIT, see [LICENSE](LICENSE). The Tu-160M outline is adapted from a CC BY-SA 3.0 
 
 **DeskKeeper merkt sich deine Desktopsymbole – pro Bildschirmanordnung.** Monitor ab, Monitor an, Notebook zugeklappt, Hauptbildschirm gewechselt: Windows mischt die Symbole durch, DeskKeeper stellt sie zurück. Jedes Symbol kommt auf den Bildschirm, auf dem es zuletzt lag. Mit Schnappschüssen, automatischem Speichern beim Herunterfahren, Benutzerwechsel und Beenden, Werkzeugen wie bei DesktopOK und einer Ansicht, in der du siehst, wo jedes Symbol liegt. Sieht unter Windows 10 und 11 jeweils wie das System aus. Wer möchte, lässt die Symbole vom kleinen Roboterarm DUM-E zurücktragen – nachdem man sie zur Entspannung kurz in die Luft gesprengt hat.
 
+**Geplant:** weitere Zerstörungseffekte sowie weitere Roboter und Haustiere, die Symbole zurückbringen, neu anordnen oder einfach ein bisschen verschieben. Kommt nach und nach dazu.
+
 ## Русский
 
 **DeskKeeper запоминает расположение значков для каждой конфигурации экранов.** Отключили монитор, подключили обратно, закрыли ноутбук, сменили основной экран — Windows перемешивает значки, DeskKeeper возвращает их на место, каждый на тот экран, где он был. Снимки, автосохранение при выключении, смене пользователя и выходе, инструменты как в DesktopOK и вид, где видно, где лежит каждый значок. Выглядит как родное приложение в Windows 10 и 11. А по желанию значки обратно отнесёт маленький робот Дубина — после того как вы их для настроения взорвёте.
+
+**В планах:** новые эффекты разрушения, а также другие роботы и питомцы, которые возвращают значки на место, переставляют их или просто немного двигают. Будет добавляться постепенно.
