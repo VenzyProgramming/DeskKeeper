@@ -39,6 +39,8 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
 | **Snapshots** | Save a layout whenever you like, restore it later, or remove it (it goes to a recycle folder, not into the void). Automatic snapshots every 5/15/60 minutes, only when something changed. |
 | **Saves when it matters** | On shutdown, on user switch / lock, and on exit. |
 | **Restores when it matters** | At Windows startup, at app start, and whenever the display arrangement changes. Instantly – or with DUM-E (see below). |
+| **Sort by category** | One click puts system icons top left, social apps and browsers top centre, Office top right, video and image tools next to it, development tools bottom left, games and launchers bottom centre, everything else bottom right. A snapshot is taken first, so you can go back. |
+| **Keep icons on the grid** | Every restore snaps icons into grid cells, also after a scene. During scenes the grid stays on: icons DUM-E is carrying are drawn by the scene, the real icon only jumps between fixed cells. |
 | **Tools** | Minimize all windows, show/hide desktop icons, icon size, align to grid, auto arrange, save/load a layout to a file. |
 | **Feels native** | Detects Windows 10 or 11 and looks like the system settings of each, dark or light, uses your accent colour. English, Deutsch, Русский. |
 | **Tray app** | Starts with Windows if you want, starts minimized, closes to the tray, remembers its window position. |
@@ -48,6 +50,15 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
   <img src="docs/media/settings.png" width="49%" alt="Settings"> <img src="docs/media/tools.png" width="49%" alt="Tools">
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
+
+## What's new in 1.1
+
+- **Sort by category** (Tools page).
+- **Keep icons on the grid** (Tools page, on by default). Fixes icons that ended up slightly off the grid after a scene.
+- **Scenes are always visible:** open windows are moved aside (like Win+D) for the scene and come back afterwards.
+- **Restoring a snapshot** puts icons that are only a few pixels off straight back instead of letting DUM-E carry each one.
+- **Icon centres are measured** instead of estimated, so ash and explosions sit exactly on the icons.
+- **DUM-E moves more smoothly:** no jumps, no snapping back.
 
 ## DUM-E, the slightly unnecessary part
 
@@ -103,12 +114,12 @@ MIT, see [LICENSE](LICENSE). The Tu-160M outline is adapted from a CC BY-SA 3.0 
 
 ## Deutsch
 
-**DeskKeeper merkt sich deine Desktopsymbole – pro Bildschirmanordnung.** Monitor ab, Monitor an, Notebook zugeklappt, Hauptbildschirm gewechselt: Windows mischt die Symbole durch, DeskKeeper stellt sie zurück. Jedes Symbol kommt auf den Bildschirm, auf dem es zuletzt lag. Mit Schnappschüssen, automatischem Speichern beim Herunterfahren, Benutzerwechsel und Beenden, Werkzeugen wie bei DesktopOK und einer Ansicht, in der du siehst, wo jedes Symbol liegt. Sieht unter Windows 10 und 11 jeweils wie das System aus. Wer möchte, lässt die Symbole vom kleinen Roboterarm DUM-E zurücktragen – nachdem man sie zur Entspannung kurz in die Luft gesprengt hat.
+**DeskKeeper merkt sich deine Desktopsymbole – pro Bildschirmanordnung.** Monitor ab, Monitor an, Notebook zugeklappt, Hauptbildschirm gewechselt: Windows mischt die Symbole durch, DeskKeeper stellt sie zurück. Jedes Symbol kommt auf den Bildschirm, auf dem es zuletzt lag. Mit Schnappschüssen, automatischem Speichern beim Herunterfahren, Benutzerwechsel und Beenden, Ordnen nach Kategorien, festem Raster, Werkzeugen wie bei DesktopOK und einer Ansicht, in der du siehst, wo jedes Symbol liegt. Sieht unter Windows 10 und 11 jeweils wie das System aus. Wer möchte, lässt die Symbole vom kleinen Roboterarm DUM-E zurücktragen – nachdem man sie zur Entspannung kurz in die Luft gesprengt hat.
 
 **Geplant:** weitere Zerstörungseffekte sowie weitere Roboter und Haustiere, die Symbole zurückbringen, neu anordnen oder einfach ein bisschen verschieben. Kommt nach und nach dazu.
 
 ## Русский
 
-**DeskKeeper запоминает расположение значков для каждой конфигурации экранов.** Отключили монитор, подключили обратно, закрыли ноутбук, сменили основной экран — Windows перемешивает значки, DeskKeeper возвращает их на место, каждый на тот экран, где он был. Снимки, автосохранение при выключении, смене пользователя и выходе, инструменты как в DesktopOK и вид, где видно, где лежит каждый значок. Выглядит как родное приложение в Windows 10 и 11. А по желанию значки обратно отнесёт маленький робот Дубина — после того как вы их для настроения взорвёте.
+**DeskKeeper запоминает расположение значков для каждой конфигурации экранов.** Отключили монитор, подключили обратно, закрыли ноутбук, сменили основной экран — Windows перемешивает значки, DeskKeeper возвращает их на место, каждый на тот экран, где он был. Снимки, автосохранение при выключении, смене пользователя и выходе, раскладка по категориям, фиксированная сетка, инструменты как в DesktopOK и вид, где видно, где лежит каждый значок. Выглядит как родное приложение в Windows 10 и 11. А по желанию значки обратно отнесёт маленький робот Дубина — после того как вы их для настроения взорвёте.
 
 **В планах:** новые эффекты разрушения, а также другие роботы и питомцы, которые возвращают значки на место, переставляют их или просто немного двигают. Будет добавляться постепенно.

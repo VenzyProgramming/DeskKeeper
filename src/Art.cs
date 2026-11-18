@@ -187,7 +187,7 @@ static class Art
     static void DrawUpper(DrawingContext dc, double l)
     {
         // kräftiger Kastenträger, Fasen an beiden Enden, Nietleiste; ein Hydraulikzylinder darunter
-        dc.DrawGeometry(Iron, Edge, G($"M -4,-8 L {l - 4},-7 L {l + 2},0 L {l - 4},7 L -4,8 L -10,0 Z"));
+        dc.DrawGeometry(Iron, Edge, GI($"M -4,-8 L {l - 4},-7 L {l + 2},0 L {l - 4},7 L -4,8 L -10,0 Z"));
         dc.DrawLine(Glint, new Point(-3, -7.3), new Point(l - 5, -6.4));
         dc.DrawLine(P("#15181C", 0.5), new Point(-2, 3.8), new Point(l - 6, 3.4));
         for (int k = 0; k < 5; k++) dc.DrawEllipse(RivetFill, null, new Point(5 + k * (l - 16) / 4, -4.2), 0.65, 0.65);
@@ -224,7 +224,7 @@ static class Art
         // Backe: breiter Grundkörper, schmaler Haken nach innen (zur Mitte)
         dc.PushTransform(new MatrixTransform(Math.Cos(angle), Math.Sin(angle), -Math.Sin(angle), Math.Cos(angle), at.X, at.Y));
         double i = -side;   // Richtung zur Mitte
-        dc.DrawGeometry(Chrome, Edge, G($"M 0,{side * 1.6} L 9,{side * 1.4} L 13,{i * 0.4} L 12.4,{i * 1.8} L 10.6,{i * 1.5} L 10,{i * 0.2} L 7,{i * 0.9} L 0,{i * 1.0} Z"));
+        dc.DrawGeometry(Chrome, Edge, GI($"M 0,{side * 1.6} L 9,{side * 1.4} L 13,{i * 0.4} L 12.4,{i * 1.8} L 10.6,{i * 1.5} L 10,{i * 0.2} L 7,{i * 0.9} L 0,{i * 1.0} Z"));
         dc.DrawLine(Glint, new Point(1, side * 1.1), new Point(8.5, side * 1.0));
         dc.Pop();
     }
@@ -342,9 +342,12 @@ static class Art
 
     // ================================================================ Skins (Farben echter Industrie-Roboter, nur Schriftzug, kein Logo)
     internal sealed record Skin(string Id, string Name, Brush Plate, Brush Arm, Brush Housing, Brush Turntable, Brush Cap, string Label, Brush LabelInk);
+    /// <summary>Anzeigename eines Skins in der eingestellten Sprache (nur „Graphit“ wird übersetzt, die anderen sind Herstellernamen).</summary>
+    internal static string SkinName(Skin s) => s.Id == "graphit" ? Loc.T("skin.graphit") : s.Name;
+
     internal static readonly Skin[] Skins =
     [
-        new("graphit", "Графит", V(("#5C646E", 0), ("#3E444C", 0.5), ("#262A30", 1)), V(("#5B626C", 0), ("#434951", 0.22), ("#30353C", 0.6), ("#1D2126", 1)),
+        new("graphit", "Graphit", V(("#5C646E", 0), ("#3E444C", 0.5), ("#262A30", 1)), V(("#5B626C", 0), ("#434951", 0.22), ("#30353C", 0.6), ("#1D2126", 1)),
             R(("#6A727D", 0), ("#4A515A", 0.45), ("#2C3036", 0.85), ("#1C1F23", 1)), R(("#474E57", 0), ("#30353B", 0.5), ("#17191D", 1)),
             R(("#FFE680", 0), ("#E8B81C", 0.6), ("#9C7608", 1)), "", S("#00000000")),
         new("kuka", "KUKA", V(("#FFA040", 0), ("#F07800", 0.45), ("#B85600", 1)), V(("#FFA850", 0), ("#F27C00", 0.3), ("#D46800", 0.65), ("#9C4A00", 1)),
@@ -433,7 +436,7 @@ static class Art
                 dc.DrawRoundedRectangle(Chrome, Edge, new Rect(-1, -6.5, 2.6, 13), 0.8, 0.8);
                 double open = 1.5 + 4.6 * jaw;
                 foreach (double side in new[] { -1.0, 1.0 })
-                    dc.DrawGeometry(Chrome, Edge, G($"M 1.5,{side * (open + 1.4)} L 9,{side * (open + 1.0)} L 10.5,{side * (open - 1.6)} L 8.5,{side * (open - 1.8)} L 7.5,{side * (open - 0.4)} L 1.5,{side * (open - 0.8)} Z"));
+                    dc.DrawGeometry(Chrome, Edge, GI($"M 1.5,{side * (open + 1.4)} L 9,{side * (open + 1.0)} L 10.5,{side * (open - 1.6)} L 8.5,{side * (open - 1.8)} L 7.5,{side * (open - 0.4)} L 1.5,{side * (open - 0.8)} Z"));
             });
         }
         double sl = lift(55), el = lift(ez), wl = lift(z);
@@ -453,7 +456,7 @@ static class Art
                 // Schwinge (A2) breit, mit Gewichtsausgleich (Federzylinder) seitlich
                 Local(W(0), (sl + el) / 2, () =>
                 {
-                    dc.DrawGeometry(Current.Arm, Edge, G($"M -6,-11 L {e},-8.5 L {e},8.5 L -6,11 Z"));
+                    dc.DrawGeometry(Current.Arm, Edge, GI($"M -6,-11 L {e},-8.5 L {e},8.5 L -6,11 Z"));
                     dc.DrawLine(Glint, new Point(-4, -10), new Point(e - 2, -7.8));
                     dc.DrawRoundedRectangle(MotorGrey, Edge, new Rect(-4, 12, Math.Max(1, e * 0.6), 5), 2.5, 2.5);
                     dc.DrawRoundedRectangle(Chrome, null, new Rect(e * 0.56, 13.2, Math.Max(1, e * 0.22), 2.6), 1.3, 1.3);
@@ -623,7 +626,7 @@ static class Art
         dc.DrawRoundedRectangle(Chrome, Edge, new Rect(5.5, -7, 2.4, 14), 0.8, 0.8);
         double open = 1.5 + 5 * jaw;
         foreach (double side in new[] { -1.0, 1.0 })
-            dc.DrawGeometry(Chrome, Edge, G($"M 7.5,{side * (open + 1.4)} L 15,{side * (open + 1.0)} L 16.5,{side * (open - 1.6)} L 14.5,{side * (open - 1.8)} L 13.5,{side * (open - 0.4)} L 7.5,{side * (open - 0.8)} Z"));
+            dc.DrawGeometry(Chrome, Edge, GI($"M 7.5,{side * (open + 1.4)} L 15,{side * (open + 1.0)} L 16.5,{side * (open - 1.6)} L 14.5,{side * (open - 1.8)} L 13.5,{side * (open - 0.4)} L 7.5,{side * (open - 0.8)} Z"));
         dc.Pop();
         // Ellbogengelenk
         dc.DrawEllipse(IronDark, Edge, W(e), 7.5 * u * Lift(ez), 7.5 * u * Lift(ez));
@@ -845,7 +848,7 @@ static class Art
         dc.PushTransform(new MatrixTransform(dir.X * s, dir.Y * s, -dir.Y * s, dir.X * s, at.X, at.Y));
         if (burning) { Soft.Draw(dc, AfterburnerHalo, new Point(-8.5, 0), 4.5, 1.6, 0.9); Soft.Draw(dc, Afterburner, new Point(-7.4, 0), 2.2, 0.8, 1); }
         double w = 7.5 * fold;
-        dc.DrawGeometry(MissileBody, SwanEdge, G($"M 0,-0.6 L -2.2,{-0.6 - w} L -3.4,{-0.6 - w} L -2.2,-0.6 Z M 0,0.6 L -2.2,{0.6 + w} L -3.4,{0.6 + w} L -2.2,0.6 Z"));
+        dc.DrawGeometry(MissileBody, SwanEdge, GI($"M 0,-0.6 L -2.2,{-0.6 - w} L -3.4,{-0.6 - w} L -2.2,-0.6 Z M 0,0.6 L -2.2,{0.6 + w} L -3.4,{0.6 + w} L -2.2,0.6 Z"));
         dc.DrawGeometry(MissileBody, SwanEdge, G("M 6.5,0 L 4.5,-0.9 L -6.6,-0.9 L -7.2,0 L -6.6,0.9 L 4.5,0.9 Z"));
         dc.DrawGeometry(MissileBody, null, G("M -5,-0.8 L -6.8,-2.4 L -7.2,-0.8 Z M -5,0.8 L -6.8,2.4 L -7.2,0.8 Z"));
         dc.DrawLine(SwanSeam, new Point(4, -0.4), new Point(-6, -0.4));
@@ -862,7 +865,8 @@ static class Art
         {
             var image = new System.Windows.Media.Imaging.BitmapImage();
             image.BeginInit();
-            image.UriSource = new Uri($"pack://application:,,,/DeskKeeper;component/Assets/explosion-{i:00}.png", UriKind.Absolute);
+            var assembly = typeof(Art).Assembly.GetName().Name;
+            image.UriSource = new Uri($"pack://application:,,,/{assembly};component/{(assembly == "DeskKeeper" ? "" : "DeskKeeper/")}Assets/explosion-{i:00}.png", UriKind.Absolute);
             image.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
             image.EndInit();
             image.Freeze();
@@ -876,6 +880,8 @@ static class Art
     static Brush S(string hex) { var b = new SolidColorBrush(C(hex)); b.Freeze(); return b; }
     static Pen P(string hex, double w) { var p = new Pen(S(hex), w) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round, LineJoin = PenLineJoin.Round }; p.Freeze(); return p; }
     static Geometry G(string path) { var g = Geometry.Parse(path); g.Freeze(); return g; }
+    /// <summary>Pfad mit eingesetzten Zahlen immer mit Punkt (Seitenleisten-Ausgabe läuft mit deutscher Zahlenschreibweise).</summary>
+    static Geometry GI(FormattableString path) => G(FormattableString.Invariant(path));
     static Brush V(params (string Color, double At)[] stops) => Grad(new Point(0, 0), new Point(0, 1), stops);
     static Brush H(params (string Color, double At)[] stops) => Grad(new Point(0, 0), new Point(1, 0), stops);
     static Brush Grad(Point a, Point b, (string Color, double At)[] stops)

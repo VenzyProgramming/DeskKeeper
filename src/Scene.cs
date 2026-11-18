@@ -181,7 +181,25 @@ sealed class Scene
         else if (nuke) DrawNuke(dc, t);
         else if (jericho) DrawJericho(dc, t);
         if (jericho) DrawAsh(dc, t);
+        DrawCarried(dc, t);
         robot.Draw(dc, t);
+    }
+
+    /// <summary>Raster bleibt an : Symbole unterwegs zeichnet die Bühne als Bild, das echte Symbol wartet außerhalb
+    /// des Bildschirms und springt erst am Ziel in seine Rasterzelle. Ohne Bildquelle (Vorschau, Prüfung) wird nichts gezeichnet.</summary>
+    public Func<string, ImageSource?>? IconImage { get; set; }
+
+    /// <summary>Liegt das Symbol in einer festen Zelle (Ausgangs- oder Zielplatz)?</summary>
+    public bool Resting(string id, Point p) => (p - start[id]).LengthSquared < 1 || (p - home[id]).LengthSquared < 1;
+
+    void DrawCarried(DrawingContext dc, double t)
+    {
+        if (IconImage is null) return;
+        foreach (var icon in icons)
+        {
+            if (IconAt(icon.Id, t) is not { } c || Resting(icon.Id, c) || IconImage(icon.Id) is not { } image) continue;
+            dc.DrawImage(image, new Rect(c.X - iconSize / 2, c.Y - iconSize / 2, iconSize, iconSize));
+        }
     }
 
     static readonly Brush Cream = Solid("#FFF4DC"), Amber = Solid("#FFB056"), Ember = Solid("#FF6A1F"), Flare = Solid("#FFD58A"),

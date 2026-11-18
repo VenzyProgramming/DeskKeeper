@@ -48,10 +48,12 @@ sealed class Robot : IHelper
         r = size; start = robotStart; trailer = fromCart; this.screens = screens; this.primary = primary;
         var basePoint = new Point(primary.Left - r * 2.6, primary.Bottom - r * 1.6);
         double head = 0;
-        var arm = Rest;
+        var armPose = Rest;
         double t = robotStart;
         var ids = order.ToList();
         double pace = Math.Clamp(18.0 / Math.Max(1, ids.Count), 0.62, 1.2);
+        // 19.11.2026: Armbewegungen beim Greifen und Hinstellen ruhiger – auch bei vielen Symbolen nie schneller als Grundtempo
+        double arm = Math.Max(1.0, pace) * 1.35;
 
         // 1. Durchgang: Fahrwege und Zeiten (Armziele für den Anhänger kommen nach der Simulation)
         for (int n = 0; n < ids.Count; n++)
@@ -62,24 +64,24 @@ sealed class Robot : IHelper
             if (fromCart)
             {
                 var stand = InReach(drop, basePoint) ? basePoint : Stand(drop, basePoint, head, following);
-                Drive(ref t, ref basePoint, ref head, ref arm, stand, pace);
-                steps.Add(new Step(Kind.Reach, t, t += 0.36 * pace, stand, stand, head, head, Rest, default, id, drop));
-                steps.Add(new Step(Kind.Grip, t, t += 0.14 * pace, stand, stand, head, head, default, default, id, drop));
+                Drive(ref t, ref basePoint, ref head, ref armPose, stand, pace);
+                steps.Add(new Step(Kind.Reach, t, t += 0.85 * arm, stand, stand, head, head, armPose, default, id, drop));   // zum Anhänger ausholen: weiter Schwenk, ruhig
+                steps.Add(new Step(Kind.Grip, t, t += 0.24 * arm, stand, stand, head, head, default, default, id, drop));
                 var place = Aim(stand, head, drop, 0);
-                steps.Add(new Step(Kind.Swing, t, t += 0.6 * pace, stand, stand, head, head, default, place, id, drop));
-                steps.Add(new Step(Kind.Release, t, t += 0.18 * pace, stand, stand, head, head, place, place, id, drop));
-                arm = place;
+                steps.Add(new Step(Kind.Swing, t, t += 0.85 * arm, stand, stand, head, head, default, place, id, drop));
+                steps.Add(new Step(Kind.Release, t, t += 0.34 * arm, stand, stand, head, head, place, place, id, drop));
+                armPose = place;
             }
             else
             {
                 Point pick = pickOf(id);
                 var stand = InReach(pick, basePoint) ? basePoint : Stand(pick, basePoint, head);
-                Drive(ref t, ref basePoint, ref head, ref arm, stand, pace);
+                Drive(ref t, ref basePoint, ref head, ref armPose, stand, pace);
                 var grab = Aim(stand, head, pick, 0);
-                steps.Add(new Step(Kind.Reach, t, t += 0.4 * pace, stand, stand, head, head, Rest, grab, id, pick));
-                steps.Add(new Step(Kind.Grip, t, t += 0.16 * pace, stand, stand, head, head, grab, grab, id, pick));
+                steps.Add(new Step(Kind.Reach, t, t += 0.85 * arm, stand, stand, head, head, armPose, grab, id, pick));
+                steps.Add(new Step(Kind.Grip, t, t += 0.26 * arm, stand, stand, head, head, grab, grab, id, pick));
                 var hold = new Arm(0, 0.75, 0.8);
-                steps.Add(new Step(Kind.Lift, t, t += 0.35 * pace, stand, stand, head, head, grab, hold, id, pick));
+                steps.Add(new Step(Kind.Lift, t, t += 0.5 * arm, stand, stand, head, head, grab, hold, id, pick));
                 var standDrop = InReach(drop, stand) ? stand : Stand(drop, stand, head);
                 var (c1, c2, turn) = Curve(stand, head, standDrop);
                 double carry = Math.Clamp(CurveLength(stand, c1, c2, standDrop) / (r * 1.9), 0.9, 4.2) * pace;
@@ -87,16 +89,16 @@ sealed class Robot : IHelper
                 curves[steps.Count - 1] = (c1, c2);
                 head = turn;
                 var place = Aim(standDrop, head, drop, 0);
-                steps.Add(new Step(Kind.Swing, t, t += 0.45 * pace, standDrop, standDrop, head, head, hold, place, id, drop));
-                steps.Add(new Step(Kind.Release, t, t += 0.22 * pace, standDrop, standDrop, head, head, place, place, id, drop));
-                arm = place;
+                steps.Add(new Step(Kind.Swing, t, t += 0.75 * arm, standDrop, standDrop, head, head, hold, place, id, drop));
+                steps.Add(new Step(Kind.Release, t, t += 0.36 * arm, standDrop, standDrop, head, head, place, place, id, drop));
+                armPose = place;
                 basePoint = standDrop;
             }
         }
         // Wegfahren über den nächsten Rand
         var screen = ScreenOf(basePoint);
         var exit = new Point(basePoint.X < screen.Left + screen.Width / 2 ? screen.Left - r * 3.5 : screen.Right + r * 3.5, basePoint.Y);
-        Drive(ref t, ref basePoint, ref head, ref arm, exit, pace);
+        Drive(ref t, ref basePoint, ref head, ref armPose, exit, pace);
         End = t + 0.1;
 
         // 2. Anhänger simulieren, dann Greifhaltungen in den Laderaum eintragen
@@ -120,6 +122,7 @@ sealed class Robot : IHelper
     void Drive(ref double t, ref Point from, ref double head, ref Arm arm, Point to, double pace)
     {
         double dist = (to - from).Length;
+        if (dist < 1) return;   // steht schon richtig: Arm bleibt, die nächste Bewegung beginnt aus der jetzigen Haltung
         var (c1, c2, endHead) = Curve(from, head, to);
         double length = dist < 1 ? 0 : CurveLength(from, c1, c2, to);
         double drive = dist < 1 ? 0 : Math.Clamp(length / (r * 2.1), 0.7, 4.5) * pace;   // langsam wie ein schwerer Manipulator
@@ -226,13 +229,27 @@ sealed class Robot : IHelper
         var s = StepAt(t);
         if (s is null) return Rest;
         double k = Math.Clamp((t - s.From) / Math.Max(1e-6, s.To - s.From), 0, 1);
-        if (s.Kind == Kind.Drive) k = Math.Clamp(k / 0.4, 0, 1);
+        if (s.Kind == Kind.Drive) { double span = s.To - s.From, back = Math.Min(span, Math.Max(1.0, span * 0.6)); k = Math.Clamp((t - s.From) / Math.Max(1e-6, back), 0, 1); }
         // Drehteller führt, Ausleger folgt etwas verzögert; beim Schwenken über das Fahrwerk hinweg angehoben
-        double yawK = Overshoot(k), reachK = Overshoot(Math.Clamp((k - 0.1) / 0.9, 0, 1));
-        double height = s.ArmA.Height + (s.ArmB.Height - s.ArmA.Height) * Smooth(k);
+        double yawK = Drive5(k), reachK = Drive5(Math.Clamp((k - 0.08) / 0.92, 0, 1));
+        double height = s.ArmA.Height + (s.ArmB.Height - s.ArmA.Height) * Drive5(k);
         if (s.Kind == Kind.Swing) height += 0.75 * Math.Sin(Math.PI * k);
         if (s.Kind == Kind.Reach) height += 0.35 * Math.Sin(Math.PI * k);
         return new Arm(s.ArmA.Yaw + Wrap(s.ArmB.Yaw - s.ArmA.Yaw) * yawK, s.ArmA.Reach + (s.ArmB.Reach - s.ArmA.Reach) * reachK, Math.Clamp(height, 0, 1.3));
+    }
+
+    /// <summary>Prüfung: größter Sprung des Arms von Bild zu Bild (Drehung in Grad, Ausleger in Fahrgestellbreiten) bei 60 Bildern/s.</summary>
+    internal (double Yaw, double Reach) LargestArmStep()
+    {
+        double yaw = 0, reach = 0; var last = ArmAt(start);
+        for (double t = start + 1 / 60.0; t < End; t += 1 / 60.0)
+        {
+            var a = ArmAt(t);
+            yaw = Math.Max(yaw, Math.Abs(Wrap(a.Yaw - last.Yaw)) * 180 / Math.PI);
+            reach = Math.Max(reach, Math.Abs(a.Reach - last.Reach));
+            last = a;
+        }
+        return (yaw, reach);
     }
 
     double JawAt(double t)

@@ -48,7 +48,7 @@ static class Check
             Pass("am-ende-alle-symbole-zuhause", end.All(e => e.Value is { } v && (v - homes[e.Key]).Length < 0.5));
             var before = scene.IconCenters(Scene.Impact - 0.01);
             Pass("echte-symbole-bis-zum-blitz-unbewegt", before.All(e => e.Value is { } v && (v - homes[e.Key]).Length < 0.01));
-            Pass("dauer-unter-70-s", scene.Duration < 70);   // 18.11.: Дубина langsam wie ein schwerer Manipulator
+            Pass("dauer-unter-100-s", scene.Duration < 100);   // DUM-E stellt ruhig ab (19.11.2026)   // 18.11.: Дубина langsam wie ein schwerer Manipulator
             // Иерихон trifft die dichteste Gruppe: die linke Symbolspalte des Hauptbildschirms
             var main = centers[^1];
             Pass("hauptrakete-trifft-die-dichteste-gruppe", main.X < 200 && primary.Contains(main));
@@ -56,13 +56,36 @@ static class Check
             var minis = centers.Take(18).ToArray();
             Pass("kleine-raketen-treffen-symbole-ausserhalb-der-hauptexplosion", icons.All(i => (i.Center - main).Length <= scene.MainBlastRadius || minis.Any(m => (m - i.Center).Length <= scene.MiniBlastRadius * 1.05)));
             results["dauer-s"] = Math.Round(scene.Duration, 2);
+            // Festes Raster: während DUM-E trägt, gibt es Symbole unterwegs (die Bühne zeichnet sie), am Ende liegen alle in festen Zellen
+            Pass("raster-symbole-unterwegs-erkannt", Enumerable.Range(0, 400).Select(k => scene.RobotStart + k * 0.25).Any(t => scene.IconCenters(t).Any(e => e.Value is { } v && !scene.Resting(e.Key, v))));
+            Pass("raster-am-ende-alle-in-festen-zellen", scene.IconCenters(scene.Duration).All(e => e.Value is { } v && scene.Resting(e.Key, v)));
+            // Nach Kategorien ordnen : Zuordnung und Bereiche auf einem 3440×1392-Raster
+            {
+                string[] sample = ["::{645FF040-5081-101B-9F08-00AA002F954E}|Papierkorb", "a|Word", "b|Excel", "c|OBS Studio", "d|VLC media player", "e|Telegram", "f|Steam", "g|Minecraft Launcher", "h|Visual Studio 2026", "i|LM Studio", "j|Sortiert", "k|Dieser PC"];
+                var cat = sample.Select(x => x.Split('|')).Select(x => new IconInfo(x[0], x[1], new Point(0, 0))).ToList();
+                var grid = Categories.Grid.From(new Rect(0, 0, 3440, 1392), 116, 98, [[34, 0]], it => new Point(it[0] + 24, it[1] + 35));
+                var plan = Categories.Plan(cat, grid);
+                Point P(string name) => plan[cat.First(c => c.Name == name).Id];
+                Pass("kategorien-alle-verschiedene-zellen", plan.Count == cat.Count && plan.Values.Distinct().Count() == cat.Count);
+                Pass("kategorien-papierkorb-links-oben", P("Papierkorb").X < 100 && P("Papierkorb").Y < 60 && P("Dieser PC").X < 100);
+                Pass("kategorien-office-rechts-oben", P("Word").X > 3200 && P("Word").Y < 700);
+                Pass("kategorien-video-links-neben-office", P("OBS Studio").X < P("Word").X && P("OBS Studio").X > 2800);
+                Pass("kategorien-social-oben-mitte", Math.Abs(P("Telegram").X - 1720) < 400 && P("Telegram").Y < 60);
+                Pass("kategorien-spiele-unten-mitte", Math.Abs(P("Steam").X - 1720) < 400 && P("Steam").Y > 1200);
+                Pass("kategorien-entwicklung-links-unten", P("Visual Studio 2026").X < 300 && P("Visual Studio 2026").Y > 700);
+                Pass("kategorien-rest-rechts-unten", P("Sortiert").X > 3200 && P("Sortiert").Y > 1200);
+            }
+            var (jumpYaw, jumpReach) = scene.Dubina.LargestArmStep();
+            results["arm-groesster-schritt-grad"] = Math.Round(jumpYaw, 2);
+            results["arm-groesster-schritt-reichweite"] = Math.Round(jumpReach, 3);
+            Pass("arm-ohne-sprung", jumpYaw < 6 && jumpReach < 0.06);   // weich: höchstens 6° bzw. 0,06 Breiten je Bild bei 60 Bildern/s
             results["fahrten"] = scene.Dubina.Drives;
             results["lenkwinkel-summe-grad"] = Math.Round(scene.Dubina.SteeringDegrees);
             // Realistischer Maßstab wie auf einem Ultrawide-Desktop (Symbol 68 px, Дубина 96 px): wie viele Fahrten?
             var real = new Scene(icons.Select(i => i with { Center = new Point(i.Center.X * 1.4, i.Center.Y * 1.4 - 360 * 0.4 * (i.Center.Y < 0 ? 1 : 0)) }).ToList(),
                 icons.ToDictionary(i => i.Id, i => new Point(i.Center.X * 1.4, i.Center.Y * 1.4 - 360 * 0.4 * (i.Center.Y < 0 ? 1 : 0))), 68, [new Rect(0, 0, 2880, 1620), new Rect(2880, -540, 1920, 2160)], new Rect(0, 0, 2880, 1620), true, 96);
-            results["fahrten-wie-bei-sm"] = real.Dubina.Drives;
-            results["lenkwinkel-wie-bei-sm"] = Math.Round(real.Dubina.SteeringDegrees);
+            results["fahrten-ultrawide"] = real.Dubina.Drives;
+            results["lenkwinkel-ultrawide"] = Math.Round(real.Dubina.SteeringDegrees);
 
             // Restore-only: ohne Rakete, verschobene Symbole.
             var shuffled = icons.Select((i, n) => i with { Center = i.Center + new Vector(300 + n * 13, 40) }).ToList();
@@ -243,6 +266,10 @@ static class Check
         for (double q = 0; q < 15; q += 3) k5.Tick(q);
         w5.Desk["x"] = [444, 444]; k5.SaveNow(16);
         yield return ("hueter-speichert-beim-abmelden-sofort", w5.Stored["A"]["x"][0] == 444);
+        // Rasterversatz von wenigen Pixeln: nicht zurückstellen (DUM-E fuhr sonst für 3–23 px los)
+        var w6 = new FakeWorld(); w6.Stored["A"] = new() { ["x"] = [13, 10], ["y"] = [123, 10] };
+        var k6 = new Keeper(w6); for (double q = 0; q < 15; q += 3) k6.Tick(q);
+        yield return ("hueter-kleiner-versatz-kein-zurueckstellen", w6.Applied == 0);
         // ausgeschaltet: weder merken noch zurückstellen
         var w3 = new FakeWorld(); var k3 = new Keeper(w3) { AutoRestore = false, AutoSave = false };
         for (double q = 0; q < 15; q += 3) k3.Tick(q);

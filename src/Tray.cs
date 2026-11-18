@@ -9,96 +9,34 @@ using Forms = System.Windows.Forms;
 
 namespace DeskKeeper;
 
-/// <summary>Hintergrundbetrieb: Symbol im Infobereich (eigenes Menü statt Windows-Menü), Hüter der Anordnung,
-/// Speichern bei Zeitplan/Herunterfahren/Benutzerwechsel/Beenden, Fenster auf Abruf.</summary>
+/// <summary>Eigenständige Fassung: Symbol im Infobereich (eigenes Menü), Fenster auf Abruf; die Arbeit macht der Motor (Engine).</summary>
 sealed class Background : IDisposable
 {
     readonly Application app;
     readonly Forms.NotifyIcon tray = new();
-    readonly Keeper keeper = new(new RealWorld());
-    readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(3) };
-    readonly Stopwatch clock = Stopwatch.StartNew();
-    DateTime lastAutoSnapshot = DateTime.Now;
+    readonly Engine engine;
     IDeskWindow? card;
-    public string? Recovered { get; private set; }
     bool exiting;
+    public string? Recovered => engine.Recovered;
+    public bool Embedded { get; }
 
-    public Background(Application app, bool autostarted)
+    public Background(Application app, bool autostarted, bool embedded = false)
     {
         this.app = app;
-        // Abgebrochene Szene (Absturz, Abmelden) zuerst zurückstellen, sonst bleibt der Hüter gesperrt
-        Recovered = Runner.RecoverPending();
-        var options = Store.LoadOptions();
-        keeper.AutoRestore = keeper.AutoSave = options.Watch;
-        keeper.RestoreOnStart = autostarted ? options.RestoreAtLogin : options.RestoreAtStart;
-        keeper.Acted += what => card?.KeeperActed(what);
-
+        Embedded = embedded;
+        engine = new Engine(app.Dispatcher, autostarted, ownThread: false);
+        engine.Acted += what => card?.KeeperActed(what);
+        engine.Changed += () => card?.Refresh();
         tray.Text = "DeskKeeper";
         tray.Icon = MakeIcon();
         tray.MouseClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) ShowCard(); else if (e.Button == Forms.MouseButtons.Right) TrayMenu.Show(this); };
-        tray.Visible = true;
-
-        timer.Tick += (_, _) =>
-        {
-            try { keeper.Tick(clock.Elapsed.TotalSeconds); AutoSnapshotIfDue(); }
-            catch (Exception e) { Program.Report(e); }
-        };
-        timer.Start();
-        Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplay;
-        Microsoft.Win32.SystemEvents.SessionSwitch += OnSwitch;
+        tray.Visible = !embedded;   // eingebettet: ein Gastgeber übernimmt die Bedienung
     }
 
-    void OnDisplay(object? sender, EventArgs e) => app.Dispatcher.BeginInvoke(() => keeper.DisplayChanged(clock.Elapsed.TotalSeconds));
-
-    /// <summary>Benutzerwechsel, Sperren, Abmelden: Anordnung sichern (Einstellung „Beim Benutzerwechsel speichern“).</summary>
-    void OnSwitch(object? sender, Microsoft.Win32.SessionSwitchEventArgs e)
-    {
-        if (e.Reason is Microsoft.Win32.SessionSwitchReason.ConsoleDisconnect or Microsoft.Win32.SessionSwitchReason.RemoteDisconnect
-            or Microsoft.Win32.SessionSwitchReason.SessionLock or Microsoft.Win32.SessionSwitchReason.SessionLogoff && Store.LoadOptions().SaveOnUserSwitch)
-            app.Dispatcher.BeginInvoke(() => SaveAll());
-    }
-
-    void AutoSnapshotIfDue()
-    {
-        int minutes = Store.LoadOptions().AutoSnapshotMinutes;
-        if (minutes <= 0 || (DateTime.Now - lastAutoSnapshot).TotalMinutes < minutes || Runner.Busy || Store.HasPending) return;
-        lastAutoSnapshot = DateTime.Now;
-        try { using var d = new ShellDesktop(); if (Store.AutoSnapshot(Store.ScreenKey(), d.Snapshot())) card?.Refresh(); } catch { }
-    }
-
-    /// <summary>Jetzige Anordnung merken und als automatischen Schnappschuss ablegen (wenn sie sich unterscheidet).</summary>
-    public void SaveAll()
-    {
-        try
-        {
-            keeper.SaveNow(clock.Elapsed.TotalSeconds);
-            if (Runner.Busy || Store.HasPending) return;
-            using var d = new ShellDesktop();
-            Store.AutoSnapshot(Store.ScreenKey(), d.Snapshot());
-        }
-        catch (Exception e) { Program.Report(e); }
-    }
-
-    public void SaveNowManual()
-    {
-        try { using var d = new ShellDesktop(); Store.SaveSnapshot(Store.ScreenKey(), d.Snapshot()); } catch (Exception e) { Program.Report(e); }
-        card?.Refresh();
-    }
-
-    /// <summary>Jüngsten gespeicherten Stand dieser Anordnung zurückstellen (Art laut Einstellung).</summary>
-    public void RestoreNow()
-    {
-        if (Store.LoadProfile() is { } layout) RealWorld.Restore(layout);
-        card?.Refresh();
-    }
-
-    internal void SetWatch(bool on)
-    {
-        keeper.AutoRestore = keeper.AutoSave = on;
-        Store.SaveOptions(Store.LoadOptions() with { Watch = on });
-        card?.Refresh();
-    }
-
+    public void SaveAll() => engine.SaveAll();
+    public void SaveNowManual() => engine.SaveNowManual();
+    public void RestoreNow() => engine.RestoreNow();
+    internal void SetWatch(bool on) => engine.SetWatch(on);
     internal void SetAutostart(bool on) { Autostart.Enabled = on; card?.Refresh(); }
 
     public void ShowCard()
@@ -119,19 +57,30 @@ sealed class Background : IDisposable
     {
         if (exiting) return;
         exiting = true;
-        if (Store.LoadOptions().SaveOnExit) SaveAll();
+        engine.SaveOnExit();
         if (card is not null) card.AllowClose = true;
         Dispose();
         app.Shutdown();
     }
 
-    public void SaveOnShutdown() { if (Store.LoadOptions().SaveOnShutdown) SaveAll(); }
+    public void SaveOnShutdown() => engine.SaveOnShutdown();
+
+    /// <summary>Eingebettet: beenden, sobald der Gastgeber endet.</summary>
+    public void FollowHost(int pid)
+    {
+        try
+        {
+            var p = Process.GetProcessById(pid);
+            p.EnableRaisingEvents = true;
+            p.Exited += (_, _) => app.Dispatcher.BeginInvoke(Exit);
+            if (p.HasExited) Exit();
+        }
+        catch (ArgumentException) { Exit(); }   // Gastgeber schon weg
+    }
 
     public void Dispose()
     {
-        timer.Stop();
-        Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplay;
-        Microsoft.Win32.SystemEvents.SessionSwitch -= OnSwitch;
+        engine.Dispose();
         tray.Visible = false;
         tray.Dispose();
     }
@@ -183,7 +132,7 @@ static class Autostart
                 if (value) k.SetValue(Name, Command); else k.DeleteValue(Name, false);
                 k.DeleteValue(OldName, false);   // Eintrag aus der Zeit vor der Umbenennung
             }
-            catch (Exception e) { Program.Report(e); }
+            catch (Exception e) { Fault.Report(e); }
         }
     }
 }

@@ -214,6 +214,8 @@ static class Store
         public bool SaveOnShutdown { get; init; } = true;
         public bool SaveOnUserSwitch { get; init; } = true;
         public bool SaveOnExit { get; init; } = true;
+        /// <summary>Endpositionen immer am Explorer-Raster einrasten (19.11.2026: Symbole verrutschten nach Szenen).</summary>
+        public bool KeepGrid { get; init; } = true;
         public bool StartMinimized { get; init; }
         public bool CloseToTray { get; init; } = true;
         public bool RememberWindow { get; init; } = true;

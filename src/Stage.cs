@@ -23,7 +23,7 @@ sealed class Stage : Window
     IntPtr handle;
     public event Action? Escape;
 
-    public Stage(Rect virtualBounds, Scene scene)
+    public Stage(Rect virtualBounds, Scene? scene)
     {
         bounds = virtualBounds;
         actors = new Actors(scene, virtualBounds);
@@ -61,6 +61,37 @@ sealed class Stage : Window
     }
 
     public void Seek(double t) => actors.Seek(t);
+
+    /// <summary>Messung ohne Symbolbewegung: leeres Szenenfenster kurz öffnen und seine Lage in der Fensterreihenfolge melden
+    /// (über oder unter dem Desktop „Progman“/„WorkerW“, sichtbar?).</summary>
+    public static string ZOrderProbe(Rect area)
+    {
+        var stage = new Stage(area, null);
+        stage.Show();
+        stage.SendToBottom();
+        var frame = new System.Windows.Threading.DispatcherFrame();
+        var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(900) };
+        t.Tick += (_, _) => { t.Stop(); frame.Continue = false; };
+        t.Start(); System.Windows.Threading.Dispatcher.PushFrame(frame);
+        var order = new List<string>();
+        int mine = -1, desk = -1;
+        EnumWindows((h, _) =>
+        {
+            if (!IsWindowVisible(h)) return true;
+            var cls = new System.Text.StringBuilder(64); GetClassName(h, cls, 64);
+            string c = cls.ToString();
+            if (h == stage.handle) mine = order.Count;
+            if (c is "Progman" or "WorkerW" && desk < 0) desk = order.Count;
+            order.Add(c);
+            return true;
+        }, IntPtr.Zero);
+        stage.Close();
+        return $"szene-fenster {(mine < 0 ? "unsichtbar" : "#" + mine)} · desktop #{desk} · {(mine >= 0 && (desk < 0 || mine < desk) ? "ÜBER dem Desktop" : "UNTER dem Desktop")} · fenster gesamt {order.Count}";
+    }
+    delegate bool EnumProc(IntPtr h, IntPtr l);
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc proc, IntPtr l);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, System.Text.StringBuilder s, int n);
     public void SendToBottom() { if (handle != IntPtr.Zero) SetWindowPos(handle, new IntPtr(1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010); }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -68,14 +99,14 @@ sealed class Stage : Window
 
     sealed class Actors : FrameworkElement
     {
-        readonly Scene scene;
+        readonly Scene? scene;
         readonly Rect bounds;
         double time = -1;
-        public Actors(Scene scene, Rect bounds) { this.scene = scene; this.bounds = bounds; Width = bounds.Width; Height = bounds.Height; IsHitTestVisible = false; }
+        public Actors(Scene? scene, Rect bounds) { this.scene = scene; this.bounds = bounds; Width = bounds.Width; Height = bounds.Height; IsHitTestVisible = false; }
         public void Seek(double t) { time = t; InvalidateVisual(); }
         protected override void OnRender(DrawingContext dc)
         {
-            if (time < 0) return;
+            if (time < 0 || scene is null) return;
             dc.PushTransform(new TranslateTransform(-bounds.X, -bounds.Y));
             scene.Draw(dc, time);
             dc.Pop();
@@ -99,10 +130,16 @@ static class Runner
     internal static bool Busy { get; private set; }
 
     /// <param name="targets">Zielpositionen (Explorer-Koordinaten); null = Ausgangslage.</param>
-    public static async Task<string> Play(bool jericho, Dictionary<string, int[]>? targets, bool nuclear = false, bool tu160 = false)
+    /// <summary>Unter diesem Versatz (Elementkoordinaten) stellt DeskKeeper sofort zurück statt DUM-E tragen zu lassen; wie Keeper.Misplaced.</summary>
+    internal const int NearPx = 40;
+
+    public static async Task<string> Play(bool jericho, Dictionary<string, int[]>? targets, bool nuclear = false, bool tu160 = false, bool showDesktop = false)
     {
-        if (Busy) return "";
+        Fault.Note($"Szene angefordert: jericho={jericho} atom={nuclear} tu160={tu160} ziele={targets?.Count ?? 0} busy={Busy}");
+        if (Busy) { Fault.Note("Szene abgelehnt: läuft schon"); return ""; }
+        if (DesktopLock.RobotActive) { Fault.Note("Szene abgelehnt: Saugroboter arbeitet"); return Loc.T("r.robotBusy"); }
         Busy = true;
+        using var sceneLock = DesktopLock.Scene();
         note = "";
         ShellDesktop? desktop = null;
         Stage? stage = null;
@@ -111,12 +148,32 @@ static class Runner
         try
         {
             desktop = new ShellDesktop();
-            if (desktop.AutoArrange) return Loc.T("r.autoArrange");
-            if (desktop.Icons.Count == 0 && !jericho) return Loc.T("r.noIcons");
+            if (desktop.AutoArrange) { Fault.Note("Szene abgelehnt: Automatisch anordnen ist an"); return Loc.T("r.autoArrange"); }
+            if (desktop.Icons.Count == 0 && !jericho) { Fault.Note("Szene abgelehnt: keine Symbole"); return Loc.T("r.noIcons"); }
             before = desktop.Snapshot();
             var pending = new Dictionary<string, int[]>(before, StringComparer.OrdinalIgnoreCase) { ["::raster"] = [desktop.SnapWasOn ? 1 : 0, 0] };
             Store.SavePending(pending);   // mit Rasterzustand, falls die Szene abbricht
             var final = targets is null ? before : before.ToDictionary(e => e.Key, e => targets.TryGetValue(e.Key, out var p) ? p : e.Value, StringComparer.OrdinalIgnoreCase);
+            // Nur leicht verrutschte Symbole (Rasterversatz unter 40 px) sofort zurückstellen; DUM-E trägt nur, was wirklich woanders liegt.
+            // Sonst plante er für 29 Symbole mit 32 px Versatz 208 s Arbeit, von der kaum etwas zu sehen war .
+            int nudged = 0;
+            if (!jericho && targets is not null)
+            {
+                var near = final.Where(e => before.TryGetValue(e.Key, out var q) && (e.Value[0] != q[0] || e.Value[1] != q[1])
+                        && Math.Abs(e.Value[0] - q[0]) < NearPx && Math.Abs(e.Value[1] - q[1]) < NearPx)
+                    .ToDictionary(e => e.Key, e => e.Value, StringComparer.OrdinalIgnoreCase);
+                if (near.Count > 0)
+                {
+                    desktop.RestoreSnapshot(near);
+                    nudged = near.Count;
+                    desktop.Dispose();
+                    desktop = new ShellDesktop();
+                    before = desktop.Snapshot();
+                    // Rasterfang kann leicht verschieben: was jetzt nah genug liegt, gilt als erledigt
+                    final = before.ToDictionary(e => e.Key, e => final.TryGetValue(e.Key, out var p) && (Math.Abs(p[0] - e.Value[0]) >= NearPx || Math.Abs(p[1] - e.Value[1]) >= NearPx) ? p : e.Value, StringComparer.OrdinalIgnoreCase);
+                    Fault.Note($"Szene: {nudged} leicht verrutschte Symbole sofort zurückgestellt");
+                }
+            }
             var homes = final.ToDictionary(e => e.Key, e => desktop.CenterOf(e.Value), StringComparer.OrdinalIgnoreCase);
             var screens = System.Windows.Forms.Screen.AllScreens.Select(s => new Rect(s.Bounds.X, s.Bounds.Y, s.Bounds.Width, s.Bounds.Height)).ToArray();
             var primary = screens[Array.FindIndex(System.Windows.Forms.Screen.AllScreens, s => s.Primary)];
@@ -127,14 +184,25 @@ static class Runner
             // Verbrannte Symbole liegen außerhalb aller Bildschirme (unter der Unterkante), bis Дубина sie holt.
             var stash = new Point(all.Left + desktop.IconSize * 2, all.Bottom + desktop.IconSize * 30);
             bool stashChecked = false;
-            if (!jericho && scene.Duration < 0.6) return Loc.T("r.inPlace");
+            if (!jericho && scene.Duration < 0.6) { Fault.Note(nudged > 0 ? "Szene nicht nötig: nur leicht verrutschte Symbole" : "Szene nicht nötig: Symbole an ihrem Platz"); Store.ClearPending(); return Loc.T(nudged > 0 ? "m.restored" : "r.inPlace"); }
 
-            // Fenster bleiben offen: die Szene läuft auf dem Schreibtisch dahinter
-            desktop.FreeMovement();
+            // Die Bühne liegt direkt über dem Desktop. Vom Panel gestartet: offene Fenster kurz wegräumen (wie Win+D), sonst sieht man nichts
+            // (19.11.2026: „Tu-160 wurde nicht angezeigt“, Szene nach 7 s abgebrochen); am Ende kommen sie zurück.
+            if (showDesktop && !desktop.DesktopInFront) { ShellToggleDesktop(); toggled = true; await Task.Delay(350); }
+            // Am Raster festhalten: das Explorer-Raster bleibt an; echte Symbole stehen nur in festen Zellen oder warten außerhalb
+            bool gridLocked = Store.LoadOptions().KeepGrid && desktop.SnapWasOn;
+            if (gridLocked)
+            {
+                int px = (int)Math.Round(desktop.IconSize);
+                foreach (var icon in desktop.Icons) ShellIcons.Get(icon.Id, px);   // vorab laden, nicht erst im Bildtakt
+                scene.IconImage = id => ShellIcons.Get(id, px);
+            }
+            else desktop.FreeMovement();
             stage = new Stage(all, scene);
             stage.Escape += () => aborted = true;
             stage.Show();
             stage.SendToBottom();
+            Fault.Note($"Szene läuft: {scene.Duration:0.0} s, Fläche {all}, {desktop.Icons.Count} Symbole, Fenster sichtbar={stage.IsVisible}");
             await Task.Delay(60);
 
             var clock = Stopwatch.StartNew();
@@ -157,15 +225,22 @@ static class Runner
                     var changed = new Dictionary<string, Point>(StringComparer.OrdinalIgnoreCase);
                     foreach (var (id, maybe) in scene.IconCenters(t))
                     {
-                        var p = maybe ?? stash;
-                        if (maybe is null) hidden ??= id;
+                        // unterwegs (nur bei festem Raster): echtes Symbol wartet außerhalb, die Bühne zeichnet es
+                        bool away = maybe is null || gridLocked && !scene.Resting(id, maybe.Value);
+                        var p = away ? stash : maybe!.Value;
+                        if (away) hidden ??= id;
                         if (!last.TryGetValue(id, out var q) || (q - p).LengthSquared > 0.25) { changed[id] = p; last[id] = p; }
                     }
                     if (changed.Count > 0) desktop.Move(changed);
                     if (!stashChecked && hidden is not null && changed.ContainsKey(hidden))
                     {
                         stashChecked = true;
-                        if (desktop.CenterNow(hidden) is { } now && (now - stash).Length > desktop.IconSize) Log("Проводник не принял позицию за краем: " + now);
+                        // mit Raster rastet die Warteposition in eine Zelle ein; abgelehnt ist sie nur, wenn das Symbol sichtbar bleibt
+                        if (desktop.CenterNow(hidden) is { } now && (gridLocked ? all.Contains(now) : (now - stash).Length > desktop.IconSize))
+                        {
+                            Log("Проводник не принял позицию за краем: " + now);
+                            if (gridLocked) { desktop.FreeMovement(); last.Clear(); Fault.Note("Raster für die Szene aus: Explorer nahm die Warteposition mit Raster nicht an"); }
+                        }
                     }
                 }
                 catch (Exception error) { done.TrySetException(error); }
@@ -178,10 +253,12 @@ static class Runner
             // Иерихон abgebrochen: Ausgangslage. Zurückstellen abgebrochen: gleich ans Ziel (Esc überspringt die Fahrt).
             desktop.RestoreSnapshot(aborted && jericho ? before : final);
             Store.ClearPending();
+            Fault.Note(aborted ? "Szene mit Esc beendet" : "Szene fertig");
             return aborted && !jericho ? Loc.T("r.placed") : aborted ? Loc.T("r.aborted") : jericho ? Loc.T("r.done") + (note.Length > 0 ? " · " + note : "") : Loc.T("r.placed");
         }
         catch (Exception error)
         {
+            Fault.Report(error);
             try { if (desktop is not null && before is not null) { desktop.RestoreSnapshot(before); Store.ClearPending(); } } catch { }
             return error is COMException ? string.Format(Loc.T("r.explorer"), error.HResult.ToString("X8")) : error.Message;
         }

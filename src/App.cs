@@ -34,6 +34,43 @@ static class Program
             app.Run();
             return result;
         }
+        if (args.Length == 1 && args[0] == "--check-stage-z")
+        {
+            // Lage des (leeren) Szenenfensters in der Fensterreihenfolge – keine Symbolbewegung
+            app.Startup += (_, _) => { var all = System.Windows.Forms.Screen.AllScreens.Select(s => new Rect(s.Bounds.X, s.Bounds.Y, s.Bounds.Width, s.Bounds.Height)).Aggregate(Rect.Union); Console.WriteLine(Stage.ZOrderProbe(all)); app.Shutdown(); };
+            app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            app.Run();
+            return 0;
+        }
+        if (args.Length >= 1 && args[0] is "--sortieren" or "--sortieren-vorschau")
+        {
+            // Nach Kategorien ordnen; die Vorschau zeigt nur die Zuordnung und bewegt nichts. Vorher Schnappschuss.
+            bool apply = args[0] == "--sortieren";
+            try
+            {
+                string key = Store.ScreenKey();
+                System.Collections.Generic.Dictionary<string, int[]> layout; System.Collections.Generic.Dictionary<string, string> kinds; int moved;
+                using (var desktop = new ShellDesktop())
+                {
+                    if (desktop.AutoArrange) { Console.WriteLine("abgelehnt: automatisch anordnen ist an"); return 1; }
+                    (layout, kinds, moved) = Sorter.Prepare(desktop);
+                    var names = desktop.Icons.ToDictionary(i => i.Id, i => i.Name, StringComparer.OrdinalIgnoreCase);
+                    foreach (var g in kinds.GroupBy(k => k.Value).OrderBy(g => g.Key))
+                        Console.WriteLine(g.Key + ": " + string.Join(", ", g.Select(k => names[k.Key] + " " + string.Join(",", layout[k.Key]))));
+                    Console.WriteLine($"zu bewegen: {moved} von {kinds.Count}");
+                    if (apply && moved > 0) Store.SaveSnapshot(key, desktop.Snapshot());
+                }
+                if (apply && moved > 0)
+                {
+                    using (var desktop = new ShellDesktop()) desktop.RestoreSnapshot(layout);
+                    Store.SaveProfile(key, layout);
+                    new RealWorld().Save(key, layout);
+                    Console.WriteLine("geordnet; vorheriger Stand als Schnappschuss gesichert");
+                }
+                return 0;
+            }
+            catch (Exception error) { Console.WriteLine(error.ToString()); return 1; }
+        }
         if (args.Length == 1 && args[0] == "--probe")
         {
             // Nur lesen: Schreibtisch öffnen, Symbole zählen, nichts bewegen.
@@ -43,6 +80,7 @@ static class Program
                 Console.WriteLine($"ok symbole={desktop.Icons.Count} groesse={desktop.IconSize:0} autoanordnen={desktop.AutoArrange} raster={desktop.SnapInfo}");
                 foreach (var m in Monitors.Current()) Console.WriteLine($"bildschirm {m.Number} {(m.Primary ? "haupt " : "")}{m.Kind} {m.Model} {m.Diagonal:0.0}in {m.Bounds.Width}x{m.Bounds.Height} @{m.Bounds.X},{m.Bounds.Y} {m.Id}");
                 Console.WriteLine("anordnung " + Store.Describe(Store.ScreenKey()) + " · abstand " + desktop.Spacing);
+                Console.WriteLine($"symbolmitte geschätzt {desktop.EstimatedAnchor.X:0},{desktop.EstimatedAnchor.Y:0} · gemessen {(desktop.AnchorMeasured ? $"{desktop.Anchor.X:0},{desktop.Anchor.Y:0}" : "nein")} · bildgröße {desktop.ViewIconSize()}");
                 return 0;
             }
             catch (Exception error) { Console.WriteLine(error.ToString()); return 1; }
@@ -93,10 +131,15 @@ static class Program
         var options = Store.LoadOptions();
         Loc.Use(options.Language);
         bool autostarted = args.Contains("--autostart");
+        // Begleitprogramm der Seitenleisten-Ausgabe-Seitenleiste: kein eigenes Infobereich-Symbol, kein eigener Autostart,
+        // endet mit dem Gastgeberprozess (--host <pid>)
+        bool embedded = args.Contains("--embedded");
+        int hostPid = Array.IndexOf(args, "--host") is int hi and >= 0 && hi + 1 < args.Length && int.TryParse(args[hi + 1], out int pid) ? pid : 0;
         bool quiet = args.Contains("--tray") || options.StartMinimized;
         app.Startup += (_, _) =>
         {
-            var host = new Background(app, autostarted);
+            var host = new Background(app, autostarted, embedded);
+            if (hostPid > 0) host.FollowHost(hostPid);
             Single.Listen(() => app.Dispatcher.BeginInvoke(host.ShowCard));
             app.SessionEnding += (_, _) => { host.SaveOnShutdown(); host.Dispose(); };
             if (!quiet) host.ShowCard();
@@ -105,9 +148,5 @@ static class Program
         return 0;
     }
 
-    internal static void Report(Exception? error)
-    {
-        if (error is null) return;
-        try { System.IO.Directory.CreateDirectory(Store.Folder); System.IO.File.AppendAllText(System.IO.Path.Combine(Store.Folder, "protokoll.txt"), DateTime.Now.ToString("s") + " " + error + Environment.NewLine); } catch { }
-    }
+    internal static void Report(Exception? error) => Fault.Report(error);
 }

@@ -63,7 +63,8 @@ sealed class Keeper
             if (current is null) return;   // Explorer noch nicht bereit: nächste Abfrage
             restorePending = false; candidate = null;
             var target = AutoRestore ? world.Target(k, current) : null;
-            if (target is not null && Differs(target, current)) { world.Apply(target); Report("restored"); return; }
+            // Zurückstellen nur bei echten Verschiebungen (≥ 40 px), nicht bei Rasterversatz von wenigen Pixeln
+            if (target is not null && Misplaced(target, current)) { world.Apply(target); Report("restored"); return; }
             if (AutoSave && world.Saved(k) is null) { world.Save(k, current); Report("first"); }
             return;
         }
@@ -86,6 +87,14 @@ sealed class Keeper
     }
 
     void Report(string what) { LastAction = what; Acted?.Invoke(what); }
+
+    /// <summary>Liegt mindestens ein Symbol wirklich woanders (≥ tolerance px)? Kleiner Rasterversatz zählt nicht.</summary>
+    internal static bool Misplaced(Dictionary<string, int[]> target, Dictionary<string, int[]> current, int tolerance = 40)
+    {
+        foreach (var (id, p) in target)
+            if (current.TryGetValue(id, out var q) && (Math.Abs(p[0] - q[0]) >= tolerance || Math.Abs(p[1] - q[1]) >= tolerance)) return true;
+        return false;
+    }
 
     /// <summary>Unterschied in Lage (mehr als 2 px) oder Menge der Symbole.</summary>
     internal static bool Differs(Dictionary<string, int[]> a, Dictionary<string, int[]> b)
@@ -142,7 +151,7 @@ sealed class RealWorld : IKeeperWorld
     public string Key() => Store.ScreenKey();
     public Dictionary<string, int[]>? Read() { try { using var d = new ShellDesktop(); return d.Snapshot(); } catch { return null; } }
     public Dictionary<string, int[]>? Saved(string key) => Store.LoadAuto(key);
-    public bool Blocked => Runner.Busy || Store.HasPending;
+    public bool Blocked => Runner.Busy || Store.HasPending || DesktopLock.RobotActive;
 
     public Dictionary<string, int[]>? Target(string key, Dictionary<string, int[]> current)
     {
@@ -165,7 +174,14 @@ sealed class RealWorld : IKeeperWorld
     /// <summary>Zurückstellen laut Einstellung: sofort (wie DesktopOK) oder mit Дубина, die jedes Symbol trägt.</summary>
     public static void Restore(Dictionary<string, int[]> layout)
     {
-        if (Store.LoadOptions().RestoreMode == "robot") { _ = Runner.Play(false, layout); return; }
+        // Szenen laufen immer auf dem UI-Thread (der Motor kann auf einem eigenen Thread arbeiten)
+        if (Store.LoadOptions().RestoreMode == "robot")
+        {
+            var ui = Application.Current?.Dispatcher;
+            if (ui is null || ui.CheckAccess()) _ = Runner.Play(false, layout);
+            else ui.BeginInvoke(() => { _ = Runner.Play(false, layout); });
+            return;
+        }
         try { using var d = new ShellDesktop(); d.RestoreSnapshot(layout); } catch { }
     }
 

@@ -22,7 +22,16 @@ static class Preview
     }
 
     /// <summary>scene: jericho | nuke | tu160; Bild 16:9 in der gegebenen Breite (physische Pixel).</summary>
+    static readonly Dictionary<string, BitmapSource> cache = [];
+
     public static BitmapSource SceneImage(string scene, int width)
+    {
+        string id = $"{scene}:{width}:{Art.Current.Id}";
+        if (cache.TryGetValue(id, out var hit)) return hit;
+        return cache[id] = RenderScene(scene, width);
+    }
+
+    static BitmapSource RenderScene(string scene, int width)
     {
         var icons = Icons();
         var homes = icons.ToDictionary(i => i.Id, i => i.Center);
@@ -51,6 +60,13 @@ static class Preview
 
     /// <summary>Дубина mit Anhänger von oben im gegebenen Skin.</summary>
     public static BitmapSource SkinImage(Art.Skin skin, int width, int height)
+    {
+        string id = $"skin:{skin.Id}:{width}x{height}";
+        if (cache.TryGetValue(id, out var hit)) return hit;
+        return cache[id] = RenderSkin(skin, width, height);
+    }
+
+    static BitmapSource RenderSkin(Art.Skin skin, int width, int height)
     {
         var keep = Art.Current;
         Art.Current = skin;

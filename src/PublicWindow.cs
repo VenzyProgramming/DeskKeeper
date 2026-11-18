@@ -58,6 +58,10 @@ sealed class PublicWindow : Window, IDeskWindow
         { WindowStartupLocation = WindowStartupLocation.Manual; Left = w[0]; Top = w[1]; Width = w[2]; Height = w[3]; }
         Resources.MergedDictionaries.Add(Styles.For(L.ThumbHex, L.ThumbHoverHex, L.TipFillHex, L.TipLineHex));
         screens.AccentColor = L.AccentColor;
+        screens.ActiveLabel = T("active");
+        var follow = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        follow.Tick += (_, _) => { if (IsVisible && WindowState != WindowState.Minimized) screens.ActiveId = selectedKey == Store.ScreenKey() && GetCursorPos(out var c) ? Monitors.Current().FirstOrDefault(m => m.Bounds.Contains(new Point(c.X, c.Y)))?.Id : null; };
+        follow.Start();
 
         save = WinButton(T("save"), false, Save);
         restore = WinButton(T("restore"), false, () => Run(false));
@@ -208,7 +212,7 @@ sealed class PublicWindow : Window, IDeskWindow
         for (int i = 0; i < Art.Skins.Length; i++)
         {
             int index = i;
-            var chip = Tile(Art.Skins[i].Id, Art.Skins[i].Name, i == chosen, 4.0 / 3, null);
+            var chip = Tile(Art.Skins[i].Id, Art.SkinName(Art.Skins[i]), i == chosen, 4.0 / 3, null);
             chip.Margin = new Thickness(0, 0, i == Art.Skins.Length - 1 ? 0 : 10, 0);
             chip.Checked += (_, _) => { foreach (var o in skinButtons) if (o != chip) o.IsChecked = false; Art.Current = Art.Skins[index]; Remember(); };
             chip.Unchecked += (_, _) => { if (!skinButtons.Any(b => b.IsChecked == true)) chip.IsChecked = true; };
@@ -230,6 +234,8 @@ sealed class PublicWindow : Window, IDeskWindow
             () => DeskTools.IconSize switch { <= 36 => "32", >= 80 => "96", _ => "48" }, v => DeskTools.IconSize = int.Parse(v))));
         p.Children.Add(Row("", T("t.grid"), SwitchControl(() => DeskTools.Grid, v => DeskTools.Grid = v)));
         p.Children.Add(Row("", T("t.arrange"), SwitchControl(() => DeskTools.Arrange, v => DeskTools.Arrange = v)));
+        p.Children.Add(Row("", T("t.keepGrid"), SwitchControl(() => Store.LoadOptions().KeepGrid, v => Store.SaveOptions(Store.LoadOptions() with { KeepGrid = v }))));
+        p.Children.Add(Row("", T("t.sort"), WinButton(T("t.sortGo"), false, () => _ = SortByCategory())));
         p.Children.Add(SectionLabel(T("t.file"), null));
         p.Children.Add(Row("", T("t.export"), WinButton(T("t.choose"), false, ExportFile)));
         p.Children.Add(Row("", T("t.import"), WinButton(T("t.choose"), false, ImportFile)));
@@ -356,7 +362,7 @@ sealed class PublicWindow : Window, IDeskWindow
         void Next()
         {
             if (queue.Count == 0) return;
-            try { queue.Dequeue()(); } catch (Exception error) { Program.Report(error); }
+            try { queue.Dequeue()(); } catch (Exception error) { Fault.Report(error); }
             Dispatcher.BeginInvoke(Next, System.Windows.Threading.DispatcherPriority.Background);
         }
         if (!test) Next(); else while (queue.Count > 0) queue.Dequeue()();
@@ -433,12 +439,19 @@ sealed class PublicWindow : Window, IDeskWindow
         await Play(jericho, Store.LoadProfile());
     }
 
+    async System.Threading.Tasks.Task SortByCategory()
+    {
+        if (Runner.Busy) return;
+        try { status.Text = await Sorter.Run(async layout => await Runner.Play(false, layout, showDesktop: true)); }
+        catch (Exception error) { status.Text = error.Message; }
+    }
+
     async System.Threading.Tasks.Task Play(bool jericho, Dictionary<string, int[]>? layout)
     {
         save.IsEnabled = restore.IsEnabled = start.IsEnabled = false;
         var state = WindowState;
         WindowState = WindowState.Minimized;
-        try { status.Text = await Runner.Play(jericho, layout, jericho && pickNuke.IsChecked == true, jericho && pickTu.IsChecked == true); }
+        try { status.Text = await Runner.Play(jericho, layout, jericho && pickNuke.IsChecked == true, jericho && pickTu.IsChecked == true, showDesktop: true); }
         finally { save.IsEnabled = start.IsEnabled = true; WindowState = state; Refresh(); Activate(); }
     }
 
@@ -683,4 +696,6 @@ sealed class PublicWindow : Window, IDeskWindow
     static Color Mix(Color a, Color b, double t) => Color.FromRgb((byte)(a.R + (b.R - a.R) * t), (byte)(a.G + (b.G - a.G) * t), (byte)(a.B + (b.B - a.B) * t));
     static int ToColorRef(Color c) => c.R | (c.G << 8) | (c.B << 16);
     [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+    [StructLayout(LayoutKind.Sequential)] struct CursorPoint { public int X, Y; }
+    [DllImport("user32.dll")] static extern bool GetCursorPos(out CursorPoint p);
 }

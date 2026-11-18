@@ -39,6 +39,8 @@ sealed class ScreensView : FrameworkElement
     static readonly Brush HoverFill = Frozen(new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF))), CalloutFill = Frozen(new SolidColorBrush(Color.FromArgb(0xF2, 0x2B, 0x2B, 0x2E))),
         CalloutDim = Frozen(new SolidColorBrush(Color.FromRgb(0xB8, 0xBC, 0xC4)));
     static readonly Pen HoverPen = new Pen(Frozen(new SolidColorBrush(Color.FromArgb(0x90, 0xFF, 0xFF, 0xFF))), 1).Freezed(), CalloutPen = new Pen(Frozen(new SolidColorBrush(Color.FromRgb(0x45, 0x46, 0x4B))), 1).Freezed();
+    static readonly Brush ActiveFill = Frozen(new SolidColorBrush(Color.FromArgb(0xD0, 0x10, 0x14, 0x1C))), ActiveDot = Frozen(new SolidColorBrush(Color.FromRgb(0x4A, 0xDE, 0x80)));
+    static readonly Pen ActivePen = new Pen(Frozen(new SolidColorBrush(Color.FromArgb(0x70, 0x4A, 0xDE, 0x80))), 1).Freezed();
     static readonly Typeface LabelFace = new(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
     static readonly Typeface Display = new(new FontFamily("Segoe UI Variable Display, Segoe UI"), FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
 
@@ -96,6 +98,15 @@ sealed class ScreensView : FrameworkElement
             else if (m.Kind == DeviceKind.TV)
                 dc.DrawEllipse(PowerDot, null, new Point(outer.Right - frame * 2.5, outer.Bottom - frame * 0.9), Math.Max(0.8, frame * 0.25), Math.Max(0.8, frame * 0.25));
             if (m.Primary) dc.DrawRoundedRectangle(null, new Pen(accent, 2), new Rect(outer.X - 3.5, outer.Y - 3.5, outer.Width + 7, outer.Height + 7), radius + frame + 4, radius + frame + 4);
+            if (m.Id == active && r.Width > 60)
+            {
+                // „aktiv“: grüner Punkt mit Beschriftung oben links auf dem Bildschirm, auf dem die Maus ist
+                var label = new FormattedText(ActiveLabel, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, LabelFace, 11, Brushes.White, dpi);
+                var pill = new Rect(r.Right - label.Width - 34, r.Top + 8, label.Width + 26, 20);   // oben rechts: links liegen meist Symbole
+                dc.DrawRoundedRectangle(ActiveFill, ActivePen, pill, 10, 10);
+                dc.DrawEllipse(ActiveDot, null, new Point(pill.Left + 10, pill.Top + 10), 3.5, 3.5);
+                dc.DrawText(label, new Point(pill.Left + 18, pill.Top + (20 - label.Height) / 2));
+            }
 
             // Nummer wie beim „Identifizieren“ (nicht in der Großansicht, dort zählen die Symbole)
             if (!zoomed)
@@ -215,6 +226,12 @@ sealed class ScreensView : FrameworkElement
 
     /// <summary>Symbolgröße auf dem echten Bildschirm in Pixeln (für den Maßstab der Symbolbilder).</summary>
     public double IconPixels = 48;
+
+    /// <summary>Kennung des Bildschirms, auf dem gerade gearbeitet wird (Maus), oder null.</summary>
+    public string? ActiveId { get => active; set { if (active == value) return; active = value; InvalidateVisual(); } }
+    string? active;
+    /// <summary>Beschriftung der Pille (Sprache des Gastgebers).</summary>
+    public string ActiveLabel = "aktiv";
 
     /// <summary>Bildfläche ohne Rahmen; frame = Rahmenbreite, radius = Eckenrundung der Bildfläche (je Geräteart).</summary>
     static Rect Screen(MonitorInfo m, double s, double ox, double oy, out double frame, out double radius)

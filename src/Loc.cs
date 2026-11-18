@@ -63,6 +63,8 @@ static class Loc
         ["close"] = new("Schließen", "Close", "Закрыть"),
         ["info"] = new("Geräte", "Devices", "Устройства"),
         ["primary"] = new("Hauptbildschirm", "Main display", "Основной"),
+        ["secondary"] = new("Nebenbildschirm", "Secondary display", "Дополнительный"),
+        ["active"] = new("aktiv", "active", "активен"),
         ["now"] = new("jetzt", "now", "сейчас"),
         ["current"] = new("Aktuell", "Current", "Текущая"),
         ["example"] = new("Beispiel", "Example", "пример"),
@@ -89,6 +91,7 @@ static class Loc
         ["builtIn"] = new("Eingebaut", "Built-in", "Встроенный"),
         // Szene
         ["destruction"] = new("Zerstörung", "Destruction", "Разрушение"),
+        ["skin.graphit"] = new("Graphit", "Graphite", "Графит"),
         ["robot"] = new("DUM-E", "DUM-E", "Дубина"),   // 18.11.2026: deutsch/englisch DUM-E, russisch Дубина
         ["w.jericho"] = new("Jericho", "Jericho", "Иерихон"),
         ["w.nuke"] = new("Atombombe", "Nuke", "Ядерная"),
@@ -96,6 +99,10 @@ static class Loc
         // Werkzeuge
         ["t.windows"] = new("Fenster", "Windows", "Окна"),
         ["t.minimize"] = new("Alle Fenster minimieren", "Minimize all windows", "Свернуть все окна"),
+        ["t.sort"] = new("Nach Kategorien ordnen", "Sort by category", "Разложить по категориям"),
+        ["t.keepGrid"] = new("Am Raster festhalten", "Keep icons on the grid", "Держать значки по сетке"),
+        ["t.sortGo"] = new("Ordnen", "Sort", "Разложить"),
+        ["m.sorted"] = new("{0} Symbole nach Kategorien geordnet", "{0} icons sorted by category", "Значков разложено: {0}"),
         ["t.do"] = new("Ausführen", "Run", "Выполнить"),
         ["t.desktop"] = new("Desktop", "Desktop", "Рабочий стол"),
         ["t.hide"] = new("Desktopsymbole anzeigen", "Show desktop icons", "Показывать значки"),
@@ -151,6 +158,7 @@ static class Loc
         ["r.placed"] = new("Symbole an ihrem Platz", "Icons in place", "Значки на местах"),
         ["r.aborted"] = new("Abgebrochen · Symbole an alter Stelle", "Cancelled · icons back in place", "Прервано · значки на прежних местах"),
         ["r.done"] = new("Fertig", "Done", "Готово"),
+        ["r.robotBusy"] = new("Der Saugroboter räumt gerade auf", "The vacuum robot is tidying up right now", "Сейчас убирает робот-пылесос"),
         ["r.notHidden"] = new("Symbole nicht ausgeblendet", "icons were not hidden", "значки не спрятались"),
         ["r.explorer"] = new("Explorer nicht erreichbar ({0})", "Explorer unavailable ({0})", "Проводник недоступен ({0})"),
         ["r.recovered"] = new("Symbole nach abgebrochener Szene zurückgestellt", "Icons restored after an interrupted scene", "Значки после прерванной сцены возвращены"),

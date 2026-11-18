@@ -32,7 +32,10 @@ sealed class ShellDesktop : IIconSurface
     readonly List<IconInfo> icons = [];
     readonly FolderView view;
     readonly Point origin;
-    readonly Vector anchor;   // Abstand Elementposition → Symbolmitte
+    Vector anchor;   // Abstand Elementposition → Symbolmitte (gemessen, sonst geschätzt)
+    public Vector EstimatedAnchor { get; private set; }
+    public Vector Anchor => anchor;
+    public bool AnchorMeasured { get; private set; }
     readonly uint flagsBefore;
     bool snapChanged;
     FolderView2? view2;
@@ -64,7 +67,10 @@ sealed class ShellDesktop : IIconSurface
             Check(view.GetSpacing(out var spacing));
             IconSize = spacing.X > 0 ? Math.Clamp(spacing.X * 0.58, 16, 160) : 48;
             if (spacing.X > 0) Spacing = Math.Max(spacing.X, spacing.Y);
-            anchor = new Vector(spacing.X > 0 ? spacing.X / 2.0 : 38, 2 + IconSize / 2);
+            if (spacing.X > 0) { SpacingX = spacing.X; SpacingY = spacing.Y; }
+            anchor = EstimatedAnchor = new Vector(spacing.X > 0 ? spacing.X / 2.0 : 38, 2 + IconSize / 2);
+            listView = list == IntPtr.Zero ? viewWindow : list;
+            spacingKey = (spacing.X, spacing.Y);
             AutoArrange = view.GetAutoArrange() == 0;   // S_OK = an
             try { view2 = (FolderView2)view; if (view2.GetCurrentFolderFlags(out flagsBefore) < 0) view2 = null; } catch (InvalidCastException) { view2 = null; }
             var foreground = GetForegroundWindow();
@@ -80,8 +86,55 @@ sealed class ShellDesktop : IIconSurface
                 string name = NameOf(pidl, NormalDisplay);
                 icons.Add(new IconInfo(id, name.Length == 0 ? id : name, ToScreen(position)));
             }
+            Calibrate();
         }
         catch { Dispose(); throw; }
+    }
+
+    IntPtr listView;
+    (int X, int Y) spacingKey;
+    static readonly Dictionary<(int, int, int), Vector> measuredAnchors = [];
+
+    /// <summary>
+    /// Wo die Symbolmitte relativ zur Elementposition liegt, hängt von Abstand, Symbolgröße und Beschriftung ab; geschätzt lag sie
+    /// auf breit gerasterten Desktops sichtbar daneben (Asche und Explosionen neben den Symbolen, 19.11.2026).
+    /// Hier wird sie über die Windows-Bedienhilfen (UI Automation, nur lesen) an einigen Symbolen gemessen und zwischengespeichert.
+    /// </summary>
+    void Calibrate()
+    {
+        int iconPx = ViewIconSize();
+        var keyA = (spacingKey.X, spacingKey.Y, iconPx);
+        lock (measuredAnchors) if (measuredAnchors.TryGetValue(keyA, out var known)) { anchor = known; AnchorMeasured = true; return; }
+        try
+        {
+            var root = System.Windows.Automation.AutomationElement.FromHandle(listView);
+            var items = root.FindAll(System.Windows.Automation.TreeScope.Children, System.Windows.Automation.Condition.TrueCondition);
+            var byName = icons.GroupBy(i => i.Name).Where(g => g.Count() == 1).ToDictionary(g => g.Key, g => g.First());
+            var dx = new List<double>(); var dy = new List<double>();
+            foreach (System.Windows.Automation.AutomationElement item in items)
+            {
+                if (dx.Count >= 12) break;
+                string name = item.Current.Name;
+                var rect = item.Current.BoundingRectangle;
+                if (rect.IsEmpty || rect.Width < 8 || !byName.TryGetValue(name, out var icon) || !pidls.TryGetValue(icon.Id, out var pidl)) continue;
+                if (view.GetItemPosition(pidl, out var pos) < 0) continue;
+                // Symbolbild sitzt oben mittig im Element; kleiner Rand über dem Bild
+                // Meldet Windows nur das Symbolbild (so breit wie das Bild), ist dessen Mitte die Symbolmitte; sonst oben mittig im Element
+                bool imageOnly = rect.Width <= iconPx * 1.25;
+                double cy = imageOnly ? rect.Y + rect.Height / 2 : rect.Y + Math.Max(2, (rect.Width - iconPx) * 0.12) + iconPx / 2.0;
+                dx.Add(rect.X + rect.Width / 2 - (pos.X + origin.X));
+                dy.Add(cy - (pos.Y + origin.Y));
+            }
+            if (dx.Count < 2) return;
+            dx.Sort(); dy.Sort();
+            var measured = new Vector(dx[dx.Count / 2], dy[dy.Count / 2]);
+            if (Math.Abs(measured.X) > 400 || Math.Abs(measured.Y) > 400) return;   // unplausibel: bei der Schätzung bleiben
+            lock (measuredAnchors) measuredAnchors[keyA] = measured;
+            // Symbolmitten der bereits eingelesenen Symbole mit dem gemessenen Abstand neu berechnen
+            var old = anchor; anchor = measured; AnchorMeasured = true;
+            for (int k = 0; k < icons.Count; k++) icons[k] = icons[k] with { Center = icons[k].Center - old + measured };
+        }
+        catch (Exception error) when (error is InvalidOperationException or ArgumentException or System.Runtime.InteropServices.COMException or System.Windows.Automation.ElementNotAvailableException) { }
     }
 
     Point ToScreen(NativePoint item) => new Point(item.X, item.Y) + (Vector)origin + anchor;
@@ -125,7 +178,18 @@ sealed class ShellDesktop : IIconSurface
     /// <summary>Elementpositionen (Explorer-Koordinaten) für die Sicherung.</summary>
     public Dictionary<string, int[]> Snapshot() => icons.ToDictionary(icon => icon.Id, icon => { var p = ToItem(icon.Center); return new[] { p.X, p.Y }; }, StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Elementpositionen setzen. Mit „Am Raster festhalten“ ist das Raster dabei kurz an, damit Explorer jede Position
+    /// in eine Rasterzelle einrastet (auch nach einer Szene, in der es aus war); danach gilt wieder der vorherige Zustand.</summary>
     public int RestoreSnapshot(IReadOnlyDictionary<string, int[]> saved)
+    {
+        bool force = view2 is not null && Store.LoadOptions().KeepGrid;
+        uint before = force ? FolderFlags() : 0;
+        bool switched = force && (before & SnapToGrid) == 0 && view2!.SetCurrentFolderFlags(SnapToGrid, SnapToGrid) >= 0;
+        try { return RestoreExact(saved); }
+        finally { if (switched) { try { view2!.SetCurrentFolderFlags(SnapToGrid, 0); } catch { } } }
+    }
+
+    int RestoreExact(IReadOnlyDictionary<string, int[]> saved)
     {
         var ids = new List<IntPtr>(); var points = new List<NativePoint>();
         foreach (var (id, p) in saved)
@@ -139,6 +203,9 @@ sealed class ShellDesktop : IIconSurface
     public int[] ItemOf(Point center) { var p = ToItem(center); return [p.X, p.Y]; }
     /// <summary>Rasterabstand der Symbole in Pixeln.</summary>
     public double Spacing { get; private set; } = 76;
+    /// <summary>Rasterabstand waagerecht und senkrecht (Pixel).</summary>
+    public double SpacingX { get; private set; } = 76;
+    public double SpacingY { get; private set; } = 76;
 
     /// <summary>Aktueller Mittelpunkt laut Explorer (zum Prüfen, ob eine Position außerhalb angenommen wurde).</summary>
     public Point? CenterNow(string id) => pidls.TryGetValue(id, out var pidl) && view.GetItemPosition(pidl, out var p) >= 0 ? ToScreen(p) : null;
