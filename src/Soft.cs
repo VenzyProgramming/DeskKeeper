@@ -1,0 +1,48 @@
+using System;
+using System.Collections.Generic;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+
+namespace DeskKeeper;
+
+/// <summary>
+/// Weiche Formen als vorgerenderte Bilder (18.11.2026: Atomexplosion ruckelte):
+/// Verläufe werden einmal in kleine Bilder gerendert (Deckkraft in 8 Stufen eingebacken) und dann nur gestreckt.
+/// Kein PushOpacity je Teilchen (das erzeugt in WPF je Teilchen eine eigene Ebene) und keine großen Verlaufsflächen je Bild.
+/// </summary>
+static class Soft
+{
+    const int Levels = 8;
+    static readonly Dictionary<(Brush, int, int), BitmapSource> cache = new(ReferenceEqualityComparer2.Instance);
+
+    /// <summary>Ellipse mit Verlaufspinsel, Deckkraft 0…1, auflösung = Bildgröße (64 für Teilchen, 256 für dünne Ringe).</summary>
+    public static void Draw(DrawingContext dc, Brush brush, Point center, double rx, double ry, double opacity, int resolution = 64)
+    {
+        if (opacity <= 0.01 || rx < 0.5 || ry < 0.5) return;
+        int level = Math.Clamp((int)Math.Round(opacity * Levels), 1, Levels);
+        var key = (brush, level, resolution);
+        if (!cache.TryGetValue(key, out var image))
+        {
+            var visual = new DrawingVisual();
+            using (var c = visual.RenderOpen())
+            {
+                c.PushOpacity(level / (double)Levels);
+                c.DrawEllipse(brush, null, new Point(resolution / 2.0, resolution / 2.0), resolution / 2.0, resolution / 2.0);
+                c.Pop();
+            }
+            var bitmap = new RenderTargetBitmap(resolution, resolution, 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(visual);
+            bitmap.Freeze();
+            cache[key] = image = bitmap;
+        }
+        dc.DrawImage(image, new Rect(center.X - rx, center.Y - ry, rx * 2, ry * 2));
+    }
+
+    sealed class ReferenceEqualityComparer2 : IEqualityComparer<(Brush, int, int)>
+    {
+        public static readonly ReferenceEqualityComparer2 Instance = new();
+        public bool Equals((Brush, int, int) a, (Brush, int, int) b) => ReferenceEquals(a.Item1, b.Item1) && a.Item2 == b.Item2 && a.Item3 == b.Item3;
+        public int GetHashCode((Brush, int, int) k) => HashCode.Combine(System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(k.Item1), k.Item2, k.Item3);
+    }
+}
