@@ -75,17 +75,29 @@ sealed class DuelRaid : IAttack
         double capture = Math.Max(iconSize * 2.2, radius * 0.9);
         var pos = start;
         double hd = groups.Count > 0 ? Math.Atan2(groups[0].Average(p => p.Y) - start.Y, groups[0].Average(p => p.X) - start.X) : 0;
+        double rate = 0;
+        const double rollAccel = 45 * Math.PI / 180, gain = 1.1;   // Drehrate baut sich mit höchstens 45°/s² auf (19.11.2026: „keine ruckartigen Manöver“)
+        void Turn(double delta)
+        {
+            double want = Math.Clamp(delta * gain, -turnRate, turnRate);
+            // rechtzeitig ausrollen: höchstens die Rate, die sich bis zum Ziel noch auf null abbauen lässt
+            double stop = Math.Sqrt(2 * rollAccel * Math.Abs(delta));
+            want = Math.Clamp(want, -stop, stop);
+            rate += Math.Clamp(want - rate, -rollAccel * dt, rollAccel * dt);
+            hd += rate * dt;
+        }
         void Step()
         {
             pos += new Vector(Math.Cos(hd), Math.Sin(hd)) * speed * dt;
             cum.Add(line.Count == 0 ? 0 : cum[^1] + (pos - line[^1]).Length); line.Add(pos);
         }
         line.Add(pos); cum.Add(0);
-        const double minGap = 3.0;
+        const double minGap = 3.5;
+        int lastPass = 0;
         void Steer(Point aim)
         {
             double want = Math.Atan2(aim.Y - pos.Y, aim.X - pos.X);
-            hd += Math.Clamp(Math.IEEERemainder(want - hd, 2 * Math.PI), -turnRate * dt, turnRate * dt);
+            Turn(Math.IEEERemainder(want - hd, 2 * Math.PI));
             Step();
         }
         for (int gi = 0; gi < groups.Count; gi++)
@@ -95,25 +107,26 @@ sealed class DuelRaid : IAttack
             if (gi > 0)
             {   // nach jeder Gruppe erst hinaus in den freien Raum, damit zwischen zwei Überflügen Zeit für den Führungswechsel bleibt
                 var away = mid + (mid - c) * 0.35;
-                for (double run = 0; run < speed * minGap * 0.5; run += speed * dt) Steer((away - pos).Length > radius * 1.5 ? away : pos + new Vector(Math.Cos(hd), Math.Sin(hd)) * 100);
+                for (double run = 0; run < speed * minGap * 0.3; run += speed * dt) Steer(away);
             }
             double turned = 0, best = double.MaxValue; int bestIndex = line.Count - 1;
             for (int guard = 0; guard < 120 * 30; guard++)
             {
                 double dist = (c - pos).Length;
-                if (dist < best) { best = dist; bestIndex = line.Count - 1; }
-                if (dist < capture) break;
+                if (dist < best && (index.Count == 0 || (line.Count - 1 - lastPass) * dt >= minGap)) { best = dist; bestIndex = line.Count - 1; }
+                bool rested = index.Count == 0 || (line.Count - 1 - lastPass) * dt >= minGap;   // genug Zeit seit dem letzten Überflug
+                if (dist < capture && rested) break;
                 if (turned > 2 * Math.PI && dist > best + speed * 0.3) break;   // kreist sonst um eine Gruppe im Wendekreis
                 double want = Math.Atan2(c.Y - pos.Y, c.X - pos.X);
-                double delta = Math.IEEERemainder(want - hd, 2 * Math.PI);
-                double stepTurn = Math.Clamp(delta, -turnRate * dt, turnRate * dt);
-                hd += stepTurn; turned += Math.Abs(stepTurn);
+                double before = hd;
+                Turn(Math.IEEERemainder(want - hd, 2 * Math.PI));
+                turned += Math.Abs(hd - before);
                 Step();
             }
-            index.Add(bestIndex);
+            index.Add(bestIndex); lastPass = bestIndex;
         }
         double diag = Math.Sqrt(area.Width * area.Width + area.Height * area.Height);
-        for (double run = 0; run < diag * 1.6 + spanS * 10; run += speed * dt) Step();   // geradeaus hinaus
+        for (double run = 0; run < diag * 1.6 + spanS * 10; run += speed * dt) { Turn(0); Step(); }   // ausrollen, dann geradeaus hinaus
         length = cum[^1];
 
         // Überflugzeiten: der Vordere (Weg + along) ist über der Gruppe; erste Gruppe frühestens nach 1,6 s
@@ -166,7 +179,7 @@ sealed class DuelRaid : IAttack
 
     internal double BreakAt => breakAt;
 
-    /// <summary>Führung der F-35A: +1 vorn, −1 hinten. Wechsel in den ersten 55 % zwischen zwei Überflügen (weich),
+    /// <summary>Führung der F-35A: +1 vorn, −1 hinten. Wechsel in den ersten 80 % zwischen zwei Überflügen (weich),
     /// damit beim Schießen und Täuschen die Rollen klar sind.</summary>
     double Lead(double t)
     {
@@ -176,7 +189,7 @@ sealed class DuelRaid : IAttack
         {
             if (t > passes[i + 1]) continue;
             double gap = passes[i + 1] - passes[i];
-            double k = Math.Clamp((t - passes[i] - 0.2) / (gap * 0.55), 0, 1);
+            double k = Math.Clamp((t - passes[i] - 0.3) / (gap * 0.75), 0, 1);
             return leads[i] + (leads[i + 1] - leads[i]) * Fly.Smooth(k);
         }
         return leads[^1];
@@ -260,6 +273,25 @@ sealed class DuelRaid : IAttack
             }
         }
         return (maxTurn, flips / (2 * seconds), maxAcc, speed / width);
+    }
+
+    /// <summary>Ruck der Fluglage: größte Drehbeschleunigung (Grad/s², über 0,1 s gemittelt) je Jet und der Bahn allein, dazu der Zeitpunkt.</summary>
+    internal (double Jet, double JetAt, double Path) Jerk()
+    {
+        double jet = 0, at = 0, path = 0;
+        const double h = 0.05;
+        double Rate(Func<double, double> heading, double t) => Math.IEEERemainder(heading(t + h) - heading(t - h), 2 * Math.PI) / (2 * h) * 180 / Math.PI;
+        double PathHeading(double t) { double d = (t - t0) * speed; var v = OnLine(d + 4) - OnLine(d - 4); return Math.Atan2(v.Y, v.X); }
+        for (double t = 0.6; t < breakAt; t += 1 / 60.0)
+        {
+            foreach (bool f in new[] { true, false })
+            {
+                double a = Math.Abs(Rate(x => Heading(f, x), t + 0.05) - Rate(x => Heading(f, x), t - 0.05)) / 0.1;
+                if (a > jet) { jet = a; at = t; }
+            }
+            path = Math.Max(path, Math.Abs(Rate(PathHeading, t + 0.05) - Rate(PathHeading, t - 0.05)) / 0.1);
+        }
+        return (jet, at, path);
     }
 
     /// <summary>Kleinster Abstand der beiden Jets vor dem Auseinanderbrechen, in Spannweiten der Su-57.</summary>

@@ -31,7 +31,7 @@ static class Check
         var sc = new Scene(icons, homes, iconSize, screens, primary, true, 64, attack: attack);
         Console.WriteLine($"{attack}: Dauer {sc.Duration:0.0} s, Einschläge {sc.Raid.Count}, Roboter ab {sc.RobotStart:0.0} s, " +
             $"jedes Symbol getroffen {icons.All(i => sc.Raid.Any(b => (b.P - i.Center).Length <= iconSize * 2.2))}");
-        if (sc.Attack is DuelRaid duel) { var m = duel.Metrics(iconSize); Console.WriteLine($"duel-messwerte: geschwindigkeit {m.SpeedRatio:0.00}x, startwinkel {m.LaunchAngle:0} grad, abstand gegner-einschlag {m.TargetMiss:0.0} symbole, gegner vor der nase: groesster winkel {180 - m.Behind:0} grad"); var u = duel.Unrest(1920); Console.WriteLine($"duel-unruhe: drehrate max {u.TurnRate:0} grad/s, richtungswechsel {u.Wobble:0.00} je s, beschleunigung max {u.Accel:0.0}x/s, tempo {u.ScreensPerSecond:0.00} bildschirmbreiten/s, kleinster abstand {duel.ClosestPass():0.00} spannweiten"); }
+        if (sc.Attack is DuelRaid duel) { var m = duel.Metrics(iconSize); Console.WriteLine($"duel-messwerte: geschwindigkeit {m.SpeedRatio:0.00}x, startwinkel {m.LaunchAngle:0} grad, abstand gegner-einschlag {m.TargetMiss:0.0} symbole, gegner vor der nase: groesster winkel {180 - m.Behind:0} grad"); var u = duel.Unrest(1920); Console.WriteLine($"duel-unruhe: drehrate max {u.TurnRate:0} grad/s, richtungswechsel {u.Wobble:0.00} je s, beschleunigung max {u.Accel:0.0}x/s, tempo {u.ScreensPerSecond:0.00} bildschirmbreiten/s, kleinster abstand {duel.ClosestPass():0.00} spannweiten"); var j = duel.Jerk(); Console.WriteLine($"duel-ruck: drehbeschleunigung jet max {j.Jet:0} grad/s² (bei {j.JetAt:0.0} s), bahn max {j.Path:0} grad/s²"); }
         foreach (var t in times) Save(Frame(sc, all, icons, t, 0.5), Path.Combine(output, $"{attack}-{t:0.0}.png"));
         return 0;
     }
@@ -183,7 +183,7 @@ static class Check
                 if (attack != Attacks.Il76) Pass(attack + "-kein-einschlag-ins-leere", sc.Raid.All(b => icons.Any(i => (b.P - i.Center).Length <= iconSize * 1.2)));
                 Pass(attack + "-alle-symbole-weg-vor-dume", sc.IconCenters(sc.RobotStart - 0.05).Values.All(v => v is null));
                 Pass(attack + "-am-ende-alle-zuhause", sc.IconCenters(sc.Duration).All(e => e.Value is { } v && (v - homes[e.Key]).Length < 0.5));
-                double limit = attack == Attacks.Ka52 ? 110 : attack == Attacks.Ac130 ? 140 : attack is Attacks.A10 or Attacks.Su25 or Attacks.Vacuum ? 130 : attack == Attacks.Duel ? 115 : 100;   // Duell langsamer (19.11.2026: „zu schnell“)   // AC-130: Show je Gruppe    // Ka-52 greift jedes Symbol einzeln an : dauert mit der Symbolzahl länger
+                double limit = attack == Attacks.Ka52 ? 110 : attack == Attacks.Ac130 ? 140 : attack is Attacks.A10 or Attacks.Su25 or Attacks.Vacuum ? 130 : attack == Attacks.Duel ? 120 : 100;   // Duell langsamer und ohne ruckartige Manöver (19.11.2026: „zu schnell“, „keine ruckartigen Manöver“)   // AC-130: Show je Gruppe    // Ka-52 greift jedes Symbol einzeln an : dauert mit der Symbolzahl länger
                 Pass($"{attack}-dauer-unter-{limit:0}-s", sc.Duration < limit);
                 results[attack + "-dauer-s"] = Math.Round(sc.Duration, 1);
                 var (mean, p95) = DrawCost(sc, sc.RobotStart);
