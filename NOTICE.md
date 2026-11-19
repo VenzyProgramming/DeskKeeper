@@ -10,9 +10,24 @@ The top-view outline of the Tu-160M bomber in `src/Art.cs` (coordinates of fusel
 
 The SVG itself is not included. The adapted outline (those coordinates in `src/Art.cs`) is shared under CC BY-SA 3.0. Everything else in this repository is MIT licensed.
 
-## Other aircraft
+## Outlines checked against reference drawings
 
-The top views of the Tu-22M3, Su-34, Ka-52, Tu-95MS and Il-76 in `src/Aircraft.cs` were drawn for DeskKeeper from published dimensions (length, span, wing sweep). They are not traced from third-party drawings and are MIT licensed like the rest.
+Several top views in `src/Aircraft.cs`, `src/Strike.cs` and `src/Lift.cs` were measured or corrected against these drawings. The drawings themselves are not included. The adapted coordinates are shared under the license of their source:
+
+| Model | Reference | Author | License |
+|---|---|---|---|
+| Su-34 | "Sukhoi Su-34 Top Orthographic View", DVIDS 9081728 <https://www.dvidshub.net/image/9081728> | Timothy Klanderud, Naval Aviation Warfighting Development Center | Public domain (U.S. Government work) |
+| Su-25 | "Suchoi Su-25.svg", Wikimedia Commons | Kaboldy | CC BY-SA 3.0 |
+| A-10C | "Fairchild Republic A-10 Thunderbolt II 3-view.svg", Wikimedia Commons | Kaboldy | CC BY-SA 3.0 |
+| Tu-95MS | "Tupolev Tu-95MS 3-view.svg", Wikimedia Commons | Kaboldy | CC BY-SA 3.0 |
+| Il-76 | "Ilyushin Il-76.svg", Wikimedia Commons | Kaboldy | CC BY-SA 3.0 |
+| AC-130U | "Lockheed Martin KC-130J Hercules 3-view line drawing.svg", Wikimedia Commons | Jetijones | CC BY 3.0 |
+| CH-47 Chinook | "Boeing CH-47 Chinook 3-view line drawing.svg", Wikimedia Commons | Jetijones | CC BY 3.0 |
+| Mi-26 | "Mil Mi-26 Line Drawing.svg", Wikimedia Commons | Jetijones | CC BY 3.0 |
+
+Licenses: CC BY-SA 3.0 <https://creativecommons.org/licenses/by-sa/3.0/>, CC BY 3.0 <https://creativecommons.org/licenses/by/3.0/>.
+
+The Tu-22M3, Ka-52 and Shahed-136 were drawn for DeskKeeper from published dimensions and are MIT licensed like the rest.
 
 ## Everything else
 

@@ -9,7 +9,7 @@ It has been failing at that job since roughly 1995. DeskKeeper does it instead.
 
 ![DeskKeeper demo](docs/media/deskkeeper-demo.gif)
 
-[Download](../../releases) · [Watch the 30-second promo](https://cdn.jsdelivr.net/gh/VenzyProgramming/DeskKeeper@main/docs/media/deskkeeper-promo.mp4) · English · [Deutsch](#deutsch) · [Русский](#русский)
+[Download](../../releases) · [Watch the promo (with sound)](https://cdn.jsdelivr.net/gh/VenzyProgramming/DeskKeeper@main/docs/media/deskkeeper-promo.mp4) · [Vertical short](https://cdn.jsdelivr.net/gh/VenzyProgramming/DeskKeeper@main/docs/media/deskkeeper-reel.mp4) · English · [Deutsch](#deutsch) · [Русский](#русский)
 
 </div>
 
@@ -31,6 +31,12 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
 - **Windows forgot everything after a reboot?** Restored a few seconds after startup.
 - It never saves Windows' own mess under your good layout. That was the whole point.
 
+## Made with your feedback
+
+DeskKeeper grows step by step. More scenes and helpers are on the way, military ones and natural disasters alike.
+It lives on feedback: [open an issue](../../issues) with a bug, a complaint or an idea, and it gets fixed.
+And since it is open source, you can fix it yourself, mod it, or add your own scenes and helpers. Pull requests are welcome.
+
 ## Features
 
 | | |
@@ -50,6 +56,12 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
   <img src="docs/media/settings.png" width="49%" alt="Settings"> <img src="docs/media/tools.png" width="49%" alt="Tools">
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
+
+## What's new in 1.3.2
+
+- **New promo video with sound.** It shows all twelve scenes and all six helpers. Every sound is synthesized from the same timeline as the picture: engines, rotors, impacts, gun bursts and a music bed, mastered to −14 LUFS. `DeskKeeper.exe --promo <folder>` renders it (demo mode), and `src/tools/promo_audio.py` makes the soundtrack.
+- **Vertical short** for TikTok, Instagram Reels and YouTube Shorts: 1080×1920, about 30 s, rendered on a portrait desktop (`--reel <folder>`). The hook is readable on the first frame, text stays inside the safe zone, and the end loops back to the start.
+- New section **Made with your feedback**: more scenes are coming, bugs and complaints get fixed, and since it is open source you can mod it or add your own.
 
 ## What's new in 1.3.1
 
@@ -172,7 +184,7 @@ Switch *Restore style* to **With DUM-E** and a small top-down robot arm with a t
 
 <p align="center"><img src="docs/media/dum-e.gif" width="70%" alt="DUM-E carrying icons back"></p>
 
-And if you are having a really bad day, the **Scene** page lets you nuke your desktop first – a Jericho strike, a mushroom cloud, a Tu-160M or Tu-95MS bomber run, Tu-22M3 carpet bombing, Su-34 precision strikes, a Ka-52 helicopter attack – or Il-76 paratroopers who simply carry your icons away. Icons turn to ash. DUM-E then rebuilds everything, exactly as it was. Therapy, basically.
+And if you are having a really bad day, the **Scene** page lets you wipe your desktop first, twelve ways so far: a Jericho strike, a mushroom cloud, Tu-160M and Tu-95MS cruise missiles, Tu-22M3 carpet bombing, Su-34 precision strikes, a Ka-52 attack, Il-76 paratroopers who simply carry your icons away, an AC-130U circling each group, a Shahed-136 drone swarm, and A-10C or Su-25 gun runs. Icons turn to ash. Then a helper of your choice rebuilds everything, exactly as it was: DUM-E, a forklift, a crane truck, delivery drones, a CH-47 Chinook or a Mi-26. Therapy, basically.
 
 <p align="center"><img src="docs/media/scene.png" width="70%" alt="Scene page"></p>
 
@@ -222,10 +234,10 @@ MIT, see [LICENSE](LICENSE). The Tu-160M outline is adapted from a CC BY-SA 3.0 
 
 **DeskKeeper merkt sich deine Desktopsymbole – pro Bildschirmanordnung.** Monitor ab, Monitor an, Notebook zugeklappt, Hauptbildschirm gewechselt: Windows mischt die Symbole durch, DeskKeeper stellt sie zurück. Jedes Symbol kommt auf den Bildschirm, auf dem es zuletzt lag. Mit Schnappschüssen, automatischem Speichern beim Herunterfahren, Benutzerwechsel und Beenden, Ordnen nach Kategorien, festem Raster, Werkzeugen wie bei DesktopOK und einer Ansicht, in der du siehst, wo jedes Symbol liegt. Sieht unter Windows 10 und 11 jeweils wie das System aus. Wer möchte, lässt die Symbole vom kleinen Roboterarm DUM-E zurücktragen – nachdem man sie zur Entspannung kurz in die Luft gesprengt hat.
 
-**Geplant:** weitere Zerstörungseffekte sowie weitere Roboter und Haustiere, die Symbole zurückbringen, neu anordnen oder einfach ein bisschen verschieben. Kommt nach und nach dazu.
+**Geplant:** weitere Zerstörungsarten, militärisch wie Naturkatastrophen, und weitere Helfer. Kommt Schritt für Schritt dazu. DeskKeeper lebt von Rückmeldungen: Fehler und Beschwerden als [Issue](../../issues) melden, sie werden behoben. Und weil es Open Source ist, kann jeder es selbst reparieren, verändern oder eigene Szenen und Helfer hinzufügen.
 
 ## Русский
 
 **DeskKeeper запоминает расположение значков для каждой конфигурации экранов.** Отключили монитор, подключили обратно, закрыли ноутбук, сменили основной экран — Windows перемешивает значки, DeskKeeper возвращает их на место, каждый на тот экран, где он был. Снимки, автосохранение при выключении, смене пользователя и выходе, раскладка по категориям, фиксированная сетка, инструменты как в DesktopOK и вид, где видно, где лежит каждый значок. Выглядит как родное приложение в Windows 10 и 11. А по желанию значки обратно отнесёт маленький робот Дубина — после того как вы их для настроения взорвёте.
 
-**В планах:** новые эффекты разрушения, а также другие роботы и питомцы, которые возвращают значки на место, переставляют их или просто немного двигают. Будет добавляться постепенно.
+**В планах:** новые виды разрушения — военные и стихийные бедствия — и новые помощники. Будет добавляться шаг за шагом. DeskKeeper живёт обратной связью: сообщайте об ошибках и жалобах через [Issues](../../issues), их исправят. А поскольку проект открытый, каждый может сам исправить его, изменить или добавить свои сцены и помощников.
