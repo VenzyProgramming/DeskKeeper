@@ -230,6 +230,32 @@ static class Check
                 finally { Helpers.Current = Helpers.Dume; }
             }
 
+            {   // Maßstabstafel : alle Modelle im gemeinsamen Maßstab, ein Symbol = 6 m, Nase nach oben
+                const double pm = 5;   // Pixel je Meter
+                var v = new DrawingVisual();
+                using (var dc = v.RenderOpen())
+                {
+                    dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x2B, 0x3A, 0x50)), null, new Rect(0, 0, 1800, 1100));
+                    double up = -Math.PI / 2;
+                    Art.Bomber(dc, new Point(190, 200), up, 20, false, 0, 54.1 * pm / 100, 0.3);
+                    Planes.Tu95(dc, new Point(520, 200), up, 44.7 * pm / 100, 0.5, 0.3);
+                    Planes.Il76(dc, new Point(840, 200), up, 45.3 * pm / 100, 0.5, false);
+                    Planes.Tu22(dc, new Point(1130, 200), up, 39.5 * pm / 100, 0.5, 20);
+                    Planes.AC130(dc, new Point(1420, 200), up, 40.4 * pm / 137, 0.5, 0.3);
+                    LiftHelper.DrawMi26(dc, new Point(190, 600), up, pm, 0.5, 0.3);
+                    Planes.Su34(dc, new Point(470, 600), up, 20.1 * pm / 100, 0.5, 0.3);
+                    LiftHelper.DrawChinook(dc, new Point(700, 600), up, pm, 0.5, 0.3);
+                    Planes.Ka52(dc, new Point(930, 600), up, 13.8 * pm / 100, 0.5, 0.3);
+                    Planes.A10(dc, new Point(1130, 600), up, 17.53 * pm / 107.8, 0.5, 0.3);
+                    Planes.Su25(dc, new Point(1320, 600), up, 14.36 * pm / 93.4, 0.5, 0.3);
+                    Planes.Shahed(dc, new Point(1480, 600), up, 2.5 * pm / 71.6, 0.3, 0.3);
+                    var folder = new SolidColorBrush(Color.FromRgb(0xE7, 0xB4, 0x7B));
+                    for (int i = 0; i < 12; i++) dc.DrawRoundedRectangle(folder, null, new Rect(1560 + (i % 4) * 36, 520 + (i / 4) * 36, 30, 26), 4, 4);   // Symbole: je 6 m
+                }
+                var bmp = new RenderTargetBitmap(1800, 1100, 96, 96, PixelFormats.Pbgra32); bmp.Render(v);
+                Save(bmp, Path.Combine(output, "0-massstab.png"));
+            }
+
             {   // Typentafel der neuen Modelle : Shahed-136, A-10C, Su-25, CH-47F, Mi-26
                 var v = new DrawingVisual();
                 using (var dc = v.RenderOpen())
@@ -239,8 +265,8 @@ static class Check
                     Planes.Shahed(dc, new Point(470, 230), -Math.PI / 2, 3.2, 0.2, 0.31, 0.7);
                     Planes.A10(dc, new Point(900, 260), -Math.PI / 2, 3.6, 0.6, 0.5);
                     Planes.Su25(dc, new Point(1450, 260), -Math.PI / 2, 4.0, 0.6, 0.5);
-                    LiftHelper.DrawChinook(dc, new Point(450, 800), -Math.PI / 2, 150, 0.6, 0.3);
-                    LiftHelper.DrawMi26(dc, new Point(1300, 780), -Math.PI / 2, 105, 0.6, 0.3);
+                    LiftHelper.DrawChinook(dc, new Point(450, 800), -Math.PI / 2, 150 * 2.9 / 15.9, 0.6, 0.3);
+                    LiftHelper.DrawMi26(dc, new Point(1300, 780), -Math.PI / 2, 105 * 5.6 / 33.7, 0.6, 0.3);
                 }
                 var bmp = new RenderTargetBitmap(1800, 1100, 96, 96, PixelFormats.Pbgra32); bmp.Render(v);
                 Save(bmp, Path.Combine(output, "0-neue-modelle.png"));

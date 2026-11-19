@@ -245,7 +245,7 @@ sealed class ShahedRaid : IAttack
 
     public ShahedRaid(Rect stage, IReadOnlyList<Point> targets, double iconSize)
     {
-        double span = Math.Clamp(stage.Width * 0.022, iconSize * 0.9, iconSize * 1.3);
+        double span = Scale.PerMeter(iconSize) * 2.5;   // Spannweite 2,5 m
         u = span / 71.6;
         // höchstens 36 Drohnen: bei mehr Symbolen trifft jede eine Gruppe
         List<Point> aims; double radius;
@@ -334,7 +334,7 @@ sealed class StrafeRaid : IAttack
     {
         this.kind = kind;
         double meters = kind == Kind.A10 ? 17.53 : 14.36;
-        span = Math.Clamp(stage.Width * 0.05 * meters / 17.53, iconSize * 2.0 * meters / 17.53, iconSize * 3.0 * meters / 17.53);
+        span = Scale.PerMeter(iconSize) * meters;   // Spannweite im gemeinsamen Maßstab
         u = span / (kind == Kind.A10 ? 107.8 : 93.4);
         Reach = iconSize * 0.5;
         double speed = span * (kind == Kind.A10 ? 3.8 : 4.4);

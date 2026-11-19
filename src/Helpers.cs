@@ -19,13 +19,13 @@ static class Helpers
     public static string Current = Dume;
 
     public static IHelper Create(string kind, IReadOnlyList<IconInfo> icons, Func<string, Point> pickOf, IReadOnlyDictionary<string, Point> home, bool fromCart,
-        double start, double size, Rect[] screens, Rect primary, IEnumerable<string> order) => kind switch
+        double start, double size, Rect[] screens, Rect primary, IEnumerable<string> order, double iconSize = 48) => kind switch
     {
         Forklift => new ForkliftHelper(pickOf, home, fromCart, start, size, primary, order),
         Crane => new CraneHelper(pickOf, home, fromCart, start, size, primary, order),
         Drones => new DroneHelper(pickOf, home, fromCart, start, size, primary, order),
-        Chinook => new LiftHelper(LiftHelper.Type.Chinook, pickOf, home, fromCart, start, size, primary, order),
-        Mi26 => new LiftHelper(LiftHelper.Type.Mi26, pickOf, home, fromCart, start, size, primary, order),
+        Chinook => new LiftHelper(LiftHelper.Type.Chinook, pickOf, home, fromCart, start, size, primary, order, iconSize),
+        Mi26 => new LiftHelper(LiftHelper.Type.Mi26, pickOf, home, fromCart, start, size, primary, order, iconSize),
         _ => new Robot(icons, pickOf, home, fromCart, start, size, screens, primary, order),
     };
 
@@ -40,8 +40,8 @@ static class Helpers
                 DroneHelper.DrawDrone(dc, at + new Vector(-size * 0.9, -size * 0.25), 0.3, size * 0.8, 1, 0.3, true);
                 DroneHelper.DrawDrone(dc, at + new Vector(size * 0.9, size * 0.35), -0.4, size * 0.8, 0.8, 0.9, false);
                 break;
-            case Chinook: LiftHelper.DrawChinook(dc, at, -0.5, size, 0.6, 0.4); break;
-            case Mi26: LiftHelper.DrawMi26(dc, at, -0.5, size, 0.6, 0.4); break;
+            case Chinook: LiftHelper.DrawChinook(dc, at, -0.5, size * 2.9 / 15.9, 0.6, 0.4); break;
+            case Mi26: LiftHelper.DrawMi26(dc, at, -0.5, size * 5.6 / 33.7, 0.6, 0.4); break;
         }
     }
 }

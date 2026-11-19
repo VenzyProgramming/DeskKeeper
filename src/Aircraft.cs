@@ -79,6 +79,16 @@ static class Attacks
     }
 }
 
+/// <summary>
+/// Gemeinsamer Maßstab aller Flugzeuge und Hubschrauber (19.11.2026: „die Tu-160 als Maßstab nehmen und danach alles aufbauen“,
+/// gewählt: ein Symbol entspricht einem 6-m-Container). Jedes Modell wird mit seinen echten Maßen gezeichnet: Tu-160 54,1 m = 9 Symbole.
+/// </summary>
+static class Scale
+{
+    public const double IconMeters = 6;
+    public static double PerMeter(double iconSize) => iconSize / IconMeters;
+}
+
 static class Fly
 {
     public static double Smooth(double v) { v = Math.Clamp(v, 0, 1); return v * v * (3 - 2 * v); }
@@ -251,24 +261,35 @@ static partial class Planes
     // ---------------------------------------------------------------- Су-34 (Länge 23,3 m, Spannweite 14,7 m)
     // Maße ausgemessen : schmale Nase mit großem Radom, Nebeneinander-Cockpit, lange Vorderkantenwurzel, Canards
     // an der Wurzel (+9,5…−5), Flügel 43° mit Startschienen an den Spitzen, schräg stehende Seitenleitwerke, Höhenleitwerk 45°, Heckstachel.
-    static readonly Geometry Su34Body = Fly.G("M50,0 C50,-1.2 49.4,-2.2 48,-2.6 C46,-3.1 42,-3.6 38,-3.95 L28,-4.5 C24,-4.8 21,-5.4 18,-6.2 C14,-7 9,-8.3 4,-9.7 L-2,-10.6 L-30,-10.8 L-46,-10.6 L-49.6,-9.4 L-50.2,-3 " +
-        "L-50.2,3 L-49.6,9.4 L-46,10.6 L-30,10.8 L-2,10.6 L4,9.7 C9,8.3 14,7 18,6.2 C21,5.4 24,4.8 28,4.5 L38,3.95 C42,3.6 46,3.1 48,2.6 C49.4,2.2 50,1.2 50,0 Z");
+    // „Entenschnabel“: flache, breite Nase mit scharfen Kanten vom Radom bis zum Cockpit, nebeneinander sitzende Besatzung (2,5 m breit)
+    static readonly Geometry Su34Body = Fly.G("M50,0 C50,-1.2 49.5,-2.1 48.2,-2.6 C46.5,-3.2 44.5,-3.6 42,-4.2 C39,-4.9 36,-5.5 32,-5.9 L28,-6.2 C25,-6.3 22,-6.4 20,-6.6 C14,-7.4 9,-8.4 4,-9.7 L-2,-10.6 L-30,-10.8 L-46,-10.6 L-49.6,-9.4 L-50.2,-3 " +
+        "L-50.2,3 L-49.6,9.4 L-46,10.6 L-30,10.8 L-2,10.6 L4,9.7 C9,8.4 14,7.4 20,6.6 C22,6.4 25,6.3 28,6.2 L32,5.9 C36,5.5 39,4.9 42,4.2 C44.5,3.6 46.5,3.2 48.2,2.6 C49.5,2.1 50,1.2 50,0 Z");
     static readonly Geometry Su34Wing = Fly.Both("M1,9.6 L-25.9,35.2 L-26.8,35.7 L-35.4,35.6 L-34,30 L-28.8,10 Z");
     static readonly Geometry Su34Rail = Fly.Both("M-20,35.5 L-35.8,35.5 L-35.8,36.4 L-20,36.4 Z");
     static readonly Geometry Su34Canard = Fly.Both("M9.5,8.4 L-0.2,16.3 L-2.6,16.4 L-5.2,8.6 Z");
     static readonly Geometry Su34Tail = Fly.Both("M-33.6,10.4 L-46.4,23.6 L-47.8,24 L-50.2,23.4 L-50.6,10.4 Z");
     static readonly Geometry Su34Fins = Fly.Both("M-30.5,10.8 L-40.5,13.4 L-48.2,13.6 L-48.6,11.2 L-46,10.8 Z");
     static readonly Geometry Su34Sting = Fly.G("M-49.5,-2.4 L-63,-2.2 L-66.2,-1.2 L-66.2,1.2 L-63,2.2 L-49.5,2.4 Z");
-    static readonly Geometry Su34Canopy = Fly.G("M38.3,0 C38,-2.6 36,-3.4 33,-3.4 L28.6,-3.3 C28.2,-2 28.2,2 28.6,3.3 L33,3.4 C36,3.4 38,2.6 38.3,0 Z");
+    static readonly Geometry Su34Canopy = Fly.G("M38,0 C37.6,-3.2 35.6,-4.6 32.6,-4.8 L26.4,-4.7 C25.8,-3 25.8,3 26.4,4.7 L32.6,4.8 C35.6,4.6 37.6,3.2 38,0 Z");
+    static readonly Geometry Su34Chines = Fly.G("M43.6,-3.9 C39,-4.8 34,-5.6 28,-6.0 M43.6,3.9 C39,4.8 34,5.6 28,6.0 M38,0 L26.4,0 M35.4,-4.2 L35.4,4.2 M30,-4.8 L30,4.8 M24.4,-6 L24.4,6");
     static readonly Geometry Su34Radome = Fly.G("M50,0 C50,-1.2 49.4,-2.2 48,-2.6 C46.6,-2.9 45.2,-3.1 44,-3.2 L44,3.2 C45.2,3.1 46.6,2.9 48,2.6 C49.4,2.2 50,1.2 50,0 Z");
     static readonly Geometry Su34Patches = Fly.Both("M-6,14.6 L-16.5,24.8 L-24,24 L-21.5,15.4 Z M-38,12 L-44,19.6 L-48.4,19.2 L-47.6,12 Z");
     static readonly Brush Su34Light = Fly.B("#93A3B1"), Su34Shade = Fly.B("#7E8F9E"), Su34Camo = Fly.B("#6F8191"), Su34Nose = Fly.B("#C9CED2");
     static readonly Pen Su34Edge = Fly.P("#4B5660", 0.35);
+    static readonly Brush Su34Store = Fly.B("#5B6560");
 
     public static void Su34(DrawingContext dc, Point at, double heading, double u, double altitude, double t)
     {
         Fly.ShadowOf(dc, at, heading, u, altitude, Su34Wing, Su34Tail, Su34Canard, Su34Body, Su34Sting);
         dc.PushTransform(Fly.Frame(at, heading, u));
+        foreach (double s in new[] { -1.0, 1.0 })
+        {   // Außenlasten: KAB-500L innen, Ch-29 in der Mitte, R-73 außen; von oben sieht man, was vor der Vorderkante hervorschaut
+            dc.DrawRoundedRectangle(Su34Store, Su34Edge, new Rect(-16, 15 * s - 0.9, 15, 1.8), 0.9, 0.9);
+            dc.DrawEllipse(Seeker, null, new Point(-1.4, 15 * s), 0.7, 0.7);
+            dc.DrawRoundedRectangle(Su34Store, Su34Edge, new Rect(-23.6, 21 * s - 0.95, 19.4, 1.9), 0.95, 0.95);
+            dc.DrawRectangle(Su34Store, null, new Rect(-9, 21 * s - 2.7, 2.4, 5.4));
+            dc.DrawRoundedRectangle(RocketBody, Su34Edge, new Rect(-27.2, 28 * s - 0.45, 14.4, 0.9), 0.45, 0.45);
+        }
         dc.DrawGeometry(Su34Shade, Su34Edge, Su34Wing);
         dc.DrawGeometry(Nozzle, null, Su34Rail);                               // Startschienen an den Flügelspitzen
         dc.DrawGeometry(Su34Shade, Su34Edge, Su34Tail);
@@ -279,7 +300,7 @@ static partial class Planes
         dc.DrawGeometry(Su34Shade, Su34Edge, Su34Sting);
         dc.DrawGeometry(Su34Nose, Su34Edge, Su34Radome);
         dc.DrawGeometry(Glass, Su34Edge, Su34Canopy);
-        dc.DrawLine(Seam, new Point(28.4, 0), new Point(38.3, 0));
+        dc.DrawGeometry(null, Seam, Su34Chines);   // Nasenkanten, Haubenrahmen
         foreach (double s in new[] { -1.0, 1.0 })
         {
             dc.DrawRoundedRectangle(Nozzle, Su34Edge, new Rect(-50, 6 * s - 2.8, 6.2, 5.6), 1.2, 1.2);
@@ -291,15 +312,14 @@ static partial class Planes
             dc.DrawRoundedRectangle(Su34Shade, Su34Edge, new Rect(-36.4, 36 * s - 1.1, 14, 2.2), 1.1, 1.1);   // Chibiny-Störbehälter an den Spitzen
         }
         dc.DrawGeometry(null, Seam, Su34Detail);
-        dc.DrawLine(Probe, new Point(42, -3.2), new Point(44.6, -3.2));     // Tankstutzen links vor der Haube (eingefahren)
+        dc.DrawLine(Probe, new Point(40, -4.6), new Point(43.4, -4.0));     // Tankstutzen links vor der Haube (eingefahren)
         dc.DrawRoundedRectangle(null, Seam, new Rect(-26, -2.6, 8, 5.2), 1, 1);   // Luftbremse auf dem Rücken
         dc.DrawEllipse(Nozzle, null, new Point(-66, 0), 0.6, 0.9);            // Heckradar im Stachel
-        dc.DrawLine(Seam, new Point(33.6, -3.4), new Point(33.6, 3.4));        // Haubenrahmen
         dc.Pop();
     }
     // Vorderkantenwurzel, Rumpfrücken, Canard-Achse, Höhen- und Seitenruder, Wartungsdeckel, Antennen
     static readonly Geometry Su34Detail = Fly.G("M26,-4.6 L4,-9.6 M26,4.6 L4,9.6 M22,-0.6 L-40,-0.6 M22,0.6 L-40,0.6 M2,-8.6 L2,8.6 M-12,-10.7 L-12,10.7 M-30,-10.8 L-30,10.8 " +
-        "M-42,-14 L-49,-21 M-42,14 L-49,21 M-41,-11.6 L-47.6,-12.4 M-41,11.6 L-47.6,12.4 M14,-0.4 L14,0.4 M-4,-0.4 L-4,0.4 M8,-3 L5,-3 L5,3 L8,3 Z");
+        "M-42,-14 L-49,-21 M-42,14 L-49,21 M-41,-11.6 L-47.6,-12.4 M-41,11.6 L-47.6,12.4 M14,-0.4 L14,0.4 M-4,-0.4 L-4,0.4 M8,-3 L5,-3 L5,3 L8,3 Z M-4,-4.6 C-20,-4.2 -40,-3.6 -48.6,-3.2 M-4,4.6 C-20,4.2 -40,3.6 -48.6,3.2 M-6,-10.6 L-6,-4.6 M-6,10.6 L-6,4.6 M-40,-10.7 L-40,-3.6 M-40,10.7 L-40,3.6");
     static readonly Brush Heat = Art.Glow("#C0FFB060");
 
     // ---------------------------------------------------------------- Ка-52 (Rumpf 13,5 m, Rotor Ø 14,5 m, zwei gegenläufige Dreiblattrotoren)
@@ -705,7 +725,7 @@ sealed class RowRaid : IAttack
     {
         this.kind = kind; this.stage = stage;
         bool carpet = kind == Kind.Carpet;
-        span = carpet ? Math.Clamp(stage.Width * 0.075, iconSize * 2.0, iconSize * 3.6) : Math.Clamp(stage.Width * 0.045, iconSize * 1.3, iconSize * 2.2);
+        span = Scale.PerMeter(iconSize) * (carpet ? 39.5 : 20.1);   // Pixel je 100 Modelleinheiten, echter Maßstab
         speed = stage.Width * (carpet ? 0.2 : 0.4);
         fall = carpet ? 1.25 : 0.9;
         gap = carpet ? 0.45 : 0.7;
@@ -824,7 +844,7 @@ sealed class HelicopterRaid : IAttack
     public HelicopterRaid(Rect stage, IReadOnlyList<Point> targets, double iconSize, IReadOnlyList<Rect>? screens = null)
     {
         this.stage = stage;
-        span = Math.Clamp(stage.Width * 0.06, iconSize * 2.0, iconSize * 3.0);
+        span = Scale.PerMeter(iconSize) * 13.8;
         u = span / 100;
         Reach = iconSize * 0.45;
         double h = stage.Height;
@@ -1067,7 +1087,7 @@ sealed class BearRaid : IAttack
     public BearRaid(Rect stage, IReadOnlyList<Point> targets, double iconSize)
     {
         this.stage = stage;
-        span = Math.Clamp(stage.Width * 0.07, iconSize * 2.0, iconSize * 3.4);
+        span = Scale.PerMeter(iconSize) * 44.7;
         speed = stage.Width * 0.12;
         startX = stage.Left - span;
         double u = span / 100;
@@ -1167,7 +1187,7 @@ sealed class AirborneRaid : IAttack
     public AirborneRaid(Rect stage, IReadOnlyList<Point> targets, double iconSize)
     {
         this.stage = stage; this.iconSize = iconSize;
-        span = Math.Clamp(stage.Width * 0.075, iconSize * 2.0, iconSize * 3.6);
+        span = Scale.PerMeter(iconSize) * 45.3;
         speed = stage.Width * 0.14;
         startX = stage.Left - span;
         var random = new Random(76);
@@ -1379,7 +1399,7 @@ sealed class GunshipRaid : IAttack
 
     public GunshipRaid(Rect stage, IReadOnlyList<Point> targets, double iconSize, IReadOnlyList<Rect>? screens = null)
     {
-        span = Math.Clamp(stage.Width * 0.085, iconSize * 2.8, iconSize * 4.2);   // Spannweite in Pixeln
+        span = Scale.PerMeter(iconSize) * 40.4;   // Spannweite in Pixeln, echter Maßstab
         u = span / 137;
         Reach = iconSize * 0.5;
         double speed = Math.Max(stage.Height * 0.36, span * 1.6);

@@ -29,7 +29,7 @@ sealed class Bomber : IAttack
     public Bomber(Rect stage, IReadOnlyList<Point> targets, double iconSize)
     {
         this.stage = stage;
-        span = Math.Clamp(stage.Width * 0.08, iconSize * 2.0, iconSize * 4.0);   // 18.11.: noch kleiner (etwa halb so groß wie 2.5)
+        span = Scale.PerMeter(iconSize) * 54.1;   // Länge der Tu-160M (54,1 m) im gemeinsamen Maßstab 
         // 18.11.: ab der Bildschirmmitte Flügel anlegen und mit Nachbrenner beschleunigen, damit man es sieht.
         // Reiseflug bis zur Mitte, Abwurf vorher gleichmäßig verteilt.
         enter = 0.3;

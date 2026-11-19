@@ -21,14 +21,18 @@ sealed class LiftHelper : PathHelper
     readonly Vector net;
     readonly Vector[] slots;
 
-    public LiftHelper(Type type, Func<string, Point> pickOf, IReadOnlyDictionary<string, Point> home, bool fromCart, double start, double size, Rect primary, IEnumerable<string> order)
+    readonly double pm;
+
+    /// <param name="iconSize">Symbolgröße: daraus der gemeinsame Maßstab (ein Symbol = 6-m-Container)</param>
+    public LiftHelper(Type type, Func<string, Point> pickOf, IReadOnlyDictionary<string, Point> home, bool fromCart, double start, double size, Rect primary, IEnumerable<string> order, double iconSize)
         : base(size, start)
     {
         this.type = type;
-        int capacity = type == Type.Chinook ? 6 : 10;
-        // Lastnetz hängt hinter der Heckrampe bzw. unter dem Leitwerksträger (von oben sichtbar)
-        net = type == Type.Chinook ? new Vector(-r * 1.9, 0) : new Vector(-r * 1.2, 0);
-        slots = Enumerable.Range(0, capacity).Select(i => new Vector(-(i / 2) * r * 0.42, (i % 2 == 0 ? -1 : 1) * r * 0.24)).ToArray();
+        pm = Scale.PerMeter(iconSize);
+        int capacity = type == Type.Chinook ? 4 : 8;   // wie Container am Haken: Chinook bis vier, Mi-26 bis acht
+        // Lastnetz hängt an langen Seilen hinter dem Rumpf (von oben sichtbar)
+        net = type == Type.Chinook ? new Vector(-pm * 15, 0) : new Vector(-pm * 22, 0);
+        slots = Enumerable.Range(0, capacity).Select(i => new Vector(-(i / 2) * iconSize * 1.05, (i % 2 == 0 ? -1 : 1) * iconSize * 0.55)).ToArray();
         var lz = new Point(primary.Left + r * 2.2, primary.Bottom - r * 1.8);
         var p = new Point(primary.Left - r * 5, primary.Top + r * 2); double h = 0, t = start;
         keys.Add((t, p, h)); altitude.Add((t, 1)); hook.Add((t, 0));
@@ -138,7 +142,7 @@ sealed class LiftHelper : PathHelper
         double alt = Lerp(altitude.Select(a => (a.T, a.Alt)).ToList(), t);
         double down = Lerp(hook, t);
         // Abwind: Staubring am Boden, je tiefer, desto deutlicher
-        double rotor = type == Type.Chinook ? r * 1.67 : r * 2.66;
+        double rotor = pm * (type == Type.Chinook ? 9.14 : 16);
         if (alt < 0.9) Soft.Draw(dc, DustBrush, p, rotor * 1.25, rotor * 1.15, Math.Clamp((0.9 - alt) * 1.6, 0, 0.6));
         // Last am Haken: Seil zum Netz, Netz um die Symbole
         var hookAt = p;
@@ -151,7 +155,8 @@ sealed class LiftHelper : PathHelper
             {
                 dc.PushTransform(Fly.Frame(netAt, h, r));
                 int rows = (current.Count + 1) / 2;
-                var box = new Rect(-(rows - 1) * 0.42 - 0.3, -0.55, (rows - 1) * 0.42 + 0.6, 1.1);
+                double q = slots.Length > 1 ? -slots[2 % slots.Length].X / r : 0.42, w = slots[1].Y / r;
+                var box = new Rect(-(rows - 1) * q - w * 0.7, -w * 1.9, (rows - 1) * q + w * 1.4, w * 3.8);
                 dc.DrawRoundedRectangle(null, new Pen(NetPen.Brush, 0.025), box, 0.12, 0.12);
                 for (double x = box.Left + 0.15; x < box.Right; x += 0.15) dc.DrawLine(new Pen(NetPen.Brush, 0.012), new Point(x, box.Top), new Point(x, box.Bottom));
                 for (double y = box.Top + 0.15; y < box.Bottom; y += 0.15) dc.DrawLine(new Pen(NetPen.Brush, 0.012), new Point(box.Left, y), new Point(box.Right, y));
@@ -159,8 +164,8 @@ sealed class LiftHelper : PathHelper
             }
         }
         double spin = t * 9;
-        if (type == Type.Chinook) DrawChinook(dc, p, h, r, alt, spin);
-        else DrawMi26(dc, p, h, r, alt, spin);
+        if (type == Type.Chinook) DrawChinook(dc, p, h, pm, alt, spin);
+        else DrawMi26(dc, p, h, pm, alt, spin);
     }
 
     // ---------------------------------------------------------------- CH-47F (Rumpf 15,9 m, zwei Dreiblattrotoren 18,29 m, Nabenabstand 11,9 m)
@@ -179,9 +184,9 @@ sealed class LiftHelper : PathHelper
         HeliDisc = Fly.B("#1C202428"), EngineDark = Fly.B("#1C1F21");
     static readonly Pen HeliEdge = Fly.P("#2A2F22", 0.06), HeliSeam = Fly.P("#424A33", 0.04);
 
-    internal static void DrawChinook(DrawingContext dc, Point at, double heading, double r, double alt, double spin)
+    /// <param name="k">Pixel je Meter</param>
+    internal static void DrawChinook(DrawingContext dc, Point at, double heading, double k, double alt, double spin)
     {
-        double k = r * 2.9 / 15.9;   // Meter → Pixel
         ShadowOf(dc, at, heading, k, alt, ChinookBody, ChinookSponsons);
         dc.PushTransform(Fly.Frame(at, heading, k));
         dc.DrawGeometry(OliveDark, HeliEdge, ChinookSponsons);
@@ -231,9 +236,9 @@ sealed class LiftHelper : PathHelper
     static readonly Brush MiRed = Art.Glow("#C0FF3030"), MiGreen = Art.Glow("#C040FF80");
     static readonly Brush HaloTop = Fly.B("#6C7254"), HaloShade = Fly.B("#5E6449"), HaloPatch = Fly.B("#8A8160");
 
-    internal static void DrawMi26(DrawingContext dc, Point at, double heading, double r, double alt, double spin)
+    /// <param name="k">Pixel je Meter</param>
+    internal static void DrawMi26(DrawingContext dc, Point at, double heading, double k, double alt, double spin)
     {
-        double k = r * 5.6 / 33.7;
         ShadowOf(dc, at, heading, k, alt, HaloBody, HaloSponsons, HaloStab);
         dc.PushTransform(Fly.Frame(at, heading, k));
         dc.DrawGeometry(HaloShade, HeliEdge, HaloSponsons);

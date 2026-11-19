@@ -51,6 +51,11 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.2.9
+
+- **One true scale for every aircraft and helicopter.** The Tu-160M is the reference, and one desktop icon is the size of a 6 m container. Every model is drawn at its real size: the Tu-160M is 9 icons long, the Tu-95MS and Il-76 about 7.5, the Su-34 4, the A-10C 2.7, the Ka-52 2.3 and the Shahed-136 0.6. The Chinook and Mi-26 now carry icons like containers on the hook (up to four or eight).
+- **Su-34 redrawn:** the flat "platypus" nose with sharp chines, the wide side-by-side cockpit, engine tunnels, Kh-29 and R-73 under the wings, and Khibiny wingtip pods.
+
 ## What's new in 1.2.8
 
 - **More detail on the existing models.**
