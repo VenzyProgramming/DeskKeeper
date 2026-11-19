@@ -78,12 +78,6 @@ sealed class PublicWindow : Window, IDeskWindow
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         var nav = new DockPanel { Background = L.Nav, LastChildFill = false };
         var brand = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(20, 20, 16, 22) };
-        brand.Children.Add(new Border
-        {
-            Width = 32, Height = 32, CornerRadius = new CornerRadius(L.Win10 ? 0 : 8), Margin = new Thickness(0, 0, 12, 0),
-            Background = new LinearGradientBrush(L.AccentColor, Mix(L.AccentColor, Colors.Black, 0.45), 45),
-            Child = new TextBlock { Text = "", FontFamily = L.Icons, FontSize = 16, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
-        });
         var names = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         names.Children.Add(new TextBlock { Text = "DeskKeeper", FontSize = 15, FontWeight = FontWeights.SemiBold });
         names.Children.Add(new TextBlock { Text = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(2) ?? "", FontSize = 12, Foreground = L.Tertiary });
