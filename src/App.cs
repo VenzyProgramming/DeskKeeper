@@ -34,6 +34,29 @@ static class Program
             app.Run();
             return result;
         }
+        if (args.Length == 2 && args[0] == "--check-stage-bild")
+        {
+            // Sichtbarkeit: Bühne mit einer Tu-160-Szene aus Testsymbolen 1,5 s zeigen (Standbild t=2 s), Bildschirmfoto davon und
+            // ohne Bühne vergleichen. Kein echtes Symbol wird bewegt, kein Fenster minimiert.
+            app.Startup += async (_, _) =>
+            {
+                var scr = System.Windows.Forms.Screen.PrimaryScreen!.Bounds;
+                var all = new Rect(scr.X, scr.Y, scr.Width, scr.Height);
+                var icons = Enumerable.Range(0, 12).Select(i => new IconInfo("t" + i, "Test " + i, new Point(scr.Width * 0.3 + (i % 6) * 110, scr.Height * 0.4 + (i / 6) * 110))).ToList();
+                var scene = new Scene(icons, icons.ToDictionary(i => i.Id, i => i.Center), 48, [all], all, true, 64, tu160: true);
+                string Shot(string name) { using var bmp = new System.Drawing.Bitmap(scr.Width, scr.Height); using (var g = System.Drawing.Graphics.FromImage(bmp)) g.CopyFromScreen(scr.X, scr.Y, 0, 0, bmp.Size); string f = System.IO.Path.Combine(args[1], name); bmp.Save(f); return f; }
+                System.IO.Directory.CreateDirectory(args[1]);
+                Shot("ohne.png");
+                var stage = new Stage(all, scene); stage.Show(); stage.SendToBottom(); stage.Seek(2.0);
+                await System.Threading.Tasks.Task.Delay(1500);
+                Shot("mit.png");
+                Console.WriteLine("bühne sichtbar=" + stage.IsVisible + " " + Stage.ZOrderNow(stage));
+                stage.Close(); app.Shutdown();
+            };
+            app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            app.Run();
+            return 0;
+        }
         if (args.Length == 1 && args[0] == "--check-stage-z")
         {
             // Lage des (leeren) Szenenfensters in der Fensterreihenfolge – keine Symbolbewegung
@@ -48,6 +71,7 @@ static class Program
             bool apply = args[0] == "--sortieren";
             // optional: links freizuhaltende Breite in Pixeln (Desktop-Anzeigen)
             if (args.Length >= 2 && double.TryParse(args[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double reserve)) Sorter.ReserveLeft = reserve;
+            if (args.Length >= 3 && double.TryParse(args[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double reserveHeight)) Sorter.ReserveHeight = reserveHeight;
             try
             {
                 string key = Store.ScreenKey();
@@ -59,6 +83,8 @@ static class Program
                     var names = desktop.Icons.ToDictionary(i => i.Id, i => i.Name, StringComparer.OrdinalIgnoreCase);
                     foreach (var g in kinds.GroupBy(k => k.Value).OrderBy(g => g.Key))
                         Console.WriteLine(g.Key + ": " + string.Join(", ", g.Select(k => names[k.Key] + " " + string.Join(",", layout[k.Key]))));
+                    var nowPos = desktop.Snapshot();
+                    foreach (var (id, item) in layout) if (nowPos.TryGetValue(id, out var q) && (q[0] != item[0] || q[1] != item[1])) Console.WriteLine($"  {(names.TryGetValue(id, out var nm) ? nm : id)}: {q[0]},{q[1]} → {item[0]},{item[1]}");
                     Console.WriteLine($"zu bewegen: {moved} von {kinds.Count}");
                     if (apply && moved > 0) Store.SaveSnapshot(key, desktop.Snapshot());
                 }

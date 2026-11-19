@@ -98,11 +98,18 @@ static class Categories
     }
 
     /// <summary>Zielmitten je Symbol. Ecken füllen spaltenweise, die Mitten zeilenweise; belegte Zellen werden übersprungen.</summary>
-    internal static Dictionary<string, Point> Plan(IReadOnlyList<IconInfo> icons, Grid grid)
+    internal static Dictionary<string, Point> Plan(IReadOnlyList<IconInfo> icons, Grid grid, Rect? blocked = null)
     {
         int cols = grid.Columns, rows = grid.Rows;
         int half = Math.Max(1, (rows - 1) / 2);   // eine freie Zeile zwischen oben und unten, wenn möglich
         var taken = new HashSet<(int, int)>();
+        // freizuhaltende Fläche (z. B. Desktop-Anzeigen): Zellen, deren Symbol hineinreicht, sind belegt
+        if (blocked is { } b)
+            for (int c = 0; c < cols; c++) for (int r = 0; r < rows; r++)
+            {
+                var p = grid.Cell(c, r);
+                if (p.X - grid.StepX * 0.45 < b.Right && p.X + grid.StepX * 0.45 > b.Left && p.Y - grid.StepY * 0.3 < b.Bottom && p.Y + grid.StepY * 0.6 > b.Top) taken.Add((c, r));
+            }
         var result = new Dictionary<string, Point>(StringComparer.OrdinalIgnoreCase);
         var groups = icons.GroupBy(i => Of(i.Id, i.Name)).ToDictionary(g => g.Key, g => g.OrderBy(Rank).ThenBy(i => i.Name, StringComparer.CurrentCultureIgnoreCase).ToList());
         List<IconInfo> Take(string c) => groups.TryGetValue(c, out var l) ? l : [];
@@ -156,18 +163,21 @@ static class Sorter
 {
     /// <summary>Links freizuhaltende Breite in Pixeln (z. B. Desktop-Anzeigen von Seitenleisten-Ausgabe); 0 = nichts.</summary>
     internal static double ReserveLeft;
+    /// <summary>Höhe der freizuhaltenden Fläche links oben in Pixeln; 0 = ganze Höhe (19.11.2026: Entwicklung bleibt links unten).</summary>
+    internal static double ReserveHeight;
 
     /// <summary>Zielanordnung für die Symbole des Hauptbildschirms; Symbole anderer Bildschirme bleiben, wo sie sind.</summary>
     internal static (Dictionary<string, int[]> Layout, Dictionary<string, string> Kinds, int Moved) Prepare(ShellDesktop desktop)
     {
         var screen = System.Windows.Forms.Screen.PrimaryScreen ?? System.Windows.Forms.Screen.AllScreens[0];
         var work = new Rect(screen.WorkingArea.X, screen.WorkingArea.Y, screen.WorkingArea.Width, screen.WorkingArea.Height);
-        if (ReserveLeft > 0 && ReserveLeft < work.Width / 2) work = new Rect(work.X + ReserveLeft, work.Y, work.Width - ReserveLeft, work.Height);
+        Rect? blocked = ReserveLeft > 0 && ReserveLeft < work.Width / 2
+            ? new Rect(work.X, work.Y, ReserveLeft, ReserveHeight > 0 ? Math.Min(ReserveHeight, work.Height) : work.Height) : null;
         var bounds = new Rect(screen.Bounds.X, screen.Bounds.Y, screen.Bounds.Width, screen.Bounds.Height);
         var mine = desktop.Icons.Where(i => bounds.Contains(i.Center)).ToList();
         var layout = desktop.Snapshot();
         var grid = Categories.Grid.From(work, (int)Math.Round(desktop.SpacingX), (int)Math.Round(desktop.SpacingY), mine.Select(i => layout[i.Id]), desktop.CenterOf);
-        var plan = Categories.Plan(mine, grid);
+        var plan = Categories.Plan(mine, grid, blocked);
         int moved = 0;
         foreach (var (id, center) in plan)
         {

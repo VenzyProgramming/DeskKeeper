@@ -51,6 +51,13 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.1.2
+
+- **Scenes are visible again with windows open:** windows are minimized for the scene (like Win+M) and come back afterwards. "Show desktop" (Win+D) raised the desktop above the scene.
+- **Icons really snap to the grid:** Explorer keeps positions as they are set, even with "Align to grid" on. DeskKeeper now turns the grid off and on after placing icons, so every icon lands in a grid cell.
+- **During a scene the grid is off** (icons disappear cleanly); afterwards they return to their saved places and snap in.
+- **Sort by category can keep an area free** (e.g. for desktop widgets in the top-left corner) instead of a whole column.
+
 ## What's new in 1.1.1
 
 - **Large automatic restores are instant:** if more than 12 icons are off after a display change or at start, DeskKeeper puts them back directly instead of a long DUM-E scene.

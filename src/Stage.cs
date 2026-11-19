@@ -22,6 +22,9 @@ sealed class Stage : Window
     readonly Rect bounds;
     IntPtr handle;
     public event Action? Escape;
+    /// <summary>Ganz unten halten (Standard, Fenster bleiben offen). Aus, wenn vorher alle Fenster minimiert wurden: dann normal
+    /// über dem Desktop, sonst schiebt sich die beim Minimieren aktivierte Desktop-Ebene darüber (19.11.2026: Tu-160 unsichtbar).</summary>
+    public bool StayAtBottom { get; set; } = true;
 
     public Stage(Rect virtualBounds, Scene? scene)
     {
@@ -42,12 +45,12 @@ sealed class Stage : Window
             handle = new WindowInteropHelper(this).Handle;
             // Durchklickbar und nie aktiv: WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE.
             SetWindowLong(handle, -20, GetWindowLong(handle, -20) | 0x20 | 0x80 | 0x08000000);
-            SetWindowPos(handle, new IntPtr(1), (int)bounds.X, (int)bounds.Y, (int)bounds.Width, (int)bounds.Height, 0x0010);   // HWND_BOTTOM
+            SetWindowPos(handle, StayAtBottom ? new IntPtr(1) : IntPtr.Zero, (int)bounds.X, (int)bounds.Y, (int)bounds.Width, (int)bounds.Height, 0x0010);   // HWND_BOTTOM
             RegisterHotKey(handle, 1, 0x4000, 0x1B);   // Esc, MOD_NOREPEAT
             HwndSource.FromHwnd(handle).AddHook((IntPtr w, int msg, IntPtr wp, IntPtr lp, ref bool handled) =>
             {
                 if (msg == 0x0312 && wp.ToInt32() == 1) { handled = true; Escape?.Invoke(); }
-                if (msg == 0x0046 && lp != IntPtr.Zero)   // WM_WINDOWPOSCHANGING: immer ganz unten bleiben
+                if (msg == 0x0046 && lp != IntPtr.Zero && StayAtBottom)   // WM_WINDOWPOSCHANGING: immer ganz unten bleiben
                 {
                     var pos = Marshal.PtrToStructure<WindowPos>(lp);
                     pos.InsertAfter = new IntPtr(1);
@@ -88,11 +91,25 @@ sealed class Stage : Window
         stage.Close();
         return $"szene-fenster {(mine < 0 ? "unsichtbar" : "#" + mine)} · desktop #{desk} · {(mine >= 0 && (desk < 0 || mine < desk) ? "ÜBER dem Desktop" : "UNTER dem Desktop")} · fenster gesamt {order.Count}";
     }
+    /// <summary>Lage einer offenen Bühne in der Fensterreihenfolge (Prüfung).</summary>
+    public static string ZOrderNow(Stage stage)
+    {
+        int mine = -1, desk = -1, i = 0;
+        EnumWindows((h, _) =>
+        {
+            if (!IsWindowVisible(h)) return true;
+            var cls = new System.Text.StringBuilder(64); GetClassName(h, cls, 64);
+            if (h == stage.handle) mine = i;
+            if (cls.ToString() is "Progman" or "WorkerW" && desk < 0) desk = i;
+            i++; return true;
+        }, IntPtr.Zero);
+        return $"bühne #{mine} desktop #{desk}";
+    }
     delegate bool EnumProc(IntPtr h, IntPtr l);
     [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc proc, IntPtr l);
     [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, System.Text.StringBuilder s, int n);
-    public void SendToBottom() { if (handle != IntPtr.Zero) SetWindowPos(handle, new IntPtr(1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010); }
+    public void SendToBottom() { if (handle != IntPtr.Zero) SetWindowPos(handle, StayAtBottom ? new IntPtr(1) : IntPtr.Zero, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010); }   // HWND_BOTTOM bzw. HWND_TOP, ohne Aktivieren
 
     [StructLayout(LayoutKind.Sequential)]
     struct WindowPos { public IntPtr Hwnd, InsertAfter; public int X, Y, Cx, Cy; public uint Flags; }
@@ -188,9 +205,13 @@ static class Runner
 
             // Die Bühne liegt direkt über dem Desktop. Vom Panel gestartet: offene Fenster kurz wegräumen (wie Win+D), sonst sieht man nichts
             // (19.11.2026: „Tu-160 wurde nicht angezeigt“, Szene nach 7 s abgebrochen); am Ende kommen sie zurück.
-            if (showDesktop && !desktop.DesktopInFront) { ShellToggleDesktop(); toggled = true; await Task.Delay(350); }
+            // Wie Win+M (alle minimieren), nicht Win+D: „Desktop anzeigen“ holt den Desktop selbst nach vorn und verdeckt die Bühne
+            // (19.11.2026: seit preview.252 war keine Szene mehr zu sehen)
+            if (showDesktop && !desktop.DesktopInFront) { Shell("MinimizeAll"); toggled = true; await Task.Delay(400); }
             // Am Raster festhalten: das Explorer-Raster bleibt an; echte Symbole stehen nur in festen Zellen oder warten außerhalb
-            bool gridLocked = Store.LoadOptions().KeepGrid && desktop.SnapWasOn;
+            // Raster während der Szene aus: mit Raster nimmt Explorer die Warteposition außerhalb nicht an und reiht „versteckte“
+            // Symbole sichtbar in freie Zellen ein . Am Ende rastet RestoreSnapshot alles in Explorers Raster ein.
+            const bool gridLocked = false;
             if (gridLocked)
             {
                 int px = (int)Math.Round(desktop.IconSize);
@@ -200,6 +221,7 @@ static class Runner
             else desktop.FreeMovement();
             stage = new Stage(all, scene);
             stage.Escape += () => aborted = true;
+            stage.StayAtBottom = !toggled;
             stage.Show();
             stage.SendToBottom();
             Fault.Note($"Szene läuft: {scene.Duration:0.0} s, Fläche {all}, {desktop.Icons.Count} Symbole, Fenster sichtbar={stage.IsVisible}");
@@ -266,7 +288,7 @@ static class Runner
         {
             stage?.Close();
             desktop?.Dispose();
-            if (toggled) { await Task.Delay(150); ShellToggleDesktop(); }
+            if (toggled) { await Task.Delay(150); Shell("UndoMinimizeALL"); }
             Busy = false;
         }
     }
@@ -295,14 +317,14 @@ static class Runner
         catch { return null; }
     }
 
-    static void ShellToggleDesktop()
+    static void Shell(string method)
     {
         try
         {
             var type = Type.GetTypeFromProgID("Shell.Application");
             if (type is null) return;
             object shell = Activator.CreateInstance(type)!;
-            type.InvokeMember("ToggleDesktop", System.Reflection.BindingFlags.InvokeMethod, null, shell, null);
+            type.InvokeMember(method, System.Reflection.BindingFlags.InvokeMethod, null, shell, null);
             Marshal.ReleaseComObject(shell);
         }
         catch { }

@@ -183,11 +183,21 @@ sealed class ShellDesktop : IIconSurface
     /// in eine Rasterzelle einrastet (auch nach einer Szene, in der es aus war); danach gilt wieder der vorherige Zustand.</summary>
     public int RestoreSnapshot(IReadOnlyDictionary<string, int[]> saved)
     {
-        bool force = view2 is not null && Store.LoadOptions().KeepGrid;
-        uint before = force ? FolderFlags() : 0;
-        bool switched = force && (before & SnapToGrid) == 0 && view2!.SetCurrentFolderFlags(SnapToGrid, SnapToGrid) >= 0;
-        try { return RestoreExact(saved); }
-        finally { if (switched) { try { view2!.SetCurrentFolderFlags(SnapToGrid, 0); } catch { } } }
+        int placed = RestoreExact(saved);
+        if (view2 is null || !Store.LoadOptions().KeepGrid) return placed;
+        // Explorer übernimmt gesetzte Positionen genau so, auch mit „Am Raster ausrichten“; eingerastet wird erst beim Einschalten.
+        // Deshalb kurz aus und wieder an: jedes Symbol springt in seine Rasterzelle (19.11.2026: Symbole lagen auf zwei um 34 px
+        // versetzten Rastern). Danach gilt der vorherige Zustand, die Positionen bleiben eingerastet.
+        try
+        {
+            uint before = FolderFlags();
+            view2.SetCurrentFolderFlags(SnapToGrid, 0);
+            view2.SetCurrentFolderFlags(SnapToGrid, SnapToGrid);
+            if ((before & SnapToGrid) == 0) view2.SetCurrentFolderFlags(SnapToGrid, 0);
+            else snapChanged = false;   // Raster ist an: beim Schließen nicht wieder auf den Szenen-Zustand zurückstellen
+        }
+        catch (COMException) { }
+        return placed;
     }
 
     int RestoreExact(IReadOnlyDictionary<string, int[]> saved)

@@ -74,6 +74,12 @@ static class Check
                 Pass("kategorien-spiele-unten-mitte", Math.Abs(P("Steam").X - 1720) < 400 && P("Steam").Y > 1200);
                 Pass("kategorien-entwicklung-links-unten", P("Visual Studio 2026").X < 300 && P("Visual Studio 2026").Y > 700);
                 Pass("kategorien-rest-rechts-unten", P("Sortiert").X > 3200 && P("Sortiert").Y > 1200);
+                // Desktop-Anzeigen links oben (336 × 560 px): System rückt daneben, Entwicklung bleibt in der ersten Spalte unten
+                var held = Categories.Plan(cat, grid, new Rect(0, 0, 336, 560));
+                Point H(string name) => held[cat.First(c => c.Name == name).Id];
+                Pass("kategorien-anzeigenflaeche-frei", held.Values.All(v => !(v.X < 336 + 40 && v.Y < 560)));
+                Pass("kategorien-system-neben-anzeigen", H("Papierkorb").X > 336 && H("Papierkorb").Y < 60);
+                Pass("kategorien-entwicklung-erste-spalte", H("Visual Studio 2026").X < 120 && H("Visual Studio 2026").Y > 700);
             }
             var (jumpYaw, jumpReach) = scene.Dubina.LargestArmStep();
             results["arm-groesster-schritt-grad"] = Math.Round(jumpYaw, 2);
