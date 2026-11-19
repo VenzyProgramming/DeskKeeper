@@ -51,6 +51,11 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.1.1
+
+- **Large automatic restores are instant:** if more than 12 icons are off after a display change or at start, DeskKeeper puts them back directly instead of a long DUM-E scene.
+- **Less CPU:** a failed icon-centre measurement is remembered instead of being retried every few seconds.
+
 ## What's new in 1.1
 
 - **Sort by category** (Tools page).

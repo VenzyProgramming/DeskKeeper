@@ -94,6 +94,7 @@ sealed class ShellDesktop : IIconSurface
     IntPtr listView;
     (int X, int Y) spacingKey;
     static readonly Dictionary<(int, int, int), Vector> measuredAnchors = [];
+    static readonly HashSet<(int, int, int)> failedAnchors = [];   // Messung ging nicht: nicht bei jedem Lesen erneut versuchen
 
     /// <summary>
     /// Wo die Symbolmitte relativ zur Elementposition liegt, hängt von Abstand, Symbolgröße und Beschriftung ab; geschätzt lag sie
@@ -104,7 +105,7 @@ sealed class ShellDesktop : IIconSurface
     {
         int iconPx = ViewIconSize();
         var keyA = (spacingKey.X, spacingKey.Y, iconPx);
-        lock (measuredAnchors) if (measuredAnchors.TryGetValue(keyA, out var known)) { anchor = known; AnchorMeasured = true; return; }
+        lock (measuredAnchors) { if (measuredAnchors.TryGetValue(keyA, out var known)) { anchor = known; AnchorMeasured = true; return; } if (failedAnchors.Contains(keyA)) return; }
         try
         {
             var root = System.Windows.Automation.AutomationElement.FromHandle(listView);
@@ -125,16 +126,16 @@ sealed class ShellDesktop : IIconSurface
                 dx.Add(rect.X + rect.Width / 2 - (pos.X + origin.X));
                 dy.Add(cy - (pos.Y + origin.Y));
             }
-            if (dx.Count < 2) return;
+            if (dx.Count < 2) { lock (measuredAnchors) failedAnchors.Add(keyA); return; }
             dx.Sort(); dy.Sort();
             var measured = new Vector(dx[dx.Count / 2], dy[dy.Count / 2]);
-            if (Math.Abs(measured.X) > 400 || Math.Abs(measured.Y) > 400) return;   // unplausibel: bei der Schätzung bleiben
+            if (Math.Abs(measured.X) > 400 || Math.Abs(measured.Y) > 400) { lock (measuredAnchors) failedAnchors.Add(keyA); return; }   // unplausibel: bei der Schätzung bleiben
             lock (measuredAnchors) measuredAnchors[keyA] = measured;
             // Symbolmitten der bereits eingelesenen Symbole mit dem gemessenen Abstand neu berechnen
             var old = anchor; anchor = measured; AnchorMeasured = true;
             for (int k = 0; k < icons.Count; k++) icons[k] = icons[k] with { Center = icons[k].Center - old + measured };
         }
-        catch (Exception error) when (error is InvalidOperationException or ArgumentException or System.Runtime.InteropServices.COMException or System.Windows.Automation.ElementNotAvailableException) { }
+        catch (Exception error) when (error is InvalidOperationException or ArgumentException or System.Runtime.InteropServices.COMException or System.Windows.Automation.ElementNotAvailableException) { lock (measuredAnchors) failedAnchors.Add(keyA); }
     }
 
     Point ToScreen(NativePoint item) => new Point(item.X, item.Y) + (Vector)origin + anchor;

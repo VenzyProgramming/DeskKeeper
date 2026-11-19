@@ -175,6 +175,8 @@ sealed class RealWorld : IKeeperWorld
     public static void Restore(Dictionary<string, int[]> layout)
     {
         // Szenen laufen immer auf dem UI-Thread (der Motor kann auf einem eigenen Thread arbeiten)
+        // Automatisch und viele Symbole: sofort statt minutenlanger DUM-E-Szene ohne Zutun (19.11.2026: 32 Symbole, 270 s beim Start)
+        if (Store.LoadOptions().RestoreMode == "robot" && MovedCount(layout) > 12) { try { using var quick = new ShellDesktop(); quick.RestoreSnapshot(layout); } catch { } return; }
         if (Store.LoadOptions().RestoreMode == "robot")
         {
             var ui = Application.Current?.Dispatcher;
@@ -183,6 +185,17 @@ sealed class RealWorld : IKeeperWorld
             return;
         }
         try { using var d = new ShellDesktop(); d.RestoreSnapshot(layout); } catch { }
+    }
+
+    static int MovedCount(Dictionary<string, int[]> layout)
+    {
+        try
+        {
+            using var d = new ShellDesktop();
+            var now = d.Snapshot();
+            return layout.Count(e => now.TryGetValue(e.Key, out var q) && (Math.Abs(e.Value[0] - q[0]) >= 40 || Math.Abs(e.Value[1] - q[1]) >= 40));
+        }
+        catch { return 0; }
     }
 
     public void Save(string key, Dictionary<string, int[]> layout)

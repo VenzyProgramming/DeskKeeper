@@ -154,11 +154,15 @@ static class Categories
 /// <summary>Ordnen am echten Desktop: vorher Schnappschuss (zurückholbar), dann sofort oder mit DUM-E laut Einstellung.</summary>
 static class Sorter
 {
+    /// <summary>Links freizuhaltende Breite in Pixeln (z. B. Desktop-Anzeigen von Seitenleisten-Ausgabe); 0 = nichts.</summary>
+    internal static double ReserveLeft;
+
     /// <summary>Zielanordnung für die Symbole des Hauptbildschirms; Symbole anderer Bildschirme bleiben, wo sie sind.</summary>
     internal static (Dictionary<string, int[]> Layout, Dictionary<string, string> Kinds, int Moved) Prepare(ShellDesktop desktop)
     {
         var screen = System.Windows.Forms.Screen.PrimaryScreen ?? System.Windows.Forms.Screen.AllScreens[0];
         var work = new Rect(screen.WorkingArea.X, screen.WorkingArea.Y, screen.WorkingArea.Width, screen.WorkingArea.Height);
+        if (ReserveLeft > 0 && ReserveLeft < work.Width / 2) work = new Rect(work.X + ReserveLeft, work.Y, work.Width - ReserveLeft, work.Height);
         var bounds = new Rect(screen.Bounds.X, screen.Bounds.Y, screen.Bounds.Width, screen.Bounds.Height);
         var mine = desktop.Icons.Where(i => bounds.Contains(i.Center)).ToList();
         var layout = desktop.Snapshot();

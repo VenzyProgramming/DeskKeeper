@@ -46,6 +46,8 @@ static class Program
         {
             // Nach Kategorien ordnen; die Vorschau zeigt nur die Zuordnung und bewegt nichts. Vorher Schnappschuss.
             bool apply = args[0] == "--sortieren";
+            // optional: links freizuhaltende Breite in Pixeln (Desktop-Anzeigen)
+            if (args.Length >= 2 && double.TryParse(args[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double reserve)) Sorter.ReserveLeft = reserve;
             try
             {
                 string key = Store.ScreenKey();
@@ -70,6 +72,20 @@ static class Program
                 return 0;
             }
             catch (Exception error) { Console.WriteLine(error.ToString()); return 1; }
+        }
+        if (args.Length == 1 && args[0] == "--zeit")
+        {
+            // Nur lesen: Dauer der Teile eines Hüter-Durchgangs (Bildschirmschlüssel, Symbole lesen) messen
+            var w = new RealWorld();
+            for (int i = 0; i < 4; i++)
+            {
+                var sw = System.Diagnostics.Stopwatch.StartNew(); string k = w.Key(); double key = sw.Elapsed.TotalMilliseconds;
+                sw.Restart(); var read = w.Read(); double rd = sw.Elapsed.TotalMilliseconds;
+                sw.Restart(); var mon = Monitors.Current(); double m = sw.Elapsed.TotalMilliseconds;
+                sw.Restart(); using (var d = new ShellDesktop()) { } double sd = sw.Elapsed.TotalMilliseconds;
+                Console.WriteLine($"schlüssel {key:0} ms · lesen {rd:0} ms ({read?.Count}) · bildschirme {m:0} ms · desktop {sd:0} ms");
+            }
+            return 0;
         }
         if (args.Length == 1 && args[0] == "--probe")
         {
