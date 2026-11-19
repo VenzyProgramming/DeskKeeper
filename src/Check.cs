@@ -152,6 +152,38 @@ static class Check
                 Save(bmp, Path.Combine(output, "0-tu160.png"));
             }
 
+            // Neue Luftangriffe : je Angriff alle Symbole weg vor DUM-E, am Ende alle zuhause, Dauer begrenzt, Standbilder
+            foreach (var (attack, frames) in new (string, double[])[] { (Attacks.Tu22, [1.6, 2.6, 4.2]), (Attacks.Su34, [1.0, 1.9, 2.9]), (Attacks.Ka52, [1.6, 3.8, 6.0]), (Attacks.Tu95, [2.2, 3.8, 5.4]), (Attacks.Il76, [2.6, 4.2, 6.8]) })
+            {
+                var sc = new Scene(icons, homes, iconSize, screens, primary, true, 64, attack: attack);
+                Pass(attack + "-einschlaege-vorhanden", sc.Raid.Count >= 12);
+                Pass(attack + "-alle-symbole-weg-vor-dume", sc.IconCenters(sc.RobotStart - 0.05).Values.All(v => v is null));
+                Pass(attack + "-am-ende-alle-zuhause", sc.IconCenters(sc.Duration).All(e => e.Value is { } v && (v - homes[e.Key]).Length < 0.5));
+                Pass(attack + "-dauer-unter-100-s", sc.Duration < 100);
+                results[attack + "-dauer-s"] = Math.Round(sc.Duration, 1);
+                for (int f = 0; f < frames.Length; f++) Save(Frame(sc, all, icons, frames[f], 0.5), Path.Combine(output, $"{attack}-{f + 1}.png"));
+            }
+            {   // Typentafel: alle fünf Draufsichten groß, Rotoren und Propeller in zwei Stellungen
+                var v = new DrawingVisual();
+                using (var dc = v.RenderOpen())
+                {
+                    dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x2B, 0x3A, 0x4E)), null, new Rect(0, 0, 1800, 980));
+                    Planes.Tu22(dc, new Point(230, 220), 0, 3.6, 0.6);
+                    Planes.Su34(dc, new Point(640, 220), 0, 3.6, 0.4, 0.2);
+                    Planes.Ka52(dc, new Point(1070, 230), 0, 3.0, 0.3, 0.05);
+                    Planes.Ka52(dc, new Point(1520, 230), -Math.PI / 2, 3.0, 0.3, 0.19);
+                    Planes.Tu95(dc, new Point(330, 700), 0, 3.6, 0.6, 0.03);
+                    Planes.Il76(dc, new Point(860, 700), 0, 3.6, 0.6, true);
+                    Planes.Bomb(dc, new Point(1250, 600), 0, 6, 1);
+                    Planes.GuidedBomb(dc, new Point(1420, 600), 0, 6, 1);
+                    Planes.Rocket(dc, new Point(1250, 700), new Point(1480, 700), 3, 0);
+                    Planes.Parachute(dc, new Point(1300, 860), 70, 1, 0, 0.2);
+                    Planes.Carrier(dc, new Point(1520, 860), 0, 70, 1.2, 1);
+                }
+                var bmp = new RenderTargetBitmap(1800, 980, 96, 96, PixelFormats.Pbgra32); bmp.Render(v);
+                Save(bmp, Path.Combine(output, "0-flugzeuge.png"));
+            }
+
             var skinBefore = Art.Current;
             bool allSkins = true;
             foreach (var skin in Art.Skins)

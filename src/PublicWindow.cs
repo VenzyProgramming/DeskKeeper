@@ -31,6 +31,9 @@ sealed class PublicWindow : Window, IDeskWindow
     readonly Popup legendPopup = new();
     readonly Button save, restore, start;
     ToggleButton pickJericho = null!, pickNuke = null!, pickTu = null!;
+    static readonly string[] Weapons = ["jericho", "nuke", Attacks.Tu160, Attacks.Tu22, Attacks.Su34, Attacks.Ka52, Attacks.Tu95, Attacks.Il76];
+    readonly Dictionary<string, ToggleButton> weaponTiles = [];
+    string Weapon() => weaponTiles.FirstOrDefault(w => w.Value.IsChecked == true).Key ?? "jericho";
     readonly List<ToggleButton> skinButtons = [];
     readonly Dictionary<string, Image> scenePictures = [];
     readonly List<Image> skinPictures = [];
@@ -190,19 +193,19 @@ sealed class PublicWindow : Window, IDeskWindow
     FrameworkElement ScenePage()
     {
         var p = new StackPanel();
-        var scenes = new UniformGrid { Rows = 1, Margin = new Thickness(16) };
-        pickJericho = Tile("jericho", T("w.jericho"), choice.Weapon is not ("nuke" or "tu160"), 16.0 / 9, scenePictures);
-        pickNuke = Tile("nuke", T("w.nuke"), choice.Weapon == "nuke", 16.0 / 9, scenePictures);
-        pickTu = Tile("tu160", T("w.tu160"), choice.Weapon == "tu160", 16.0 / 9, scenePictures);
-        var weapons = new[] { pickJericho, pickNuke, pickTu };
+        var scenes = new UniformGrid { Columns = 4, Margin = new Thickness(16) };
+        string known = Weapons.Contains(choice.Weapon) ? choice.Weapon : "jericho";
+        foreach (var id in Weapons) weaponTiles[id] = Tile(id, T("w." + id), known == id, 16.0 / 9, scenePictures);
+        pickJericho = weaponTiles["jericho"]; pickNuke = weaponTiles["nuke"]; pickTu = weaponTiles["tu160"];
+        var weapons = weaponTiles.Values.ToArray();
         foreach (var w in weapons)
         {
             var me = w;
             me.Checked += (_, _) => { foreach (var o in weapons) if (o != me) o.IsChecked = false; Remember(); };
             me.Unchecked += (_, _) => { if (!weapons.Any(o => o.IsChecked == true)) me.IsChecked = true; };
+            me.Margin = new Thickness(0, 0, 10, 10);
             scenes.Children.Add(me);
         }
-        pickTu.Margin = new Thickness(0);
         var first = SectionLabel(T("destruction"), null); first.Margin = new Thickness(2, 0, 0, 8);
         p.Children.Add(first);
         p.Children.Add(CardBox(scenes, new Thickness(0)));
@@ -418,7 +421,7 @@ sealed class PublicWindow : Window, IDeskWindow
     // ---------------------------------------------------------------- Aktionen
     void Remember()
     {
-        choice = new Store.Choice(pickNuke?.IsChecked == true ? "nuke" : pickTu?.IsChecked == true ? "tu160" : "jericho", Art.Current.Id);
+        choice = new Store.Choice(Weapon(), Art.Current.Id);
         Store.SaveChoice(choice);
     }
 
@@ -451,7 +454,7 @@ sealed class PublicWindow : Window, IDeskWindow
         save.IsEnabled = restore.IsEnabled = start.IsEnabled = false;
         var state = WindowState;
         WindowState = WindowState.Minimized;
-        try { status.Text = await Runner.Play(jericho, layout, jericho && pickNuke.IsChecked == true, jericho && pickTu.IsChecked == true, showDesktop: true); }
+        try { string weapon = Weapon(); status.Text = await Runner.Play(jericho, layout, jericho && weapon == "nuke", showDesktop: true, attack: jericho && Attacks.All.Contains(weapon) ? weapon : null); }
         finally { save.IsEnabled = start.IsEnabled = true; WindowState = state; Refresh(); Activate(); }
     }
 

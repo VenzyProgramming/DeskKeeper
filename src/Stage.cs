@@ -150,9 +150,10 @@ static class Runner
     /// <summary>Unter diesem Versatz (Elementkoordinaten) stellt DeskKeeper sofort zurück statt DUM-E tragen zu lassen; wie Keeper.Misplaced.</summary>
     internal const int NearPx = 40;
 
-    public static async Task<string> Play(bool jericho, Dictionary<string, int[]>? targets, bool nuclear = false, bool tu160 = false, bool showDesktop = false)
+    public static async Task<string> Play(bool jericho, Dictionary<string, int[]>? targets, bool nuclear = false, bool tu160 = false, bool showDesktop = false, string? attack = null)
     {
-        Fault.Note($"Szene angefordert: jericho={jericho} atom={nuclear} tu160={tu160} ziele={targets?.Count ?? 0} busy={Busy}");
+        attack ??= tu160 ? Attacks.Tu160 : null;
+        Fault.Note($"Szene angefordert: jericho={jericho} atom={nuclear} angriff={attack ?? "-"} ziele={targets?.Count ?? 0} busy={Busy}");
         if (Busy) { Fault.Note("Szene abgelehnt: läuft schon"); return ""; }
         if (DesktopLock.RobotActive) { Fault.Note("Szene abgelehnt: Saugroboter arbeitet"); return Loc.T("r.robotBusy"); }
         Busy = true;
@@ -197,7 +198,7 @@ static class Runner
             var all = screens.Aggregate(Rect.Union);
             // Дубина so groß wie der Saugroboter von Seitenleisten-Ausgabe: 76 DIP Fahrgestell-Maß × DPI-Faktor.
             double robot = 64 * GetDpiForSystem() / 96.0;   // Fahrgestell so breit wie der Saugroboter (Ø 64 DIP)
-            var scene = new Scene(desktop.Icons, homes, desktop.IconSize, screens, primary, jericho, robot, nuclear, tu160);
+            var scene = new Scene(desktop.Icons, homes, desktop.IconSize, screens, primary, jericho, robot, nuclear, attack: attack);
             // Verbrannte Symbole liegen außerhalb aller Bildschirme (unter der Unterkante), bis Дубина sie holt.
             var stash = new Point(all.Left + desktop.IconSize * 2, all.Bottom + desktop.IconSize * 30);
             bool stashChecked = false;

@@ -28,7 +28,7 @@ sealed class Scene
     readonly bool jericho, nuke;
     readonly Rect all;
     readonly NukeCloud? cloud;
-    readonly Bomber? bomber;
+    readonly IAttack? bomber;
     readonly List<(Point P, double T, double Seed)> raid = [];
     readonly double iconSize, length, u, r, waveSpeed;
     readonly Point finalFlash;
@@ -53,8 +53,10 @@ sealed class Scene
 
     record Mote(Point Start, Vector V0, Point End, Vector V1, double Release, double Seed);
     /// <param name="robotSize">Größe Дубина in Bildschirmpixeln (wie der Saugroboter: 76 DIP × DPI-Faktor).</param>
-    public Scene(IReadOnlyList<IconInfo> icons, IReadOnlyDictionary<string, Point> targets, double iconSize, Rect[] screens, Rect primary, bool withJericho, double robotSize, bool nuclear = false, bool tu160 = false)
+    public Scene(IReadOnlyList<IconInfo> icons, IReadOnlyDictionary<string, Point> targets, double iconSize, Rect[] screens, Rect primary, bool withJericho, double robotSize, bool nuclear = false, bool tu160 = false, string? attack = null)
     {
+        if (tu160 && attack is null) attack = Attacks.Tu160;
+        if (!withJericho || nuclear) attack = null;
         this.icons = icons;
         this.screens = screens.Length > 0 ? screens : [primary];
         stage = primary;
@@ -74,7 +76,7 @@ sealed class Scene
         // Ziele über die ganze Fläche aller Bildschirme; Иерихон trifft die Mitte des Hauptbildschirms.
         var points = SpreadTargets(random);
         finalFlash = nuke ? new Point(primary.Left + primary.Width / 2, primary.Top + primary.Height * 0.52) : points[0];
-        motes = new Mote[nuke || (withJericho && tu160) ? 0 : 18];
+        motes = new Mote[nuke || attack is not null ? 0 : 18];
         for (int index = 0; index < motes.Length; index++)
         {
             var end = points[index + 1];
@@ -103,13 +105,16 @@ sealed class Scene
             double reach = new[] { all.TopLeft, all.TopRight, all.BottomLeft, all.BottomRight }.Max(c => (c - finalFlash).Length) * 1.03;
             cloud = new NukeCloud(finalFlash, primary.Height, reach);
         }
-        if (withJericho && tu160)
+        // Luftangriff (Tu-160M, Tu-22M3, Su-34, Ka-52, Tu-95MS, Il-76): Einschläge nacheinander; Il-76 ohne Feuer, die Symbole werden weggetragen
+        var onPrimary = icons.Where(i => primary.Contains(i.Center)).Select(i => i.Center).ToList();
+        if (attack is not null && Attacks.Create(attack, primary, points, onPrimary, this.iconSize) is { } strike)
         {
-            // Ту-160М: 14 Marschflugkörper auf die Ziele (dichteste Gruppe zuerst), Einschläge nacheinander
-            bomber = new Bomber(primary, points.Take(14).ToList(), this.iconSize);
-            foreach (var (p, when) in bomber.Blasts) raid.Add((p, when, random.NextDouble()));
+            bomber = strike;
+            foreach (var (p, when) in strike.Blasts) raid.Add((p, when, random.NextDouble()));
             foreach (var icon in icons)
-                burnAt[icon.Id] = raid.Min(b => b.T + Math.Min(0.85, (b.P - icon.Center).Length / waveSpeed)) + 0.04 * random.NextDouble();
+                burnAt[icon.Id] = raid.Count == 0 ? Impact
+                    : strike.Explodes ? raid.Min(b => b.T + Math.Min(0.85, (b.P - icon.Center).Length / waveSpeed)) + 0.04 * random.NextDouble()
+                    : raid.OrderBy(b => (b.P - icon.Center).LengthSquared).First().T + 0.02;
         }
         else if (jericho)
             foreach (var icon in icons)
@@ -119,7 +124,7 @@ sealed class Scene
             }
 
         // Дубина von oben mit Anhänger; jedes Symbol einzeln.
-        robotStart = jericho ? Math.Max((burnAt.Count > 0 ? burnAt.Values.Max() : Impact) + BurnTime + 0.25, nuke ? Impact + 3.9 : bomber is not null ? bomber.LastImpact + 0.9 : 0) : 0.2;
+        robotStart = jericho ? Math.Max((burnAt.Count > 0 ? burnAt.Values.Max() : Impact) + BurnTime + 0.25, nuke ? Impact + 3.9 : bomber is not null ? Math.Max(bomber.LastImpact + 0.9, bomber.Explodes ? 0 : bomber.End - 0.4) : 0) : 0.2;
         var order = jericho ? HomeRoute() : MovedRoute(new Point(primary.Left, primary.Bottom));
         robot = new Robot(icons, id => start[id], home, jericho, robotStart, r, this.screens, primary, order);
         Duration = robot.End;
@@ -172,7 +177,7 @@ sealed class Scene
         if (bomber is not null)
         {
             bomber.Draw(dc, t);
-            foreach (var (p, when, seed) in raid)
+            if (bomber.Explodes) foreach (var (p, when, seed) in raid)
             {
                 double age = t - when;
                 if (age >= 0 && age <= BurstTime) DrawBurst(dc, p, age, 0.8 + 0.15 * seed, seed);
@@ -180,7 +185,7 @@ sealed class Scene
         }
         else if (nuke) DrawNuke(dc, t);
         else if (jericho) DrawJericho(dc, t);
-        if (jericho) DrawAsh(dc, t);
+        if (jericho && bomber?.Explodes != false) DrawAsh(dc, t);
         DrawCarried(dc, t);
         robot.Draw(dc, t);
     }

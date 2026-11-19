@@ -40,7 +40,7 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
 | **Saves when it matters** | On shutdown, on user switch / lock, and on exit. |
 | **Restores when it matters** | At Windows startup, at app start, and whenever the display arrangement changes. Instantly – or with DUM-E (see below). |
 | **Sort by category** | One click puts system icons top left, social apps and browsers top centre, Office top right, video and image tools next to it, development tools bottom left, games and launchers bottom centre, everything else bottom right. A snapshot is taken first, so you can go back. |
-| **Keep icons on the grid** | Every restore snaps icons into grid cells, also after a scene. During scenes the grid stays on: icons DUM-E is carrying are drawn by the scene, the real icon only jumps between fixed cells. |
+| **Keep icons on the grid** | Every restore snaps icons into grid cells, also after a scene. During a scene the grid is off so icons can disappear cleanly; afterwards they return to their saved places and snap in. |
 | **Tools** | Minimize all windows, show/hide desktop icons, icon size, align to grid, auto arrange, save/load a layout to a file. |
 | **Feels native** | Detects Windows 10 or 11 and looks like the system settings of each, dark or light, uses your accent colour. English, Deutsch, Русский. |
 | **Tray app** | Starts with Windows if you want, starts minimized, closes to the tray, remembers its window position. |
@@ -50,6 +50,16 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
   <img src="docs/media/settings.png" width="49%" alt="Settings"> <img src="docs/media/tools.png" width="49%" alt="Tools">
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
+
+## What's new in 1.2
+
+- **Five new scenes**, each drawn top-down from the real aircraft's proportions:
+  - **Tu-22M3** – two bombers fly in formation and carpet-bomb row after row.
+  - **Su-34** – a pair of strike jets drops guided bombs on single icons, then climbs away.
+  - **Ka-52** – the attack helicopter flies in, hovers, turns to each icon and fires rockets. Both coaxial rotors spin, with motion blur.
+  - **Tu-95MS** – the turboprop bomber launches cruise missiles; its contra-rotating propellers turn.
+  - **Il-76** – no explosions: paratroopers jump, land on your icons and carry them off-screen. DUM-E brings them back.
+- The Scene page shows all eight attacks with a preview picture each.
 
 ## What's new in 1.1.2
 
@@ -78,7 +88,7 @@ Restoring icons instantly is efficient. It is also boring.
 
 Switch *Restore style* to **With DUM-E** and a small top-down robot arm with a trailer drives across your actual desktop, picks up each misplaced icon and carries it home. One icon at a time. Slowly. With dignity. It runs *behind* your windows, so you can keep working while it works.
 
-And if you are having a really bad day, the **Scene** page lets you nuke your desktop first – a Jericho strike, a mushroom cloud, or a Tu-160M bomber run. Icons turn to ash. DUM-E then rebuilds everything, exactly as it was. Therapy, basically.
+And if you are having a really bad day, the **Scene** page lets you nuke your desktop first – a Jericho strike, a mushroom cloud, a Tu-160M or Tu-95MS bomber run, Tu-22M3 carpet bombing, Su-34 precision strikes, a Ka-52 helicopter attack – or Il-76 paratroopers who simply carry your icons away. Icons turn to ash. DUM-E then rebuilds everything, exactly as it was. Therapy, basically.
 
 <p align="center"><img src="docs/media/scene.png" width="70%" alt="Scene page"></p>
 

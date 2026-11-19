@@ -35,8 +35,8 @@ static class Preview
     {
         var icons = Icons();
         var homes = icons.ToDictionary(i => i.Id, i => i.Center);
-        var s = new Scene(icons, homes, 48, [Desk], Desk, true, 64, nuclear: scene == "nuke", tu160: scene == "tu160");
-        double t = scene switch { "nuke" => DeskKeeper.Scene.Impact + 1.3, "tu160" => 1.8, _ => DeskKeeper.Scene.Impact + 0.35 };
+        var s = new Scene(icons, homes, 48, [Desk], Desk, true, 64, nuclear: scene == "nuke", attack: Attacks.All.Contains(scene) ? scene : null);
+        double t = scene switch { "nuke" => DeskKeeper.Scene.Impact + 1.3, "tu160" => 1.8, "tu22m3" => 2.2, "su34" => 1.3, "ka52" => 4.1, "tu95" => 3.4, "il76" => 3.2, _ => DeskKeeper.Scene.Impact + 0.35 };
         double scale = width / Desk.Width;
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())

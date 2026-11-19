@@ -96,6 +96,11 @@ static class Loc
         ["w.jericho"] = new("Jericho", "Jericho", "Иерихон"),
         ["w.nuke"] = new("Atombombe", "Nuke", "Ядерная"),
         ["w.tu160"] = new("Tu-160M", "Tu-160M", "Ту-160М"),
+        ["w.tu22m3"] = new("Tu-22M3", "Tu-22M3", "Ту-22М3"),
+        ["w.su34"] = new("Su-34", "Su-34", "Су-34"),
+        ["w.ka52"] = new("Ka-52", "Ka-52", "Ка-52"),
+        ["w.tu95"] = new("Tu-95MS", "Tu-95MS", "Ту-95МС"),
+        ["w.il76"] = new("Il-76", "Il-76", "Ил-76"),
         // Werkzeuge
         ["t.windows"] = new("Fenster", "Windows", "Окна"),
         ["t.minimize"] = new("Alle Fenster minimieren", "Minimize all windows", "Свернуть все окна"),

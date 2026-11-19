@@ -743,7 +743,7 @@ static class Art
         return g;
     }
 
-    static void Star(DrawingContext dc, Point c, double r, double turn)
+    internal static void Star(DrawingContext dc, Point c, double r, double turn)
     {
         var g = new StreamGeometry();
         using (var ctx = g.Open())

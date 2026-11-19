@@ -12,8 +12,9 @@ namespace DeskKeeper;
 /// das Triebwerk und fliegen in weichen Bögen ihre Ziele an (Einschläge nacheinander, nicht gleichzeitig).
 /// Danach Nachbrenner, Flügel schwenken auf 65°, der Bomber beschleunigt aus dem Bild.
 /// </summary>
-sealed class Bomber
+sealed class Bomber : IAttack
 {
+    public bool Explodes => true;
     readonly Rect stage;
     readonly double span;                 // Länge des Bombers in Pixeln
     readonly double enter, release0, releaseStep, sweepStart;
