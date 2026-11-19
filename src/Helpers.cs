@@ -270,10 +270,34 @@ sealed class CraneHelper : PathHelper
             var base0 = body + Fly.Rot(turret, head); var d = target - base0;
             return (Math.Atan2(d.Y, d.X), Math.Clamp(d.Length, r * 0.6, reach));
         }
-        Point StandFor(Point target, Point from)
-        {   // Drehkranz etwa 2,6 r vom Ziel, auf der Seite, von der der Wagen kommt
-            var d = from - target; if (d.LengthSquared < 1) d = new Vector(-1, 0); d.Normalize();
-            return target + d * (r * 2.6);
+        // Standplätze nie auf Symbolen : Wagen samt ausgefahrenen Stützen muss frei von Symbolen stehen
+        var obstacles = home.Values.Concat(fromCart ? Enumerable.Empty<Point>() : order.Select(pickOf)).ToList();
+        int Blocked(Point body, double head)
+        {
+            int n = 0;
+            foreach (var q in obstacles)
+            {
+                var l = Fly.Rot(q - body, -head);
+                if (l.X > -1.6 * r && l.X < 1.7 * r && Math.Abs(l.Y) < 1.25 * r) n++;
+            }
+            return n;
+        }
+        var area = primary; area.Inflate(-r * 0.6, -r * 0.6);
+        Point StandFor(Point target, Point from, IEnumerable<Point>? next = null)
+        {   // Drehkranz in Reichweite des Ziels: die Stelle ohne Symbole unter Wagen und Stützen, sonst die mit den wenigsten; dann die nächste
+            Point best = target; double score = double.MaxValue;
+            foreach (double dist in new[] { 1.9, 2.6, 3.3 })
+                for (int k = 0; k < 24; k++)
+                {
+                    double a = k * Math.PI / 12;
+                    var stand = target + new Vector(Math.Cos(a), Math.Sin(a)) * (r * dist);
+                    var travel = stand - from; double head = travel.LengthSquared > 1 ? Math.Atan2(travel.Y, travel.X) : 0;
+                    var body = stand - Fly.Rot(turret, head);
+                    int covered = next?.Count(q => (q - stand).Length < reach * 0.85) ?? 0;   // weitere Ziele von hier aus erreichbar: weniger Umsetzen
+                    double sc = Blocked(body, head) * 1000 + (area.Contains(body) ? 0 : 400) + travel.Length / r + dist * 0.3 - covered * 6;
+                    if (sc < score) { score = sc; best = stand; }
+                }
+            return best;
         }
         Move(ref t, ref p, ref h, park, speed);
         foreach (var batch in Batches(order, home, 4, r * 3.4))
@@ -298,7 +322,7 @@ sealed class CraneHelper : PathHelper
                     if ((pick - (p + Fly.Rot(turret, h))).Length > reach * 0.92)
                     {
                         if (deployed) { Stow(ref t); deployed = false; }
-                        var stand = StandFor(pick, p);
+                        var stand = StandFor(pick, p, picks.Skip(k + 1).Select(pickOf));
                         var travel = stand - p; double head = travel.LengthSquared > 1 ? Math.Atan2(travel.Y, travel.X) : h;
                         Move(ref t, ref p, ref h, stand - Fly.Rot(turret, head), speed);
                     }
@@ -327,7 +351,7 @@ sealed class CraneHelper : PathHelper
                     if (set) Stow(ref t);
                     if ((target - (p + Fly.Rot(turret, h))).Length > reach * 0.92)
                     {
-                        var stand = StandFor(target, p);
+                        var stand = StandFor(target, p, batch.Skip(k + 1).Select(i => home[i]));
                         var travel = stand - p; double head = travel.LengthSquared > 1 ? Math.Atan2(travel.Y, travel.X) : h;
                         Move(ref t, ref p, ref h, stand - Fly.Rot(turret, head), speed);
                     }
@@ -387,44 +411,114 @@ sealed class CraneHelper : PathHelper
         Tyre = Fly.B("#1C1D20"), Deck = Fly.B("#5A5F66"), Pad = Fly.B("#2A2C30"), Weight = Fly.B("#2E3135");
     static readonly Pen Edge = Fly.P("#202226", 0.03), Rope = Fly.P("#202226", 0.025), Stripe = Fly.P("#202226", 0.05);
 
-    /// <summary>Kranwagen von oben (Länge etwa 2,3 size); boom: Winkel relativ zum Wagen, Länge in Pixeln; dip 0…1 senkt den Haken.</summary>
+    static readonly Brush Red = Fly.B("#C8302A"), RedDark = Fly.B("#A62722"), Steel = Fly.B("#8A9096"), Light = Fly.B("#FFF2B0"), Stripe2 = Fly.B("#1E2024"),
+        CraneLamp = Art.Glow("#E0FF9A20");
+    static readonly Pen Thin = Fly.P("#202226", 0.018), Tread = Fly.P("#3A3C40", 0.02), RopeThin = Fly.P("#30343A", 0.016);
+
+    /// <summary>
+    /// Mobilkran von oben (Länge etwa 2,4 size): vierachsiges Fahrgestell mit Kotflügeln, Fahrerhaus mit Spiegeln und Scheinwerfern,
+    /// vier ausfahrbare Stützen mit Zylinder und Teller, Drehkranz mit Oberwagen, Gegengewicht mit Warnstreifen, Windentrommel,
+    /// Kranführerkabine, Wippzylinder, dreistufiger Teleskopausleger mit Rollenkopf und Hakenflasche an zwei Seilsträngen.
+    /// boom: Winkel relativ zum Wagen, length in Pixeln, dip 0…1 senkt den Haken.
+    /// </summary>
     internal static void DrawTruck(DrawingContext dc, Point at, double heading, double size, double outriggers, double boom, double length, double dip)
     {
         dc.PushTransform(new TranslateTransform(size * 0.1, size * 0.15));
         dc.PushTransform(Fly.Frame(at, heading, size));
-        dc.DrawRoundedRectangle(Fly.Shadow, null, new Rect(-1.15, -0.42, 2.35, 0.84), 0.1, 0.1);
+        dc.DrawRoundedRectangle(Fly.Shadow, null, new Rect(-1.15, -0.44, 2.42, 0.88), 0.1, 0.1);
         dc.Pop(); dc.Pop();
         dc.PushTransform(Fly.Frame(at, heading, size));
-        // Abstützungen: vier Träger, die seitlich ausfahren
-        foreach (double x in new[] { -0.95, 0.55 })
+        // Stützen: Kastenträger fahren seitlich aus, am Ende Zylinder und runder Teller
+        foreach (double x in new[] { -1.0, 0.56 })
             foreach (double s in new[] { -1.0, 1.0 })
             {
-                double ext = 0.55 * outriggers;
-                dc.DrawRectangle(YellowDark, Edge, new Rect(x - 0.06, s > 0 ? 0.3 : -0.3 - ext, 0.12, ext));
-                if (ext > 0.02) dc.DrawRoundedRectangle(Pad, null, new Rect(x - 0.12, s * (0.3 + ext) - 0.1, 0.24, 0.2), 0.04, 0.04);
+                double ext = 0.58 * outriggers;
+                dc.DrawRectangle(YellowDark, Edge, new Rect(x - 0.07, s > 0 ? 0.3 : -0.3 - ext, 0.14, ext + 0.02));
+                if (ext > 0.02)
+                {
+                    dc.DrawLine(Thin, new Point(x, s * 0.32), new Point(x, s * (0.3 + ext)));
+                    dc.DrawEllipse(Pad, Edge, new Point(x, s * (0.32 + ext)), 0.13, 0.13);
+                    dc.DrawEllipse(Steel, Edge, new Point(x, s * (0.32 + ext)), 0.06, 0.06);
+                }
             }
-        foreach (double x in new[] { -0.85, -0.45, 0.85 })
-            foreach (double s in new[] { -1.0, 1.0 }) dc.DrawRoundedRectangle(Tyre, null, new Rect(x - 0.15, s * 0.42 - 0.08, 0.3, 0.16), 0.05, 0.05);
-        dc.DrawRoundedRectangle(Chassis, Edge, new Rect(-1.15, -0.4, 2.0, 0.8), 0.06, 0.06);
-        dc.DrawRectangle(Deck, Edge, new Rect(-0.3, -0.38, 1.0, 0.76));   // Ladefläche
-        for (int i = 0; i < 4; i++) dc.DrawLine(Edge, new Point(-0.3 + i * 0.33, -0.38), new Point(-0.3 + i * 0.33, 0.38));
-        dc.DrawRoundedRectangle(Cab, Edge, new Rect(0.78, -0.42, 0.45, 0.84), 0.1, 0.1);       // Fahrerhaus
-        dc.DrawRoundedRectangle(CabRoof, null, new Rect(0.84, -0.34, 0.3, 0.68), 0.06, 0.06);
-        dc.DrawRectangle(Glass, null, new Rect(1.14, -0.36, 0.06, 0.72));
-        // Drehkranz mit Gegengewicht und Teleskopausleger
+        // vier Achsen, Reifen mit Profil
+        foreach (double x in new[] { -0.98, -0.68, 0.4, 0.7 })
+            foreach (double s in new[] { -1.0, 1.0 })
+            {
+                var tyre = new Rect(x - 0.13, s * 0.42 - 0.075, 0.26, 0.15);
+                dc.DrawRoundedRectangle(Tyre, null, tyre, 0.05, 0.05);
+                for (double tx = tyre.Left + 0.04; tx < tyre.Right; tx += 0.05) dc.DrawLine(Tread, new Point(tx, tyre.Top + 0.02), new Point(tx, tyre.Bottom - 0.02));
+            }
+        dc.DrawRoundedRectangle(Chassis, Edge, new Rect(-1.16, -0.38, 2.02, 0.76), 0.06, 0.06);
+        foreach (double s in new[] { -1.0, 1.0 })
+        {
+            dc.DrawRoundedRectangle(Yellow, Edge, new Rect(-1.14, s > 0 ? 0.3 : -0.4, 0.62, 0.1), 0.03, 0.03);   // Kotflügel hinten
+            dc.DrawRoundedRectangle(Yellow, Edge, new Rect(0.26, s > 0 ? 0.3 : -0.4, 0.58, 0.1), 0.03, 0.03);    // Kotflügel vorn
+            dc.DrawRectangle(Steel, null, new Rect(-0.42, s * 0.36 - 0.03, 0.6, 0.06));                          // Trittstufen
+        }
+        // Mittelteil: Motor- und Staukästen, darüber ruht der Ausleger in Fahrstellung
+        dc.DrawRoundedRectangle(Deck, Edge, new Rect(-0.28, -0.3, 1.0, 0.6), 0.04, 0.04);
+        foreach (double x in new[] { 0.0, 0.3 }) dc.DrawRectangle(null, Thin, new Rect(x, -0.26, 0.24, 0.52));
+        dc.DrawRoundedRectangle(Weight, null, new Rect(0.52, -0.08, 0.16, 0.16), 0.03, 0.03);   // Auslegerauflage
+        // Fahrerhaus mit Frontscheibe, Dachluke, Spiegeln, Scheinwerfern und Rundumleuchte
+        dc.DrawRoundedRectangle(Red, Edge, new Rect(0.78, -0.42, 0.47, 0.84), 0.11, 0.11);
+        dc.DrawRoundedRectangle(RedDark, null, new Rect(0.84, -0.34, 0.3, 0.68), 0.06, 0.06);
+        dc.DrawRoundedRectangle(null, Thin, new Rect(0.9, -0.12, 0.16, 0.24), 0.03, 0.03);
+        dc.DrawRectangle(Glass, null, new Rect(1.15, -0.37, 0.07, 0.74));
+        foreach (double s in new[] { -1.0, 1.0 })
+        {
+            dc.DrawRectangle(Stripe2, null, new Rect(1.08, s * 0.46 - 0.03, 0.05, 0.06));
+            dc.DrawLine(Thin, new Point(1.1, s * 0.42), new Point(1.1, s * 0.45));
+            dc.DrawRoundedRectangle(Light, null, new Rect(1.22, s * 0.3 - 0.05, 0.03, 0.1), 0.01, 0.01);
+        }
+        // Oberwagen auf dem Drehkranz, dreht mit dem Ausleger
         dc.PushTransform(new TranslateTransform(-0.62, 0));
+        dc.DrawEllipse(Weight, Edge, new Point(0, 0), 0.36, 0.36);   // Drehkranz
         dc.PushTransform(new RotateTransform(boom * 180 / Math.PI));
-        dc.DrawRoundedRectangle(Weight, Edge, new Rect(-0.55, -0.3, 0.3, 0.6), 0.06, 0.06);
-        dc.DrawEllipse(YellowDark, Edge, new Point(0, 0), 0.34, 0.34);
+        dc.DrawRoundedRectangle(YellowDark, Edge, new Rect(-0.5, -0.3, 0.86, 0.6), 0.07, 0.07);
+        // Gegengewicht: gestapelte Platten mit Warnstreifen
+        var weight = new Rect(-0.62, -0.32, 0.22, 0.64);
+        dc.DrawRoundedRectangle(Weight, Edge, weight, 0.05, 0.05);
+        dc.PushClip(new RectangleGeometry(weight, 0.05, 0.05));
+        for (double y = -0.5; y < 0.5; y += 0.12) dc.DrawLine(new Pen(Yellow, 0.04), new Point(-0.64, y), new Point(-0.4, y + 0.2));
+        dc.Pop();
+        dc.DrawLine(Thin, new Point(-0.51, -0.32), new Point(-0.51, 0.32));
+        dc.DrawRoundedRectangle(Stripe2, Edge, new Rect(-0.36, -0.12, 0.16, 0.24), 0.05, 0.05);   // Windentrommel
+        for (double y = -0.1; y <= 0.1; y += 0.05) dc.DrawLine(RopeThin, new Point(-0.35, y), new Point(-0.21, y));
+        // Kranführerkabine rechts neben dem Ausleger
+        dc.DrawRoundedRectangle(Yellow, Edge, new Rect(-0.12, 0.13, 0.3, 0.19), 0.05, 0.05);
+        dc.DrawRoundedRectangle(Glass, null, new Rect(0.1, 0.15, 0.07, 0.15), 0.02, 0.02);
+        dc.DrawRoundedRectangle(Glass, null, new Rect(-0.08, 0.16, 0.16, 0.06), 0.02, 0.02);
         double len = length / size;
-        dc.DrawRoundedRectangle(Yellow, Edge, new Rect(0, -0.11, len, 0.22), 0.04, 0.04);
-        for (double s = 0.6; s < len - 0.2; s += 0.9) dc.DrawLine(Stripe, new Point(s, -0.11), new Point(s, 0.11));   // Teleskopstufen
-        dc.DrawRoundedRectangle(Glass, null, new Rect(-0.12, 0.14, 0.26, 0.16), 0.04, 0.04);   // Kranführerkabine
-        // Haken: beim Absenken etwas kleiner, Seil sichtbar
-        double hookSize = 0.12 - 0.03 * dip;
-        dc.DrawLine(Rope, new Point(len, 0), new Point(len + 0.05, 0.05 * dip));
-        dc.DrawEllipse(Weight, Edge, new Point(len + 0.05, 0.05 * dip), hookSize, hookSize);
+        // Wippzylinder unter dem Ausleger, Anlenkung am Oberwagen
+        dc.DrawRoundedRectangle(Steel, Edge, new Rect(0.04, -0.05, Math.Min(0.7, len * 0.4), 0.1), 0.03, 0.03);
+        // Teleskopausleger: drei Stufen, jede etwas schmaler
+        double[] widths = [0.24, 0.2, 0.16];
+        double[] ends = [Math.Max(0.6, len * 0.5), Math.Max(0.8, len * 0.78), len];
+        double from = -0.2;
+        for (int i = 0; i < 3; i++)
+        {
+            double w = widths[i], to = ends[i];
+            if (to <= from) continue;
+            dc.DrawRoundedRectangle(i == 0 ? Yellow : YellowDark, Edge, new Rect(from, -w / 2, to - from + 0.04, w), 0.03, 0.03);
+            dc.DrawLine(Thin, new Point(from, 0), new Point(to, 0));
+            from = to - 0.08;
+        }
+        for (double x = 0.2; x < ends[0] - 0.1; x += 0.25) dc.DrawLine(Stripe, new Point(x, -0.12), new Point(x, -0.08));   // Schweißnähte
+        // Rollenkopf mit Warnfarbe und zwei Seilrollen
+        dc.DrawRoundedRectangle(Red, Edge, new Rect(len - 0.04, -0.1, 0.14, 0.2), 0.04, 0.04);
+        dc.DrawEllipse(Steel, Edge, new Point(len + 0.03, -0.04), 0.035, 0.035);
+        dc.DrawEllipse(Steel, Edge, new Point(len + 0.03, 0.04), 0.035, 0.035);
+        // Hakenflasche an zwei Seilsträngen; beim Absenken kleiner (weiter unten)
+        var block = new Point(len + 0.08, 0.06 * dip);
+        dc.DrawLine(RopeThin, new Point(len + 0.03, -0.04), block + new Vector(-0.03, -0.02));
+        dc.DrawLine(RopeThin, new Point(len + 0.03, 0.04), block + new Vector(-0.03, 0.02));
+        double bs = 1 - 0.25 * dip;
+        dc.DrawRoundedRectangle(Yellow, Edge, new Rect(block.X - 0.07 * bs, block.Y - 0.06 * bs, 0.14 * bs, 0.12 * bs), 0.03, 0.03);
+        dc.DrawRectangle(Stripe2, null, new Rect(block.X - 0.07 * bs, block.Y - 0.015 * bs, 0.14 * bs, 0.03 * bs));
+        dc.DrawEllipse(Weight, null, block + new Vector(0.08 * bs, 0), 0.03 * bs, 0.03 * bs);   // Haken
         dc.Pop(); dc.Pop();
+        Soft.Draw(dc, CraneLamp, new Point(1.0, 0), 0.1, 0.1, 1);   // Rundumleuchte auf dem Fahrerhaus
         dc.Pop();
     }
 }

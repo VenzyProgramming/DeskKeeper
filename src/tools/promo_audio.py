@@ -256,8 +256,25 @@ def main(timeline, out):
         elif k in TRANSITION:
             put(max(0, t - 0.18), whoosh(0.45), TRANSITION[k])
             if k == "end": put(t + 0.2, chime((440.0, 554.37, 659.25, 880.0), 2.5), 0.2)
+    # Sprecherstimme (falls voice.json neben der Zeitleiste liegt): Kokoro über voice.py, Musik und Geräusche darunter abgesenkt
+    import os
+    vpath = os.path.join(os.path.dirname(os.path.abspath(timeline)), "voice.json")
+    voice_l = np.zeros(n); voice_r = np.zeros(n); vduck = np.ones(n)
+    if os.path.exists(vpath):
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import voice
+        who = os.environ.get("DESKKEEPER_VOICE", "am_michael")
+        for line in json.load(open(vpath, encoding="utf-8")):
+            x = voice.speak(who, line["say"], speed=1.08)
+            i = int(line["t"] * SR); x = x[: n - i]
+            voice_l[i:i + len(x)] += x; voice_r[i:i + len(x)] += x
+            m = len(x) + int(0.25 * SR)
+            d = vduck[i:i + m]; d *= 0.45
     pl, pr = pad(total)
     L += pl * 0.08 * duck; R += pr * 0.08 * duck
+    L *= vduck; R *= vduck
+    peak0 = max(np.max(np.abs(L)), np.max(np.abs(R)), 1e-9)
+    L = L / peak0 * 0.8 + voice_l * 0.75; R = R / peak0 * 0.8 + voice_r * 0.75
     peak = max(np.max(np.abs(L)), np.max(np.abs(R)), 1e-9)
     L = np.tanh(L / peak * 1.4) / np.tanh(1.4); R = np.tanh(R / peak * 1.4) / np.tanh(1.4)   # sanfte Begrenzung vor dem Mastern
     data = (np.stack([L, R], axis=1) * 0.7 * 32767).astype(np.int16)

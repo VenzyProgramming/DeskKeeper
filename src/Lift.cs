@@ -31,8 +31,10 @@ sealed class LiftHelper : PathHelper
         pm = Scale.PerMeter(iconSize);
         int capacity = type == Type.Chinook ? 4 : 8;   // wie Container am Haken: Chinook bis vier, Mi-26 bis acht
         // Lastnetz hängt an langen Seilen hinter dem Rumpf (von oben sichtbar)
-        net = type == Type.Chinook ? new Vector(-pm * 15, 0) : new Vector(-pm * 12, 0);
-        slots = Enumerable.Range(0, capacity).Select(i => new Vector(-(i / 2) * iconSize * 1.05, (i % 2 == 0 ? -1 : 1) * iconSize * 0.55)).ToArray();
+        // Außenlast : das Lastnetz hängt senkrecht unter dem Lasthaken; im Flug pendelt es etwas nach hinten
+        net = new Vector(0, 0);
+        int rowsMax = (capacity + 1) / 2;
+        slots = Enumerable.Range(0, capacity).Select(i => new Vector(((rowsMax - 1) / 2.0 - i / 2) * iconSize * 1.05, (i % 2 == 0 ? -1 : 1) * iconSize * 0.55)).ToArray();
         var lz = new Point(primary.Left + r * 2.2, primary.Bottom - r * 1.8);
         var p = new Point(primary.Left - r * 5, primary.Top + r * 2); double h = 0, t = start;
         keys.Add((t, p, h)); altitude.Add((t, 1)); hook.Add((t, 0));
@@ -74,7 +76,7 @@ sealed class LiftHelper : PathHelper
                 {
                     var id = ids[k]; var slot = slots[k];
                     trips[id] = ([], home[id]);
-                    Leg(id, home[id], loadedFrom, double.MaxValue, q => Attached(q, net + slot));
+                    Leg(id, home[id], loadedFrom, double.MaxValue, q => Load(q, slot));
                 }
             }
             else
@@ -93,8 +95,8 @@ sealed class LiftHelper : PathHelper
                     if (double.IsNaN(loadedFrom)) loadedFrom = grab;
                     var source = pickOf(id); var s = slot;
                     trips[id] = ([], home[id]);
-                    Leg(id, home[id], grab, grab + 0.3, q => source + (Attached(q, net + s) - source) * Fly.Smooth((q - grab) / 0.3));
-                    Leg(id, home[id], grab + 0.3, double.MaxValue, q => Attached(q, net + s));
+                    Leg(id, home[id], grab, grab + 0.3, q => source + (Load(q, s) - source) * Fly.Smooth((q - grab) / 0.3));
+                    Leg(id, home[id], grab + 0.3, double.MaxValue, q => Load(q, s));
                 }
             }
             // Abliefern, ebenfalls nach kürzestem Weg
@@ -108,7 +110,7 @@ sealed class LiftHelper : PathHelper
                 Lower(out double drop);
                 var legs = trips[id].Legs;
                 legs[^1] = (legs[^1].From, drop, legs[^1].At);
-                Settle(id, home[id], drop, 0.3, Attached(drop, net + slot));
+                Settle(id, home[id], drop, 0.3, Load(drop, slot));
             }
             load.Add((loadedFrom, t, ids.Count));
         }
@@ -118,6 +120,17 @@ sealed class LiftHelper : PathHelper
         altitude.Add((t, 1));
         End = t + 0.2;
     }
+
+    /// <summary>Pendeln der Außenlast: gegen die Flugrichtung, je schneller, desto weiter (höchstens etwa eine Symbolbreite).</summary>
+    Vector Swing(double q)
+    {
+        var (a, _) = Pose(q - 0.25); var (b, _) = Pose(q);
+        var v = (b - a) / 0.25;
+        double max = slots.Length > 1 ? Math.Abs(slots[1].Y) * 1.6 : r;
+        var lag = -v * 0.12;
+        return lag.Length > max ? lag / lag.Length * max : lag;
+    }
+    Point Load(double q, Vector slot) { var (p, h) = Pose(q); return p + Swing(q) + Fly.Rot(net + slot, h); }
 
     static double Lerp(List<(double T, double V)> list, double t)
     {
@@ -146,7 +159,7 @@ sealed class LiftHelper : PathHelper
         if (alt < 0.9) Soft.Draw(dc, DustBrush, p, rotor * 1.25, rotor * 1.15, Math.Clamp((0.9 - alt) * 1.6, 0, 0.6));
         // Last am Haken: Seil zum Netz, Netz um die Symbole
         var hookAt = p;
-        var netAt = p + Fly.Rot(net, h);
+        var netAt = p + Swing(t) + Fly.Rot(net, h);
         var current = load.FirstOrDefault(l => t >= l.From && t <= l.To);
         if (current.Count > 0 || down > 0.02)
         {
@@ -155,11 +168,15 @@ sealed class LiftHelper : PathHelper
             {
                 dc.PushTransform(Fly.Frame(netAt, h, r));
                 int rows = (current.Count + 1) / 2;
-                double q = slots.Length > 1 ? -slots[2 % slots.Length].X / r : 0.42, w = slots[1].Y / r;
-                var box = new Rect(-(rows - 1) * q - w * 0.7, -w * 1.9, (rows - 1) * q + w * 1.4, w * 3.8);
+                double q = slots.Length > 2 ? (slots[0].X - slots[2].X) / r : 0.42, w = slots[1].Y / r, x0 = slots[0].X / r;
+                var box = new Rect(x0 - (rows - 1) * q - w * 0.95, -w * 1.95, (rows - 1) * q + w * 1.9, w * 3.9);
                 dc.DrawRoundedRectangle(null, new Pen(NetPen.Brush, 0.025), box, 0.12, 0.12);
                 for (double x = box.Left + 0.15; x < box.Right; x += 0.15) dc.DrawLine(new Pen(NetPen.Brush, 0.012), new Point(x, box.Top), new Point(x, box.Bottom));
                 for (double y = box.Top + 0.15; y < box.Bottom; y += 0.15) dc.DrawLine(new Pen(NetPen.Brush, 0.012), new Point(box.Left, y), new Point(box.Right, y));
+                // vier Anschlagseile von den Netzecken zum Lasthaken
+                var hl = (Point)(Fly.Rot(hookAt - netAt, -h) / r);
+                var rope = new Pen(Sling.Brush, 0.02);
+                foreach (var c in new[] { box.TopLeft, box.TopRight, box.BottomLeft, box.BottomRight }) dc.DrawLine(rope, hl, c);
                 dc.Pop();
             }
         }

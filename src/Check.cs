@@ -668,6 +668,7 @@ static class Check
             ("shahed", 1000, (dc, c) => Planes.Shahed(dc, c, up, 9, 0, 0.3)),
             ("chinook", 1000, (dc, c) => LiftHelper.DrawChinook(dc, c, up, 44, 0, 0.3)),
             ("mi26", 1000, (dc, c) => LiftHelper.DrawMi26(dc, c, up, 26, 0, 0.3)),
+            ("kran", 1000, (dc, c) => CraneHelper.DrawTruck(dc, c + new Vector(0, 150), up, 210, 1, 0.75, 210 * 2.6, 0.4)),
         };
         foreach (var (name, size, draw) in all)
         {

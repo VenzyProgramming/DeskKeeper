@@ -24,6 +24,26 @@ static class Program
             app.Run();
             return code;
         }
+        if (args.Length == 3 && args[0] == "--story")
+        {
+            // erzählte Story-Folge im Hochformat (Zeitleiste aus werkzeuge/story_tts.py), nur mit Vorführdaten
+            if (!Demo.On) { Console.WriteLine("DESKKEEPER_DEMO=1 setzen"); return 2; }
+            int result = 1;
+            app.Startup += (_, _) => { try { result = Story.Run(args[1], args[2]); } catch (Exception e) { Console.WriteLine(e); } app.Shutdown(); };
+            app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            app.Run();
+            return result;
+        }
+        if (args.Length >= 2 && args[0] == "--shorts")
+        {
+            // Short-Serie: ein Hochformat-Video je Fahrzeug, Breitbild-Desktop in der Mitte, nur mit Vorführdaten
+            if (!Demo.On) { Console.WriteLine("DESKKEEPER_DEMO=1 setzen"); return 2; }
+            int result = 1;
+            app.Startup += (_, _) => { try { result = Shorts.Run(args[1], args.Skip(2).ToList()); } catch (Exception e) { Console.WriteLine(e); } app.Shutdown(); };
+            app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            app.Run();
+            return result;
+        }
         if (args.Length == 2 && args[0] == "--reel")
         {
             // Hochformat-Kurzvideo (TikTok, Reels, Shorts) als Bildfolge, nur mit Vorführdaten

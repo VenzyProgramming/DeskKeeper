@@ -20,6 +20,7 @@ static class Reel
 {
     const int W = 1080, H = 1920, Fps = 30;
     static readonly Rect Desk = new(0, 0, W, H);
+    static readonly Size Size = new(W, H);
     static readonly Typeface Heavy = new(new FontFamily("Segoe UI Black, Segoe UI"), FontStyles.Normal, FontWeights.Black, FontStretches.Normal);
     static readonly Typeface Semi = new(new FontFamily("Segoe UI Variable Display, Segoe UI"), FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
     static readonly Brush Accent = Frozen(new SolidColorBrush(Color.FromRgb(0x4C, 0xC2, 0xFF)));
@@ -33,7 +34,7 @@ static class Reel
         foreach (var f in Directory.EnumerateFiles(output, "*.png")) File.Delete(f);
         var (icons, homes) = Layout();
         var shots = new List<Shot>(); var cues = new List<Promo.Cue>();
-        double at = 0;
+        double at = 0; int attackNo = 1, helperNo = 0;
         void Add(double length, Action<DrawingContext, double, double> draw) { shots.Add(new Shot(at, at + length, draw)); at += length; }
 
         // 0,0–1,6 s: ordentlicher Desktop, dann wirft Windows alles durcheinander (Spannung ohne Ton verständlich)
@@ -49,7 +50,7 @@ static class Reel
         // 1,6–3,4 s: Höhepunkt Nummer eins: der Atompilz
         var (nukeDraw, nukeCues) = AttackShot("nuke", 1.8, messy);
         double s0 = at;
-        Add(1.8, (dc, t, d) => { nukeDraw(dc, t); Headline(dc, t, "So now my desktop", "pays for it.", 0); });
+        Add(1.8, (dc, t, d) => { Film.Camera(dc, Size, t, d, 0.08, Film.Shake(nukeCues, t, 1), () => nukeDraw(dc, t)); Headline(dc, t, "So now my desktop", "pays for it.", 0); });
         cues.AddRange(nukeCues.Select(c => c with { T = c.T + s0 }));
 
         // 3,4–15,5 s: Steigerung in schnellen Schnitten, Name groß
@@ -60,8 +61,8 @@ static class Reel
         })
         {
             var (draw, ev) = AttackShot(kind, 1.1, homes);
-            double s = at;
-            Add(1.1, (dc, t, d) => { draw(dc, t); Label(dc, t, name); });
+            double s = at; int no = ++attackNo;
+            Add(1.1, (dc, t, d) => { Film.WhipIn(dc, Size, t, () => Film.Camera(dc, Size, t, d, 0.07, Film.Shake(ev, t, 1), () => draw(dc, t))); Label(dc, t, name, $"{no:00} / 12"); });
             cues.Add(new Promo.Cue(s, "cut", 0, 1));
             cues.AddRange(ev.Select(c => c with { T = c.T + s }));
         }
@@ -73,8 +74,8 @@ static class Reel
         foreach (var (kind, name) in new[] { (Helpers.Mi26, "MI-26"), (Helpers.Chinook, "CHINOOK"), (Helpers.Crane, "CRANE TRUCK"), (Helpers.Forklift, "FORKLIFT"), (Helpers.Drones, "DRONES"), (Helpers.Dume, "DUM-E") })
         {
             var (draw, ev) = HelperShot(kind, 1.15, icons, homes);
-            double s = at;
-            Add(1.15, (dc, t, d) => { draw(dc, t); Label(dc, t, name); });
+            double s = at; int no = ++helperNo;
+            Add(1.15, (dc, t, d) => { Film.WhipIn(dc, Size, t, () => Film.Camera(dc, Size, t, d, 0.05, default, () => draw(dc, t))); Label(dc, t, name, $"Helper {no} / 6"); });
             cues.Add(new Promo.Cue(s, "cut", 0, 0.7));
             cues.AddRange(ev.Select(c => c with { T = c.T + s }));
         }
@@ -107,7 +108,7 @@ static class Reel
             double time = f / (double)Fps;
             var s = shots.Last(x => time >= x.Start - 1e-9);
             var v = new DrawingVisual();
-            using (var dc = v.RenderOpen()) s.Draw(dc, time - s.Start, s.End - s.Start);
+            using (var dc = v.RenderOpen()) { s.Draw(dc, time - s.Start, s.End - s.Start); Film.Look(dc, Size, f, 0.06); }
             target.Clear(); target.Render(v);
             var enc = new PngBitmapEncoder(); enc.Frames.Add(BitmapFrame.Create(target));
             using var file = File.Create(Path.Combine(output, $"{f:D5}.png")); enc.Save(file);
@@ -220,14 +221,14 @@ static class Reel
     /// <summary>Zweizeilige Überschrift oben in der sicheren Zone; Zeile zwei 0,12 s später.</summary>
     static void Headline(DrawingContext dc, double t, string one, string two, double delay)
     {
-        double k1 = Ease(Math.Clamp((t - delay) / 0.3, 0, 1)), k2 = Ease(Math.Clamp((t - delay - 0.12) / 0.3, 0, 1));
-        dc.PushOpacity(k1); Outlined(dc, one, 74, Brushes.White, Heavy, 250, (1 - k1) * 30); dc.Pop();
-        if (two != "") { dc.PushOpacity(k2); Outlined(dc, two, 74, Accent, Heavy, 340, (1 - k2) * 30); dc.Pop(); }
+        Film.Words(dc, t, one, 74, Heavy, Brushes.White, Accent, null, W / 2.0, 250, 12, delay);
+        if (two != "") Film.Words(dc, t, two, 74, Heavy, Accent, Accent, null, W / 2.0, 340, 12, delay + 0.14);
     }
 
     /// <summary>Name der Szene: knallt herein (leicht übergroß, setzt sich), unten in der sicheren Zone.</summary>
-    static void Label(DrawingContext dc, double t, string name)
+    static void Label(DrawingContext dc, double t, string name, string chip)
     {
+        Film.Chip(dc, t, chip, 26, Semi, Brushes.White, new SolidColorBrush(Color.FromArgb(0xB0, 0x10, 0x14, 0x24)), W / 2.0, 1300);
         double k = Math.Clamp(t / 0.18, 0, 1);
         double scale = 1.25 - 0.25 * Ease(k);
         dc.PushOpacity(Math.Min(1, k * 1.5));

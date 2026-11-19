@@ -57,6 +57,12 @@ And since it is open source, you can fix it yourself, mod it, or add your own sc
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.3.3
+
+- **Helicopters carry a real sling load:** the cargo net hangs directly under the hook on four slings and swings back a little in flight.
+- **Crane truck redrawn and smarter.** It now has a four-axle chassis, outriggers with jacks and pads, a counterweight with warning stripes, a winch, the operator cab, a luffing cylinder, a three-stage telescopic boom and a hook block on two falls. It also picks a spot where neither the truck nor its outriggers stand on your icons.
+- **Video tools:** `--shorts <folder>` renders one vertical short per scene and helper, and `--story <story.json> <folder>` renders narrated story episodes. Both use a real widescreen desktop.
+
 ## What's new in 1.3.2
 
 - **New promo video with sound.** It shows all twelve scenes and all six helpers. Every sound is synthesized from the same timeline as the picture: engines, rotors, impacts, gun bursts and a music bed, mastered to −14 LUFS. `DeskKeeper.exe --promo <folder>` renders it (demo mode), and `src/tools/promo_audio.py` makes the soundtrack.

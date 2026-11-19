@@ -51,8 +51,9 @@ static class Promo
         // Zeitleiste : Bild und Ton lesen dieselben Zeitpunkte (Skill-Bibliothek: sound-design, motion-design)
         var sections = new List<Section>();
         var cues = new List<Cue>();
-        double at = 0;
-        void Add(double length, string kind, Action<DrawingContext, double, double> draw) { sections.Add(new Section(at, at + length, draw)); cues.Add(new Cue(at, kind, 0, 1)); at += length; }
+        double at = 0; int clipNo = 0, helperNo = 0;
+        var kinds = new List<string>();
+        void Add(double length, string kind, Action<DrawingContext, double, double> draw) { sections.Add(new Section(at, at + length, draw)); kinds.Add(kind); cues.Add(new Cue(at, kind, 0, 1)); at += length; }
 
         Add(2.8, "title", (dc, t, d) => Title(dc, t, "DeskKeeper", "Your desktop icons. Exactly where you left them."));
         Add(2.6, "caption", (dc, t, d) => { Caption(dc, t, "Laptop + ultrawide.", "Icons sorted the way you like."); Stage(dc, view, stage, Demo.Both, At(n => home[n]), 1); });
@@ -104,8 +105,12 @@ static class Promo
         })
         {
             var (draw, events) = AttackClip(kind, 2.6);
-            double start = at;
-            Add(2.6, "clip", (dc, t, d) => { Caption(dc, t, name, line); draw(dc, t); });
+            double start = at; int no = ++clipNo;
+            Add(2.6, "clip", (dc, t, d) =>
+            {
+                Film.WhipIn(dc, new Size(W, H), t, () => Film.Camera(dc, new Size(W, H), t, d, 0.05, Film.Shake(events, t, 1), () => draw(dc, t)));
+                Caption(dc, t, name, line); Film.Chip(dc, t, $"{no:00} / 12", 16, Regular, Brushes.White, new SolidColorBrush(Color.FromArgb(0x90, 0x10, 0x14, 0x24)), W / 2.0, 22);
+            });
             cues.AddRange(events.Select(e => e with { T = e.T + start }));
         }
 
@@ -122,8 +127,12 @@ static class Promo
         })
         {
             var (draw, events) = HelperClip(kind, 2.6);
-            double start = at;
-            Add(2.6, "clip", (dc, t, d) => { Caption(dc, t, name, line); draw(dc, t); });
+            double start = at; int no = ++helperNo;
+            Add(2.6, "clip", (dc, t, d) =>
+            {
+                Film.WhipIn(dc, new Size(W, H), t, () => Film.Camera(dc, new Size(W, H), t, d, 0.04, default, () => draw(dc, t)));
+                Caption(dc, t, name, line); Film.Chip(dc, t, $"Helper {no} / 6", 16, Regular, Brushes.White, new SolidColorBrush(Color.FromArgb(0x90, 0x10, 0x14, 0x24)), W / 2.0, 22);
+            });
             cues.AddRange(events.Select(e => e with { T = e.T + start }));
         }
         Helpers.Current = Helpers.Dume;
@@ -142,7 +151,10 @@ static class Promo
             double time = f / (double)Fps;
             var s = sections.Last(x => time >= x.Start);
             double t = time - s.Start, d = s.End - s.Start;
-            double fade = Math.Min(Math.Clamp(t / 0.35, 0, 1), Math.Clamp((d - t) / 0.35, 0, 1));
+            int si = sections.IndexOf(s);
+            bool clipIn = kinds[si] == "clip", clipOut = si + 1 < kinds.Count && kinds[si + 1] == "clip";
+            // zwischen Clips Wischblende statt Abblende (Szenen überlappen statt leerer Bilder)
+            double fade = Math.Min(clipIn ? 1 : Math.Clamp(t / 0.35, 0, 1), clipOut ? 1 : Math.Clamp((d - t) / 0.35, 0, 1));
             var v = new DrawingVisual();
             using (var dc = v.RenderOpen())
             {
@@ -150,6 +162,7 @@ static class Promo
                 dc.PushOpacity(fade);
                 s.Draw(dc, t, d);
                 dc.Pop();
+                Film.Look(dc, new Size(W, H), f, 0.05);
             }
             target.Clear(); target.Render(v);
             var enc = new PngBitmapEncoder(); enc.Frames.Add(BitmapFrame.Create(target));
@@ -173,8 +186,7 @@ static class Promo
         dc.DrawRoundedRectangle(new LinearGradientBrush(Accent, Color.FromRgb(0x00, 0x5F, 0xB8), 45), null, logo, 26, 26);
         var glyph = Text("", 54, Brushes.White, new Typeface(new FontFamily("Segoe Fluent Icons"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal));
         dc.DrawText(glyph, new Point(logo.X + (logo.Width - glyph.Width) / 2, logo.Y + (logo.Height - glyph.Height) / 2));
-        var big = Text(title, 104, Brushes.White, Bold);
-        dc.DrawText(big, new Point((W - big.Width) / 2, 450 + rise));
+        Film.Words(dc, t, title, 104, Bold, Brushes.White, new SolidColorBrush(Accent), null, W / 2.0, 450 + rise);
         var small = Text(sub, 36, new SolidColorBrush(Color.FromRgb(0xC8, 0xD2, 0xE6)), Regular);
         dc.DrawText(small, new Point((W - small.Width) / 2, 600 + rise));
     }
@@ -183,8 +195,7 @@ static class Promo
     {
         double k = Ease(Math.Clamp(t / 0.5, 0, 1));
         dc.PushOpacity(k);
-        var big = Text(title, 58, Brushes.White, Bold);
-        dc.DrawText(big, new Point((W - big.Width) / 2, 58 + (1 - k) * 14));
+        Film.Words(dc, t, title, 58, Bold, Brushes.White, new SolidColorBrush(Accent), null, W / 2.0, 58);
         var small = Text(sub, 28, new SolidColorBrush(Color.FromRgb(0xA9, 0xB6, 0xCF)), Regular);
         dc.DrawText(small, new Point((W - small.Width) / 2, 140 + (1 - k) * 14));
         dc.Pop();
@@ -286,7 +297,7 @@ static class Promo
     }
 
     /// <summary>Vorführschreibtisch für die Szenen: zwei Spalten links, eine Gruppe oben rechts, eine Reihe unten.</summary>
-    static (List<IconInfo> Icons, Dictionary<string, Point> Homes) DemoDesk()
+    internal static (List<IconInfo> Icons, Dictionary<string, Point> Homes) DemoDesk()
     {
         var names = Demo.IconSet.Select(x => x.Name).ToList();
         var homes = new Dictionary<string, Point>();
