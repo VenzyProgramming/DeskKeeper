@@ -55,6 +55,7 @@ static class Program
             app.Run();
             return result;
         }
+        if (args.Length == 2 && args[0] == "--duell-film") return Promo.DuelFilm(args[1]);
         if (args.Length >= 2 && args[0] == "--promo")
         {
             // Werbevideo als Bildfolge (nur mit Vorführdaten)

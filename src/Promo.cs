@@ -312,6 +312,117 @@ static class Promo
     }
 
     /// <summary>Eine Zerstörungsszene, gerafft auf length Sekunden um die Einschläge; dazu ihre Ton-Ereignisse (Zeit relativ zum Clip).</summary>
+    /// <summary>Film vom Duell F-35A gegen Su-57 (19.11.2026: „den Kampf der beiden Jets in einem Video zeigen“): Titelkarte,
+    /// der Kampf in Echtzeit mit Kamerafahrt und Erschütterung bei Treffern, Schlusskarte. Ton aus derselben Zeitleiste (promo_audio.py).</summary>
+    public static int DuelFilm(string output)
+    {
+        Directory.CreateDirectory(output);
+        foreach (var old in Directory.GetFiles(output, "*.png")) File.Delete(old);
+        var desk = new Rect(0, 0, 1920, 1080);
+        var (icons, homes) = DemoDesk();
+        var scene = new Scene(icons, homes, 52, [desk], desk, true, 64, attack: Attacks.Duel);
+        var duel = (DuelRaid)scene.Attack!;
+        const double intro = 2.4, outro = 3.2, s0 = 0.9;   // s0: Szenenzeit beim Schnitt, die Jets sind dann schon im Bild
+        double fight = duel.BreakAt + 2.3 - s0;
+        var cues = new List<Cue>
+        {
+            new(0.2, "riser", 0, 0.8),
+            new(intro, "jet", 0, 1, fight),
+            new(intro + fight, "cut", 0, 0.8),
+        };
+        double At(double sceneT) => intro + sceneT - s0;
+        bool InFight(double sceneT) => sceneT >= s0 && sceneT <= s0 + fight;
+        foreach (var s in duel.Shots) if (InFight(s.Fire)) cues.Add(new Cue(At(s.Fire), "rocket", Pan(duel.PlaneAt(s.ByF35, s.Fire).X), 0.55));
+        foreach (var b in duel.Bursts) if (InFight(b.Start)) cues.Add(new Cue(At(b.Start), "brrt", Pan(duel.PlaneAt(b.ByF35, b.Start).X), 0.45));
+        foreach (var f in duel.Fans) if (InFight(f.Start)) cues.Add(new Cue(At(f.Start), "pom", Pan(duel.PlaneAt(f.OfF35, f.Start).X), 0.35));
+        var booms = new List<Cue>();
+        foreach (var r in scene.Raid.OrderBy(r => r.T))
+            if (InFight(r.T) && !booms.Any(o => Math.Abs(o.T - At(r.T)) < 0.06)) booms.Add(new Cue(At(r.T), "boom", Pan(r.P.X), 0.75));
+        cues.AddRange(booms);
+        var shake = booms.Select(c => c with { T = c.T - intro }).ToList();
+        double total = intro + fight + outro;
+        WriteTimeline(Path.Combine(output, "timeline.json"), [0, intro, intro + fight], total, cues);
+
+        int frames = (int)(total * Fps);
+        var target = new RenderTargetBitmap(W, H, 96, 96, PixelFormats.Pbgra32);
+        for (int f = 0; f < frames; f++)
+        {
+            double time = f / (double)Fps;
+            var v = new DrawingVisual();
+            using (var dc = v.RenderOpen())
+            {
+                Background(dc, time);
+                if (time < intro)
+                {
+                    double fade = Math.Min(1, (intro - time) / 0.35);
+                    dc.PushOpacity(fade);
+                    Title(dc, time, "F-35A vs Su-57", "The duel. On your desktop.");
+                    dc.Pop();
+                }
+                else if (time < intro + fight)
+                {
+                    double t = time - intro;
+                    double st = s0 + t;
+                    var shakeNow = Film.Shake(shake, t, 1.6);
+                    Film.WhipIn(dc, new Size(W, H), t, () =>
+                    {
+                        dc.PushTransform(new TranslateTransform(shakeNow.X, shakeNow.Y));
+                        DeskFollow(dc, scene, duel, icons, st);
+                        dc.Pop();
+                    });
+                    if (t < 3.4)
+                    {
+                        dc.PushOpacity(Math.Min(1, (3.4 - t) / 0.5));
+                        Caption(dc, t, "Duel", "Rolling scissors · missiles · flares · nobody wins");
+                        dc.Pop();
+                    }
+                    Film.Chip(dc, t, "DeskKeeper 1.5", 16, Regular, Brushes.White, new SolidColorBrush(Color.FromArgb(0x90, 0x10, 0x14, 0x24)), W / 2.0, 22);
+                }
+                else Title(dc, time - intro - fight, "DeskKeeper", "Free and open source · github.com/VenzyProgramming/DeskKeeper");
+                Film.Look(dc, new Size(W, H), f, 0.05);
+            }
+            target.Clear(); target.Render(v);
+            var enc = new PngBitmapEncoder(); enc.Frames.Add(BitmapFrame.Create(target));
+            using var file = File.Create(Path.Combine(output, $"{f:D5}.png")); enc.Save(file);
+        }
+        Console.WriteLine($"ok {frames} Bilder, {total:0.0} s");
+        return 0;
+    }
+
+    /// <summary>Vollbild-Desktop mit Verfolgerkamera: zielt auf die Mitte zwischen den Jets (geglättet über 0,8 s), zoomt näher heran,
+    /// je dichter sie beieinander sind, und fährt beim Auseinanderbrechen auf die ganze Fläche zurück.</summary>
+    static void DeskFollow(DrawingContext dc, Scene scene, DuelRaid duel, List<IconInfo> icons, double time)
+    {
+        Point focus = new(); double zoom = 0; int n = 0;
+        for (double k = 0; k <= 0.8; k += 0.1, n++)
+        {
+            double ti = time - k;
+            var a = duel.PlaneAt(true, ti); var b = duel.PlaneAt(false, ti);
+            focus.X += (a.X + b.X) / 2; focus.Y += (a.Y + b.Y) / 2;
+            zoom += Math.Clamp(1250 / ((a - b).Length + 520), 1.2, 1.75);
+        }
+        focus = new Point(focus.X / n, focus.Y / n); zoom /= n;
+        double wide = Ease(Math.Clamp((time - duel.BreakAt) / 1.4, 0, 1));
+        zoom = zoom + (1 - zoom) * wide;
+        double hw = W / (2 * zoom), hh = H / (2 * zoom);
+        focus = new Point(Math.Clamp(focus.X, hw, 1920 - hw), Math.Clamp(focus.Y, hh, 1080 - hh));
+        focus = new Point(focus.X + (960 - focus.X) * wide, focus.Y + (540 - focus.Y) * wide);
+        dc.PushTransform(new MatrixTransform(zoom, 0, 0, zoom, W / 2.0 - zoom * focus.X, H / 2.0 - zoom * focus.Y));
+        var wall = new LinearGradientBrush(Color.FromRgb(0x14, 0x22, 0x4A), Color.FromRgb(0x2A, 0x16, 0x4A), 35);
+        dc.DrawRectangle(wall, null, new Rect(-200, -200, 2320, 1480));
+        var centers = scene.IconCenters(time);
+        foreach (var icon in icons)
+        {
+            if (centers[icon.Id] is not { } c) continue;
+            double z = 52;
+            dc.DrawImage(Demo.Image(icon.Id), new Rect(c.X - z / 2, c.Y - z * 0.58, z, z));
+            var label = Text(icon.Name, 13, Brushes.White, Regular);
+            dc.DrawText(label, new Point(c.X - label.Width / 2, c.Y + z * 0.46));
+        }
+        scene.Draw(dc, time);
+        dc.Pop();
+    }
+
     static (Action<DrawingContext, double> Draw, List<Cue> Cues) AttackClip(string kind, double length)
     {
         var desk = new Rect(0, 0, 1920, 1080);

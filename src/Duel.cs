@@ -16,14 +16,16 @@ namespace DeskKeeper;
 sealed class DuelRaid : IAttack
 {
     internal record Shot(bool ByF35, double Fire, double Impact, Point To);
-    record Burst(bool ByF35, double Start);
-    record Fan(bool OfF35, double Start);
+    internal record Burst(bool ByF35, double Start);
+    internal record Fan(bool OfF35, double Start);
 
     readonly List<Point> line = [];
     readonly List<double> cum = [];
     internal readonly List<Shot> Shots = [];
     readonly List<Burst> bursts = [];
     readonly List<Fan> fans = [];
+    internal IReadOnlyList<Burst> Bursts => bursts;
+    internal IReadOnlyList<Fan> Fans => fans;
     readonly double speed, spanF, spanS, uF, uS, along, side, t0, length, breakAt;
     const double Period = 5.2, Flight = 1.7, TrailLife = 3.2;
 
@@ -132,6 +134,8 @@ sealed class DuelRaid : IAttack
         var v = line[i + 1] - line[i]; if (v.Length > 0) v.Normalize();
         return (line[i] + (line[i + 1] - line[i]) * k, v);
     }
+
+    internal double BreakAt => breakAt;
 
     bool F35Ahead(double t) => Math.Sin(2 * Math.PI * (t - t0) / Period) > 0;
 
