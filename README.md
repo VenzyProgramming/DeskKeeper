@@ -9,7 +9,7 @@ It has been failing at that job since roughly 1995. DeskKeeper does it instead.
 
 ![DeskKeeper demo](docs/media/deskkeeper-demo.gif)
 
-[Download](../../releases) · [Watch the 30-second promo](docs/media/deskkeeper-promo.mp4) · English · [Deutsch](#deutsch) · [Русский](#русский)
+[Download](../../releases) · [Watch the 30-second promo](https://cdn.jsdelivr.net/gh/VenzyProgramming/DeskKeeper@main/docs/media/deskkeeper-promo.mp4) · English · [Deutsch](#deutsch) · [Русский](#русский)
 
 </div>
 
@@ -93,6 +93,8 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
 Restoring icons instantly is efficient. It is also boring.
 
 Switch *Restore style* to **With DUM-E** and a small top-down robot arm with a trailer drives across your actual desktop, picks up each misplaced icon and carries it home. One icon at a time. Slowly. With dignity. It runs *behind* your windows, so you can keep working while it works.
+
+<p align="center"><img src="docs/media/dum-e.gif" width="70%" alt="DUM-E carrying icons back"></p>
 
 And if you are having a really bad day, the **Scene** page lets you nuke your desktop first – a Jericho strike, a mushroom cloud, a Tu-160M or Tu-95MS bomber run, Tu-22M3 carpet bombing, Su-34 precision strikes, a Ka-52 helicopter attack – or Il-76 paratroopers who simply carry your icons away. Icons turn to ash. DUM-E then rebuilds everything, exactly as it was. Therapy, basically.
 
