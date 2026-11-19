@@ -11,28 +11,35 @@ namespace DeskKeeper;
 static partial class Planes
 {
     // ---------------------------------------------------------------- F-35A Lightning II (Länge 15,7 m, Spannweite 10,7 m)
-    // Rautenflügel (Vorderkante 34°, Hinterkante leicht vorwärts gepfeilt), Rumpf mit Kanten (Chines) und seitlichen DSI-Einläufen,
-    // nach außen geneigte Doppelseitenleitwerke, Höhenleitwerk, ein Triebwerk mit Düse, rahmenlose goldbedampfte Haube, innere Waffenschächte.
-    // 100 Einheiten = Länge, Spannweite 68 Einheiten.
-    static readonly Geometry LightningBody = Fly.Both("M50,0 L47,1.4 L42,3 L36,4.4 L28,5.8 L22,7.6 L14,8.6 L0,9 L-20,9 L-34,7.8 L-42,5.6 L-47,3.6 L-50,3 L-50,0 Z");
-    static readonly Geometry LightningWing = Fly.Both("M8,8.6 L-9,34 L-14.5,34 L-27,8.6 Z");
-    static readonly Geometry LightningTail = Fly.Both("M-33,7 L-43,21 L-48.5,21 L-49,5.6 Z");
-    static readonly Geometry LightningFins = Fly.Both("M-26,6.4 L-40,9.4 L-46.5,10.8 L-46.5,8.6 L-33,6 Z");
-    static readonly Geometry LightningIntakes = Fly.Both("M24,5.8 C22,7.6 18,8.4 14,8.6 L14,6.6 C18,6.4 21,6 24,5.8 Z");
-    static readonly Geometry LightningCanopy = Fly.G("M37.5,0 C37,-1.6 35.4,-2.3 33,-2.4 L24,-2.2 C23,-1.4 23,1.4 24,2.2 L33,2.4 C35.4,2.3 37,1.6 37.5,0 Z");
-    static readonly Geometry LightningSeams = Fly.G("M-24,-9 L-12.5,-30 M-24,9 L-12.5,30 M-44,-6 L-46.5,-19 M-44,6 L-46.5,19 M20,-0.4 L-36,-0.4 M20,0.4 L-36,0.4 " +
-        "M42,-3 L28,-5.8 M42,3 L28,5.8 M10,-6 L-26,-6 M10,6 L-26,6 M-42,-5.6 L-47,-3.6 M-42,5.6 L-47,3.6");
+    // Nach der gemeinfreien Dreiseitenansicht (vorlage/f35a-3view.png, Wikimedia Commons, nach jsf.mil) ausgemessen :
+    // Flügel 34° mit leicht vorwärts gepfeilter Hinterkante, Einlaufwangen mit DSI-Lippe, Leitwerksträger bis hinter die Düse,
+    // nach außen geneigte Seitenleitwerke, Höhenleitwerk hinter der Düse, rahmenlose Haube. 100 Einheiten = Länge, Spannweite 68,4.
+    static readonly Geometry LightningBody = Fly.Both("M50,0 C49.4,0.5 48.3,1 47.5,1.3 L44.9,2.4 L42.4,3.1 L39,3.5 L34.7,4 L30.5,4.5 L25.4,5.1 L22.2,6.4 L23.2,9.4 L22.4,10.3 L19.5,10.7 L4.2,11.6 L1.6,12 L-29.7,11.7 L-34,12.6 L-41.5,8.6 L-41.5,4.2 L-35.5,3.6 L-35.5,0 Z");
+    static readonly Geometry LightningWing = Fly.Both("M2.4,11.8 L-14.1,34.2 L-24,34.2 L-29.7,11.7 Z");
+    static readonly Geometry LightningTail = Fly.Both("M-31,11.8 L-34.1,13.8 L-40.9,23.3 L-45.9,23.3 L-50,7.2 L-50,6.2 L-40.5,4.6 Z");
+    static readonly Geometry LightningFins = Fly.Both("M-24,8.6 L-34.6,14.3 L-45,14.3 L-41.5,8.4 Z");
+    static readonly Geometry LightningIntakes = Fly.Both("M22.4,6.6 L23,9.2 L21.8,9.7 C21.4,8.6 21,7.6 20.4,7 Z");
+    static readonly Geometry LightningNozzle = Fly.Both("M-35.5,3.5 L-38.8,2.8 L-40.4,1.9 L-40.4,0 L-35.5,0 Z");
+    static readonly Geometry LightningCanopy = Fly.Both("M37.6,0 C37,1.5 35.6,2.5 33.4,2.9 L30,3.2 L25,3.2 L22.6,2.7 C21.4,1.8 20.8,0.9 20.6,0 Z");
+    static readonly Geometry LightningGlint = Fly.G("M35.6,-1.4 C34,-2.2 31,-2.5 28,-2.5");
+    static readonly Geometry LightningSeams = Fly.G("M0.8,13.4 L-13.4,32.8 M0.8,-13.4 L-13.4,-32.8 M-26.6,12.2 L-21.6,32.6 M-26.6,-12.2 L-21.6,-32.6 M-6,1.6 L-24,1.6 L-24,5.6 L-6,5.6 L-6,1.6 M-6,-1.6 L-24,-1.6 L-24,-5.6 L-6,-5.6 L-6,-1.6 M20,1.1 L-30,1.1 M20,-1.1 L-30,-1.1 M42.4,3.1 L25.4,5.1 M42.4,-3.1 L25.4,-5.1 M19.5,10.7 L19.5,7.2 L23,5.8 M19.5,-10.7 L19.5,-7.2 L23,-5.8 M-29.7,11.7 L-36,8 L-41.5,8.4 M-29.7,-11.7 L-36,-8 L-41.5,-8.4 M-36,3.6 L-36,8 M-36,-3.6 L-36,-8 M-40.9,23.3 L-37,15 M-40.9,-23.3 L-37,-15 M-35.5,3.5 L-35.5,0 M-35.5,-3.5 L-35.5,-0");
     static readonly Brush LightningTop = Fly.B("#646C73"), LightningShade = Fly.B("#5A6168"), LightningGold = Fly.B("#7A6A3C"), LightningDark = Fly.B("#2A2E32");
-    static readonly Pen LightningEdge = Fly.P("#3A4045", 0.35), LightningSeam = Fly.P("#525A60", 0.22);
+    static readonly Pen LightningEdge = Fly.P("#3A4045", 0.35), LightningSeam = Fly.P("#525A60", 0.22), LightningShine = Fly.P("#B8A874", 0.35);
 
     /// <param name="bay">0 … 1: Waffenschachtklappen offen</param>
     public static void F35(DrawingContext dc, Point at, double heading, double u, double altitude, double t, double bay = 0)
     {
         Fly.ShadowOf(dc, at, heading, u, altitude, LightningWing, LightningTail, LightningBody);
         dc.PushTransform(Fly.Frame(at, heading, u));
-        dc.DrawGeometry(LightningShade, LightningEdge, LightningWing);
         dc.DrawGeometry(LightningShade, LightningEdge, LightningTail);
+        dc.DrawGeometry(LightningShade, LightningEdge, LightningWing);
         dc.DrawGeometry(LightningTop, LightningEdge, LightningBody);
+        dc.DrawGeometry(LightningDark, LightningEdge, LightningNozzle);
+        for (int i = 0; i < 7; i++)
+        {   // Zackenrand der Düse (Radartarnung)
+            double y = -3.0 + i;
+            dc.DrawLine(LightningSeam, new Point(-38.6, y), new Point(-40.2, y * 0.75));
+        }
         dc.DrawGeometry(LightningDark, null, LightningIntakes);
         dc.DrawGeometry(null, LightningSeam, LightningSeams);
         if (bay > 0.01)
@@ -43,38 +50,48 @@ static partial class Planes
             }
         dc.DrawGeometry(LightningShade, LightningEdge, LightningFins);
         dc.DrawGeometry(LightningGold, LightningEdge, LightningCanopy);
-        dc.DrawEllipse(LightningDark, LightningEdge, new Point(-50.4, 0), 1.2, 3.0);   // Düse
-        dc.DrawEllipse(LightningDark, null, new Point(44, 0), 0.9, 0.6);               // EOTS-Fenster unter der Nase
-        Soft.Draw(dc, HogRed, new Point(-12, -33.6), 1, 1, 1);
-        Soft.Draw(dc, HogGreen, new Point(-12, 33.6), 1, 1, 1);
+        dc.DrawGeometry(null, LightningShine, LightningGlint);
+        Soft.Draw(dc, HogRed, new Point(-18, -34.2), 1, 1, 1);
+        Soft.Draw(dc, HogGreen, new Point(-18, 34.2), 1, 1, 1);
         dc.Pop();
     }
 
     // ---------------------------------------------------------------- Су-57 (Länge 20,1 m, Spannweite 14,1 m)
-    // Flacher, tragender Rumpf mit weit getrennten Triebwerksgondeln, bewegliche Vorderkantenwurzeln (LEVCON), Flügel 48°,
-    // ganz bewegliche, geneigte kleine Seitenleitwerke, ganz bewegliches Höhenleitwerk, Heckstachel, getrennte Düsen. 100 Einheiten = Länge.
-    static readonly Geometry FelonBody = Fly.Both("M50,0 L46,1.8 L40,3.6 L30,5.4 L22,7 L14,10 L6,12 L-10,12 L-30,11 L-38,9.6 L-42,8 L-44,6.6 L-44,4 L-38,2.2 L-50,1.4 L-50,0 Z");
-    static readonly Geometry FelonWing = Fly.Both("M6,12 L-17,35 L-23,35 L-25,12 Z");
-    static readonly Geometry FelonTail = Fly.Both("M-30,11 L-38,24 L-44,24 L-44.5,10 Z");
-    static readonly Geometry FelonFins = Fly.Both("M-22,7.6 L-36,9.8 L-42,10.8 L-42,9.2 L-28,7.2 Z");
-    static readonly Geometry FelonLevcon = Fly.Both("M22,7 L14,10 L6,12 L8,10 L16,8 Z");
-    static readonly Geometry FelonCanopy = Fly.G("M36.5,0 C36,-1.6 34.6,-2.2 32.4,-2.3 L25,-2.1 C24.2,-1.3 24.2,1.3 25,2.1 L32.4,2.3 C34.6,2.2 36,1.6 36.5,0 Z");
-    static readonly Geometry FelonCamo = Fly.G("M18,-6 L4,-11 L-8,-11 L2,-4 Z M18,6 L4,11 L-8,11 L2,4 Z M-12,-14 L-20,-28 L-17,-33 L-8,-15 Z M-12,14 L-20,28 L-17,33 L-8,15 Z " +
-        "M-30,-1 L-40,-3 L-38,1 Z M10,-2 L-20,-2 L-24,1 L6,1 Z M-34,-13 L-40,-21 L-42,-14 Z M-34,13 L-40,21 L-42,14 Z");
-    static readonly Geometry FelonSeams = Fly.G("M-22,-12.4 L-21,-33 M-22,12.4 L-21,33 M-41,-11 L-43,-22 M-41,11 L-43,22 M-6,-4 L-34,-3 M-6,4 L-34,3 M30,-5.4 L30,5.4 M6,-12 L6,12");
+    // Aus der Vektor-Dreiseitenansicht (vorlage/su57-3view.svg, Wikimedia Commons, XaHyMaH, CC BY-SA 3.0) übernommen :
+    // tragender Rumpf, LEVCON-Klappen, Flügel mit Vorderkantenklappe und Flaperon, Leitwerksträger außen an den Gondeln, ganz bewegliche
+    // Seitenleitwerke, Höhenleitwerk, getrennte Düsen, Heckstachel, Haube mit Bügel, Infrarotsensor rechts vor der Haube. 100 Einheiten = Länge.
+    static readonly Geometry FelonBody = Fly.Both("M50,0 C42,1.4 33,3.6 27.8,4.4 L20,4.9 L11.2,12.6 L-0.3,15.8 L-9.1,15 L-27.5,15 L-36.1,11.3 L-38.1,10.4 L-38.2,10.1 L-38.4,4.1 L-38.7,3.4 L-50,0 Z");
+    static readonly Geometry FelonWing = Fly.Both("M-0.3,15.8 L-22.8,35.6 L-27.4,35.6 L-29.9,32.1 L-32.2,19.1 L-27.5,15 L-9.1,14 Z");
+    static readonly Geometry FelonTail = Fly.Both("M-27.8,15 L-39.8,25.5 L-44,24.3 L-46.1,12.6 L-36,11.3 Z");
+    static readonly Geometry FelonBoom = Fly.Both("M-19.3,12.4 L-26.4,14.1 L-46.1,12.6 L-36.1,11.3 L-19.9,11.4 Z");
+    static readonly Geometry FelonNozzles = Fly.Both("M-38.4,4.1 L-38.2,10.1 L-40,9.8 L-43,9 L-43.2,5.6 L-40.2,4.5 Z");
+    static readonly Geometry FelonFins = Fly.Both("M-23.4,12.7 L-32.5,16.9 L-35.7,16.9 L-38.6,12.9 L-32.8,12.4 L-29.6,12.4 Z");
+    static readonly Geometry FelonLevcon = Fly.Both("M20,4.9 L11.2,12.6 L8.2,13.4 L12.6,5.9 L19.8,5 Z");
+    static readonly Geometry FelonCanopy = Fly.Both("M37.5,0 L34.9,2.4 L28.9,2.8 L25.7,2.7 L21.1,0 Z");
+    static readonly Geometry FelonGlass = Fly.Both("M37.1,0 L34.5,2.2 L29.8,2.6 L31,0 Z M30.5,0 L29.1,2.6 L25.5,2.6 L24.7,0 Z");
+    static readonly Geometry FelonCamo = Fly.G("M26,-4.6 L12,-11.6 L5,-13.6 L11,-6 Z M14,6 L2,14.2 L-6,14.6 L4,7 Z M-4,-16.6 L-14,-27 L-19.5,-31 L-12,-17.4 Z " +
+        "M-6,17 L-16,28 L-22,33.6 L-25,31 L-14,20 Z M-26,-21 L-29.4,-30 L-27.6,-33 L-24,-24 Z M-10,-3 L-28,-2 L-32,2 L-14,2 Z " +
+        "M-31,13 L-39,20.6 L-43,23.2 L-44.6,15 Z M-30,-13.4 L-38,-20 L-42,-14 Z M2,-8 L-8,-12.4 L-16,-12.4 L-6,-7 Z M-18,6 L-26,9.6 L-34,9.8 L-24,5.6 Z");
+    static readonly Geometry FelonSeams = Fly.G("M19.8,5 L12.6,5.9 L8.2,13.4 M19.8,-5 L12.6,-5.9 L8.2,-13.4 M-0.3,15.8 L-8.4,15.8 L-9.1,15 L-27.5,15 M-0.3,-15.8 L-8.4,-15.8 L-9.1,-15 L-27.5,-15 M-18.8,32 L-21.9,32 L-3.5,15.8 M-18.8,-32 L-21.9,-32 L-3.5,-15.8 M-31.2,25 L-26.6,25 M-31.2,-25 L-26.6,-25 M-29.9,32.1 L-27.9,32.1 L-26.6,25 L-28.3,15.7 M-29.9,-32.1 L-27.9,-32.1 L-26.6,-25 L-28.3,-15.7 M-22.8,9.1 L-28.9,9.7 L-36.1,10.2 M-22.8,-9.1 L-28.9,-9.7 L-36.1,-10.2 M-23,4.4 L-28.8,4.1 L-35.3,3.8 L-38.4,4.1 M-23,-4.4 L-28.8,-4.1 L-35.3,-3.8 L-38.4,-4.1 M-29.2,3.5 L-35.4,3.2 L-38.7,3.4 M-29.2,-3.5 L-35.4,-3.2 L-38.7,-3.4 M-43.2,5.6 L-43,9 M-43.2,-5.6 L-43,-9 M-40.3,4.5 L-40,9.8 M-40.3,-4.5 L-40,-9.8 M-35.1,12.6 L-46.1,12.6 M-35.1,-12.6 L-46.1,-12.6 M-19.3,12.4 L-21.3,12.7 L-22.8,12.5 L-23,12 L-19.9,11.4 M-19.3,-12.4 L-21.3,-12.7 L-22.8,-12.5 L-23,-12 L-19.9,-11.4 M-23,12 L-24,11.7 L-25.5,11.4 M-23,-12 L-24,-11.7 L-25.5,-11.4");
     static readonly Brush FelonTop = Fly.B("#9AA6AE"), FelonShade = Fly.B("#8B979F"), FelonPatch = Fly.B("#6F7D88"), FelonGold = Fly.B("#8A7A48"), FelonDark = Fly.B("#2B3034");
     static readonly Pen FelonEdge = Fly.P("#56616A", 0.35), FelonSeam = Fly.P("#7C8890", 0.22);
+    static readonly Geometry FelonSkin = Geometry.Combine(Geometry.Combine(FelonBody, FelonWing, GeometryCombineMode.Union, null), FelonTail, GeometryCombineMode.Union, null);
 
     public static void Su57(DrawingContext dc, Point at, double heading, double u, double altitude, double t, double bay = 0)
     {
         Fly.ShadowOf(dc, at, heading, u, altitude, FelonWing, FelonTail, FelonBody);
         dc.PushTransform(Fly.Frame(at, heading, u));
-        dc.DrawGeometry(FelonShade, FelonEdge, FelonWing);
         dc.DrawGeometry(FelonShade, FelonEdge, FelonTail);
+        dc.DrawGeometry(FelonShade, FelonEdge, FelonWing);
         dc.DrawGeometry(FelonTop, FelonEdge, FelonBody);
+        dc.DrawGeometry(FelonDark, FelonEdge, FelonNozzles);
         dc.DrawGeometry(FelonShade, FelonEdge, FelonLevcon);
-        dc.DrawGeometry(FelonPatch, null, FelonCamo);
+        dc.PushClip(FelonSkin);
+        dc.DrawGeometry(FelonPatch, null, FelonCamo);   // Splittertarnung nur auf der Haut
+        dc.Pop();
+        dc.DrawGeometry(FelonTop, FelonEdge, FelonBoom);
         dc.DrawGeometry(null, FelonSeam, FelonSeams);
+        dc.DrawRectangle(null, FelonSeam, new Rect(-42.7, -1.1, 4.3, 2.2));   // Bremsschirmklappe
         if (bay > 0.01)
             foreach (double s in new[] { -1.0, 1.0 })
             {   // zwei Schächte hintereinander zwischen den Gondeln
@@ -82,29 +99,29 @@ static partial class Planes
                 dc.DrawRectangle(FelonShade, FelonEdge, new Rect(-30, s > 0 ? 3.6 : -3.6 - 2.6 * bay, 26, 2.6 * bay));
             }
         dc.DrawGeometry(FelonShade, FelonEdge, FelonFins);
-        dc.DrawGeometry(FelonGold, FelonEdge, FelonCanopy);
-        foreach (double s in new[] { -1.0, 1.0 })
-        {
-            dc.DrawEllipse(FelonDark, FelonEdge, new Point(-44.5, 5.3 * s), 1.0, 2.0);   // getrennte Düsen
-            Art.Star(dc, new Point(-14, 24 * s), 1.8, 0);
-        }
-        dc.DrawEllipse(FelonDark, null, new Point(38.5, -1.4), 0.7, 0.7);   // Infrarotsensor vor der Haube
-        Soft.Draw(dc, HogRed, new Point(-19, -34.6), 1, 1, 1);
-        Soft.Draw(dc, HogGreen, new Point(-19, 34.6), 1, 1, 1);
+        dc.DrawGeometry(FelonDark, FelonEdge, FelonCanopy);
+        dc.DrawGeometry(FelonGold, null, FelonGlass);
+        dc.DrawEllipse(FelonDark, FelonEdge, new Point(37.8, 0.8), 1.9, 0.7);   // Infrarotsensor, rechts versetzt
+        foreach (double s in new[] { -1.0, 1.0 }) Art.Star(dc, new Point(-15, 24 * s), 1.8, 0);
+        Soft.Draw(dc, HogRed, new Point(-25, -35.6), 1, 1, 1);
+        Soft.Draw(dc, HogGreen, new Point(-25, 35.6), 1, 1, 1);
         dc.Pop();
     }
 
     // ---------------------------------------------------------------- B-2 Spirit (Spannweite 52,4 m, Länge 21 m)
-    // Nurflügel: gerade Vorderkante 33°, Hinterkante als doppeltes W, vier eingegrabene Triebwerke mit Einläufen oben und flachen
-    // Abgasrinnen, kleines Cockpit an der Spitze. 100 Einheiten = Spannweite (Länge 40 Einheiten).
-    static readonly Geometry SpiritWing = Fly.Both("M20,0 L-12.5,50 L-15,50.4 L-17,49 L-9.5,35 L-19.5,21 L-13,10 L-20,0 Z");
-    static readonly Geometry SpiritHump = Fly.Both("M17,0 C15,2.6 10,4.6 2,5.4 L-12,4.6 L-16,0 Z");
-    static readonly Geometry SpiritIntakes = Fly.Both("M8.5,5.4 L6.6,9.4 L5.2,9 L7,5.2 Z M6,11 L4.2,14.6 L2.8,14.2 L4.6,10.6 Z");
-    static readonly Geometry SpiritExhaust = Fly.Both("M-6,6 L-12,8 L-12.5,10 L-6.5,8.4 Z M-8,12 L-14,13.6 L-14.4,15.4 L-8.5,14.2 Z");
+    // Nach dem gemeinfreien US-Air-Force-Foto von oben (vorlage/b2-planview.jpg, Andersen AFB 2006) ausgemessen und die Schrägsicht
+    // des Fotos herausgerechnet : gerade Vorderkante, Hinterkante als doppeltes W mit Biberschwanz in der Mitte,
+    // je Seite ein Einlauf mit Zackenlippe, helle Abgasrinnen bis zur Hinterkante, Cockpitfenster, helle Laufwegmarkierungen.
+    // 100 Einheiten = Spannweite (Länge 40 Einheiten).
+    static readonly Geometry SpiritWing = Fly.Both("M20,0 L-12.5,50 L-13.4,50 L-18.4,42.6 L-8.6,25.7 L-17.4,12.9 L-14.4,8 L-17.2,4.2 L-20,0 Z");
+    static readonly Geometry SpiritHump = Fly.Both("M17.5,0 C15.5,2.4 11,4 7,4.3 L-9,4.4 L-17.2,4.2 L-20,0 Z");
+    static readonly Geometry SpiritIntakes = Fly.Both("M8,4.4 L6.4,7 L8,9.6 L6,10 L4.8,7.2 L5.4,4.2 Z");
+    static readonly Geometry SpiritCheeks = Fly.Both("M9.6,4.2 C9,6.4 9,8.6 9.8,10.4 L6,10.6 L4.4,7.2 L5.2,4.2 Z");
+    static readonly Geometry SpiritExhaust = Fly.Both("M-9,4.4 L-16.4,4.6 L-14.4,8 L-16.6,11.6 L-9,11 Z");
     static readonly Geometry SpiritGlass = Fly.Both("M15.6,0.3 L14.6,2.2 L13.6,2.2 L14.4,0.3 Z M13.4,0.3 L12.6,2.4 L11.8,2.4 L12.4,0.3 Z");
-    static readonly Geometry SpiritSeams = Fly.G("M-9.5,-35 L-6,-43 M-9.5,35 L-6,43 M-19.5,-21 L-14,-28 M-19.5,21 L-14,28 M-13,-10 L-16,-16 M-13,10 L-16,16 M-20,0 L-16,0");
-    static readonly Brush SpiritTop = Fly.B("#40464C"), SpiritShade = Fly.B("#383E44"), SpiritDark = Fly.B("#202428");
-    static readonly Pen SpiritEdge = Fly.P("#2C3136", 0.25), SpiritSeam = Fly.P("#4C535A", 0.18);
+    static readonly Geometry SpiritMarks = Fly.G("M-10.4,47.6 L-15.9,42.6 L-6.1,25.7 L-14.6,13.4 M-10.4,-47.6 L-15.9,-42.6 L-6.1,-25.7 L-14.6,-13.4 M14.6,3.6 L-8.6,40.6 M14.6,-3.6 L-8.6,-40.6 M-9,4.4 L-9,11 M-9,-4.4 L-9,-11 M6,4.2 L-9,4.4 M6,-4.2 L-9,-4.4");
+    static readonly Brush SpiritTop = Fly.B("#4B5664"), SpiritShade = Fly.B("#434D5A"), SpiritDark = Fly.B("#1A1E23"), SpiritTiles = Fly.B("#6C7682");
+    static readonly Pen SpiritEdge = Fly.P("#2C333B", 0.25), SpiritMark = Fly.P("#8C96A0", 0.22), SpiritSeam = Fly.P("#3A424C", 0.2);
 
     public static void B2(DrawingContext dc, Point at, double heading, double u, double altitude, double t)
     {
@@ -112,11 +129,13 @@ static partial class Planes
         dc.PushTransform(Fly.Frame(at, heading, u));
         dc.DrawGeometry(SpiritShade, SpiritEdge, SpiritWing);
         dc.DrawGeometry(SpiritTop, SpiritEdge, SpiritHump);
+        dc.DrawGeometry(SpiritTiles, SpiritSeam, SpiritExhaust);
+        foreach (double s in new[] { -1.0, 1.0 }) dc.DrawLine(SpiritSeam, new Point(-9, 7.6 * s), new Point(-14.4, 8 * s));   // zwei Triebwerke je Rinne
+        dc.DrawGeometry(SpiritTop, SpiritEdge, SpiritCheeks);
         dc.DrawGeometry(SpiritDark, null, SpiritIntakes);
-        dc.DrawGeometry(SpiritDark, null, SpiritExhaust);
-        dc.DrawGeometry(null, SpiritSeam, SpiritSeams);
+        dc.DrawGeometry(null, SpiritMark, SpiritMarks);
         dc.DrawGeometry(SpiritDark, SpiritEdge, SpiritGlass);
-        if ((t % 1.5) < 0.08) { Soft.Draw(dc, HogRed, new Point(-13.5, -50), 0.8, 0.8, 1); Soft.Draw(dc, HogGreen, new Point(-13.5, 50), 0.8, 0.8, 1); }
+        if ((t % 1.5) < 0.08) { Soft.Draw(dc, HogRed, new Point(-13, -50), 0.8, 0.8, 1); Soft.Draw(dc, HogGreen, new Point(-13, 50), 0.8, 0.8, 1); }
         dc.Pop();
     }
 

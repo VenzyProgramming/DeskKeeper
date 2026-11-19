@@ -57,6 +57,10 @@ And since it is open source, you can fix it yourself, mod it, or add your own sc
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.4.1
+
+- **F-35A, Su-57 and B-2 redrawn from real top views.** The F-35A follows a public-domain three-view: wing sweep, the intake cheeks, the tail booms behind the nozzle, the outward-canted fins and the serrated nozzle. The Su-57 outline comes from a vector three-view: LEVCONs, leading-edge flaps, flaperons, the tail booms beside the engines, separate nozzles and the IRST ball offset to the right. The B-2 follows a U.S. Air Force photo taken from directly above: the double-W trailing edge, the sawtooth intakes, the light exhaust troughs and the walkway markings.
+
 ## What's new in 1.4.0
 
 Five new scenes, seventeen in total:

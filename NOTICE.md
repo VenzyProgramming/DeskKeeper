@@ -12,7 +12,7 @@ The SVG itself is not included. The adapted outline (those coordinates in `src/A
 
 ## Outlines checked against reference drawings
 
-Several top views in `src/Aircraft.cs`, `src/Strike.cs` and `src/Lift.cs` were measured or corrected against these drawings. The drawings themselves are not included. The adapted coordinates are shared under the license of their source:
+Several top views in `src/Aircraft.cs`, `src/Strike.cs`, `src/Strike2.cs` and `src/Lift.cs` were measured or corrected against these drawings. The drawings themselves are not included. The adapted coordinates are shared under the license of their source:
 
 | Model | Reference | Author | License |
 |---|---|---|---|
@@ -24,6 +24,9 @@ Several top views in `src/Aircraft.cs`, `src/Strike.cs` and `src/Lift.cs` were m
 | AC-130U | "Lockheed Martin KC-130J Hercules 3-view line drawing.svg", Wikimedia Commons | Jetijones | CC BY 3.0 |
 | CH-47 Chinook | "Boeing CH-47 Chinook 3-view line drawing.svg", Wikimedia Commons | Jetijones | CC BY 3.0 |
 | Mi-26 | "Mil Mi-26 Line Drawing.svg", Wikimedia Commons | Jetijones | CC BY 3.0 |
+| Su-57 | "Sukhoi T-50 3-view.svg", Wikimedia Commons | XaHyMaH | CC BY-SA 3.0 |
+| F-35A | "Lockheed Martin F-35A Lightning II 3-view drawing.png", Wikimedia Commons (derived from www.jsf.mil images) | The High Fin Sperm Whale | Public domain |
+| B-2 Spirit | "B2PlanView.jpg", Wikimedia Commons, U.S. Air Force photo | Staff Sgt. Bennie J. Davis III | Public domain (U.S. Government work) |
 
 Licenses: CC BY-SA 3.0 <https://creativecommons.org/licenses/by-sa/3.0/>, CC BY 3.0 <https://creativecommons.org/licenses/by/3.0/>.
 
