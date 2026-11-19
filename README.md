@@ -53,7 +53,7 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
 
 ## What's new in 1.2.5
 
-- **Bombs hit icons, not empty desktop.** Every attack now aims at your actual icons, wherever they sit on your screens. Cruise missiles (Tu-160M, Tu-95MS) target groups of neighbouring icons, with each impact on an icon. The Tu-22M3 and Su-34 fly their rows where your icons are, across all displays, and the carpet drops a second bomb next to each icon instead of into the gaps. Jericho's extra rockets hit icons too.
+- **Bombs hit icons, not empty desktop.** Every attack now aims at your actual icons, wherever they sit on your screens. Cruise missiles (Tu-160M, Tu-95MS) target groups of neighbouring icons, with each impact on an icon. The Tu-22M3 and Su-34 fly their rows where your icons are, across all displays, and the carpet drops a second bomb next to each icon instead of into the gaps. Jericho's main blast and its rockets land on an icon, not between icons. The Ka-52's rockets and Vikhr missiles hit the icon itself.
 - An icon only catches fire when an impact is within reach, no longer from a far-away shock wave.
 
 ## What's new in 1.2.4

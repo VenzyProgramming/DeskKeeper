@@ -504,6 +504,7 @@ sealed class Scene
             main = icons.Select(i => i.Center).OrderByDescending(c => icons.Sum(o => Math.Exp(-(o.Center - c).LengthSquared / (2 * sigma * sigma)))).First();
             var cluster = icons.Where(o => (o.Center - main).Length < sigma * 1.5).Select(o => o.Center).ToList();
             main = new Point(cluster.Average(c => c.X), cluster.Average(c => c.Y));
+            var mid = main; main = cluster.OrderBy(c => (c - mid).LengthSquared).First();   // Einschlag auf einem Symbol, nicht in der Lücke 
         }
         var chosen = new List<Point> { main };
         // Kleine Raketen zuerst auf Symbole außerhalb der Hauptexplosion: jeweils dorthin, wo die meisten
@@ -513,7 +514,8 @@ sealed class Scene
         {
             var seed = open.OrderByDescending(c => open.Count(o => (o - c).Length <= MiniBlastRadius)).First();
             var group = open.Where(o => (o - seed).Length <= MiniBlastRadius).ToList();
-            var at = new Point(group.Average(c => c.X), group.Average(c => c.Y));
+            var center = new Point(group.Average(c => c.X), group.Average(c => c.Y));
+            var at = group.OrderBy(c => (c - center).LengthSquared).First();   // auf das Symbol nächst der Gruppenmitte
             chosen.Add(at);
             open.RemoveAll(o => (o - at).Length <= MiniBlastRadius * 1.05 || (o - seed).Length <= MiniBlastRadius);
         }

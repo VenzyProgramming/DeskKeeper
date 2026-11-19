@@ -39,7 +39,7 @@ static class Check
             Pass("19-blitze-auf-sichtbaren-flaechen", centers.Length == 19 && centers.All(c => screens.Any(s => s.Contains(c))));
             Pass("blitze-auf-beiden-bildschirmen", centers.Any(primary.Contains) && centers.Any(second.Contains));
             // 19.11.2026: Blitze auf Symbole, nicht in leere Viertel des Bildschirms
-            Pass("blitze-auf-symbolen", centers.Skip(1).All(c => icons.Any(i => (i.Center - c).Length <= iconSize * 1.5)));
+            Pass("blitze-auf-symbolen", centers.All(c => icons.Any(i => (i.Center - c).Length <= iconSize * 0.6)));
             Pass("dubina-so-gross-wie-der-saugroboter", Math.Abs(scene.RobotSize - 64) < 0.01);
             Pass("jedes-symbol-einzeln-gestellt", scene.CarriedCount == icons.Count);
             var burnt = scene.IconCenters(scene.RobotStart - 0.05);
