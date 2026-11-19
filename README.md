@@ -51,12 +51,18 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.2.1
+
+- **The Ka-52 attacks every icon on its own.** It turns to each icon and picks a weapon by distance: the 30 mm cannon (a tracer burst that walks onto the icon) for the nearest ones, a pair of S-8 rockets for the middle ones, a Vikhr guided missile for the farthest ones – it keeps the target in its sights until impact.
+- An icon only catches fire when it is hit itself, no longer from the shock wave of the first hit.
+- The Ka-52 also flies over to your other displays and hovers at two or three spots on wide screens.
+
 ## What's new in 1.2
 
 - **Five new scenes**, each drawn top-down from the real aircraft's proportions:
   - **Tu-22M3** – two bombers fly in formation and carpet-bomb row after row.
   - **Su-34** – a pair of strike jets drops guided bombs on single icons, then climbs away.
-  - **Ka-52** – the attack helicopter flies in, hovers, turns to each icon and fires rockets. Both coaxial rotors spin, with motion blur.
+  - **Ka-52** – the attack helicopter flies in, hovers and attacks each icon on its own with cannon, rockets or guided missiles. Both coaxial rotors spin, with motion blur.
   - **Tu-95MS** – the turboprop bomber launches cruise missiles; its contra-rotating propellers turn.
   - **Il-76** – no explosions: paratroopers jump, land on your icons and carry them off-screen. DUM-E brings them back.
 - The Scene page shows all eight attacks with a preview picture each.

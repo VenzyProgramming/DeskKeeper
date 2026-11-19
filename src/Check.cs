@@ -159,9 +159,36 @@ static class Check
                 Pass(attack + "-einschlaege-vorhanden", sc.Raid.Count >= 12);
                 Pass(attack + "-alle-symbole-weg-vor-dume", sc.IconCenters(sc.RobotStart - 0.05).Values.All(v => v is null));
                 Pass(attack + "-am-ende-alle-zuhause", sc.IconCenters(sc.Duration).All(e => e.Value is { } v && (v - homes[e.Key]).Length < 0.5));
-                Pass(attack + "-dauer-unter-100-s", sc.Duration < 100);
+                double limit = attack == Attacks.Ka52 ? 110 : 100;   // Ka-52 greift jedes Symbol einzeln an : dauert mit der Symbolzahl länger
+                Pass($"{attack}-dauer-unter-{limit:0}-s", sc.Duration < limit);
                 results[attack + "-dauer-s"] = Math.Round(sc.Duration, 1);
                 for (int f = 0; f < frames.Length; f++) Save(Frame(sc, all, icons, frames[f], 0.5), Path.Combine(output, $"{attack}-{f + 1}.png"));
+                if (sc.Attack is HelicopterRaid heli)
+                {   // Ka-52 : jedes Symbol einzeln, Waffe nach Entfernung
+                    var plan = heli.Plan;
+                    var byCenter = icons.ToDictionary(i => i.Center, i => i.Id);
+                    bool each = plan.All(e => byCenter.TryGetValue(e.Target, out var id)
+                        && sc.IconCenters(e.Hit - 0.05)[id] is not null && sc.IconCenters(e.Hit + 0.2)[id] is null);
+                    Pass("ka52-jedes-symbol-erst-beim-eigenen-treffer", plan.Count > 0 && each);
+                    Pass("ka52-ziele-nacheinander", plan.Zip(plan.Skip(1)).All(p => p.Second.Hit > p.First.Hit - 0.3) && plan[^1].Hit - plan[0].Hit > plan.Count * 0.2);
+                    Pass("ka52-mehrere-waffen", plan.Select(e => e.Weapon).Distinct().Count() >= 2); Pass("ka52-alle-symbole-angeflogen", plan.Count == icons.Count);
+                    results["ka52-waffen"] = string.Join(" ", plan.GroupBy(e => e.Weapon).Select(g => g.Key + "=" + g.Count()));
+                    results["ka52-schwebepunkte"] = plan.Select(e => e.Hover).Distinct().Count();
+                    double fight = plan[^1].Hit - plan[0].Start;
+                    results["ka52-angriff-s"] = Math.Round(fight, 1);
+                    Pass("ka52-je-symbol-unter-1-s", fight / plan.Count < 1.0);
+                    if (plan.FirstOrDefault(e => e.Hover != plan[0].Hover) is { } next)
+                    {   // Umsetzen und Angriff am nächsten Schwebepunkt (anderer Bildschirm)
+                        Save(Frame(sc, all, icons, next.Start - 0.9, 0.5), Path.Combine(output, "ka52-umsetzen.png"));
+                        Save(Frame(sc, all, icons, next.Start + 0.15, 0.5), Path.Combine(output, "ka52-zweiter-schwebepunkt.png"));
+                    }
+                    foreach (var w in plan.GroupBy(e => e.Weapon))
+                    {
+                        var e = w.First();
+                        double at = w.Key == HelicopterRaid.Weapon.Gun ? e.Start + 0.12 : w.Key == HelicopterRaid.Weapon.Rockets ? e.Start + 0.2 : (e.Start + e.Hit) / 2;
+                        Save(Frame(sc, all, icons, at, 0.5), Path.Combine(output, $"ka52-waffe-{w.Key}.png".ToLowerInvariant()));
+                    }
+                }
             }
             {   // Typentafel: alle fünf Draufsichten groß, Rotoren und Propeller in zwei Stellungen
                 var v = new DrawingVisual();

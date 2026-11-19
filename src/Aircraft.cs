@@ -15,6 +15,10 @@ interface IAttack
     double End { get; }
     /// <summary>false: kein Feuer, keine Asche (Il-76: Fallschirmjäger tragen die Symbole weg).</summary>
     bool Explodes { get; }
+    /// <summary>Bis wohin ein Einschlag Symbole in Brand setzt; unendlich: Druckwelle wie bisher (der erste Treffer zündet die Nachbarn).</summary>
+    double Reach => double.PositiveInfinity;
+    /// <summary>Größe je Einschlag (1 = normal), null: alle gleich.</summary>
+    IReadOnlyList<double>? BlastSizes => null;
     void Draw(DrawingContext dc, double t);
 }
 
@@ -25,7 +29,9 @@ static class Attacks
 
     /// <param name="clusters">dichteste Gruppen zuerst (für Marschflugkörper)</param>
     /// <param name="icons">Symbolmitten auf dem Hauptbildschirm (für Treffer je Symbol)</param>
-    public static IAttack? Create(string? kind, Rect stage, IReadOnlyList<Point> clusters, IReadOnlyList<Point> icons, double iconSize)
+    /// <param name="screens">alle Bildschirme (Ka-52 fliegt sie an)</param>
+    /// <param name="everywhere">alle Symbolmitten auf allen Bildschirmen</param>
+    public static IAttack? Create(string? kind, Rect stage, IReadOnlyList<Point> clusters, IReadOnlyList<Point> icons, double iconSize, IReadOnlyList<Rect>? screens = null, IReadOnlyList<Point>? everywhere = null)
     {
         var each = icons.Count > 0 ? icons : clusters.Take(12).ToList();
         return kind switch
@@ -33,7 +39,7 @@ static class Attacks
             Tu160 => new Bomber(stage, clusters.Take(14).ToList(), iconSize),
             Tu22 => new RowRaid(RowRaid.Kind.Carpet, stage, each, iconSize),
             Su34 => new RowRaid(RowRaid.Kind.Strike, stage, each, iconSize),
-            Ka52 => new HelicopterRaid(stage, each, iconSize),
+            Ka52 => new HelicopterRaid(stage, everywhere is { Count: > 0 } ? everywhere : each, iconSize, screens),
             Tu95 => new BearRaid(stage, clusters.Take(12).ToList(), iconSize),
             Il76 => new AirborneRaid(stage, each, iconSize),
             _ => null,
@@ -177,7 +183,7 @@ static class Planes
     static readonly Geometry Ka52Tail = Fly.Both("M-39,1.5 L-41.5,11.2 L-47.5,11.2 L-47.5,1.5 Z");
     static readonly Geometry Ka52Fins = Fly.Both("M-36.5,10.6 L-49.5,10.6 L-49.5,12.6 L-36.5,12.6 Z");
     static readonly Brush KaLight = Fly.B("#58614F"), KaShade = Fly.B("#49513F"), KaBlade = Fly.B("#262923"), KaDisc = Fly.B("#1E202620"), Pod = Fly.B("#3A3F37");
-    static readonly Pen KaEdge = Fly.P("#2A2F25", 0.4);
+    static readonly Pen KaEdge = Fly.P("#2A2F25", 0.4), KaSeam = Fly.P("#22261F", 0.3);
     const double RotorRadius = 54, RotorSpeed = 11;   // rad/s, sichtbar langsamer als echt, damit man die Blätter sieht
 
     public static void Ka52(DrawingContext dc, Point at, double heading, double u, double altitude, double t)
@@ -194,7 +200,9 @@ static class Planes
         foreach (double s in new[] { -1.0, 1.0 })
         {
             dc.DrawRoundedRectangle(Pod, KaEdge, new Rect(-6, 12.8 * s - 2, 14, 4), 2, 2);    // Raketenbehälter innen
-            dc.DrawRoundedRectangle(Pod, KaEdge, new Rect(-5, 20.2 * s - 1.8, 12, 3.6), 1.8, 1.8); // außen
+            dc.DrawRoundedRectangle(Pod, KaEdge, new Rect(-8, 20.2 * s - 2.6, 17, 5.2), 1, 1);     // außen: Vikhr-Starter, 6 Rohre
+            dc.DrawLine(KaSeam, new Point(-8, 20.2 * s - 0.9), new Point(9, 20.2 * s - 0.9));
+            dc.DrawLine(KaSeam, new Point(-8, 20.2 * s + 0.9), new Point(9, 20.2 * s + 0.9));
         }
         dc.DrawGeometry(KaShade, KaEdge, Ka52Tail);
         dc.DrawGeometry(KaShade, KaEdge, Ka52Fins);
@@ -357,6 +365,54 @@ static class Planes
         dc.DrawEllipse(RocketBody, BombEdge, new Point(0, 0), 2.6, 0.7);
         dc.Pop();
     }
+    static readonly Pen TracerGlow = Fly.P("#60FFB050", 2.6), TracerCore = Fly.P("#FFFFF0C0", 0.9), VikhrSmoke = Fly.P("#70E8E8E8", 1.6), LaserBeam = Fly.P("#70FF4A3A", 0.5);
+    static readonly Brush Dust = Art.Glow("#B0786A58"), Spark = Art.Glow("#F0FFE7A0"), VikhrBody = Fly.B("#C8CEC2");
+
+    /// <summary>30-mm-Leuchtspur: kurzer glühender Strich.</summary>
+    public static void Tracer(DrawingContext dc, Point from, Point at, double u)
+    {
+        var dir = at - from; if (dir.LengthSquared < 1e-6) return;
+        double len = dir.Length; dir /= len;
+        var tail = at - dir * Math.Min(len, 16 * u);
+        dc.DrawLine(Scaled(TracerGlow, u), tail, at);
+        dc.DrawLine(Scaled(TracerCore, u), tail + (at - tail) * 0.35, at);
+    }
+
+    /// <summary>Einschlag eines Kanonengeschosses: Funke, dann Staubwölkchen.</summary>
+    public static void GunHit(DrawingContext dc, Point at, double age, double u)
+    {
+        if (age < 0.07) Soft.Draw(dc, Spark, at, 4.5 * u, 4.5 * u, 1 - age / 0.07);
+        double k = age / 0.5;
+        Soft.Draw(dc, Dust, at, (3 + 7 * k) * u, (2.6 + 6 * k) * u, 0.85 * (1 - k));
+    }
+
+    /// <summary>Vikhr-Lenkflugkörper mit Kreuzflügeln.</summary>
+    public static void Vikhr(DrawingContext dc, Point at, double heading, double u)
+    {
+        dc.PushTransform(Fly.Frame(at, heading, u * 0.6));
+        Soft.Draw(dc, Flame, new Point(-6.4, 0), 3.4, 2, 0.95);
+        dc.DrawGeometry(VikhrBody, BombEdge, Fly.Both("M-3,0.8 L-5.2,2.6 L-6,2.6 L-5,0.8 Z"));
+        dc.DrawEllipse(VikhrBody, BombEdge, new Point(0, 0), 5, 0.85);
+        dc.DrawGeometry(VikhrBody, BombEdge, Fly.Both("M3.4,0.7 L2.4,1.7 L1.8,1.7 L2.2,0.7 Z"));
+        dc.Pop();
+    }
+
+    /// <summary>Rauchspur der Vikhr, bleibt nach dem Einschlag kurz stehen.</summary>
+    public static void VikhrTrail(DrawingContext dc, Point from, Point at, double u, double opacity)
+    {
+        dc.PushOpacity(Math.Clamp(opacity, 0, 1));
+        dc.DrawLine(Scaled(VikhrSmoke, u), from, at);
+        dc.Pop();
+    }
+
+    /// <summary>Leitstrahl vom Visier zum Ziel (gedämpft, flackernd).</summary>
+    public static void Laser(DrawingContext dc, Point from, Point to, double u, double opacity)
+    {
+        dc.PushOpacity(Math.Clamp(opacity, 0, 1));
+        dc.DrawLine(Scaled(LaserBeam, u), from, to);
+        dc.Pop();
+    }
+
     static Pen Scaled(Pen p, double u) { var c = p.Clone(); c.Thickness = p.Thickness * Math.Max(0.6, u); c.Freeze(); return c; }
 
     static readonly Brush CanopyA = Fly.B("#E4E0CA"), CanopyB = Fly.B("#98A06C"), CanopyVent = Fly.B("#5D6146"), Trooper = Fly.B("#5A683D"),
@@ -499,101 +555,265 @@ sealed class RowRaid : IAttack
     }
 }
 
-/// <summary>Ka-52: fliegt ein, schwebt, dreht sich nacheinander zu jedem Symbol und feuert eine Rakete, fliegt ab.</summary>
+/// <summary>Ka-52 (19.11.2026: „alle Verknüpfungen einzeln angreifen, je nach Bewaffnung“): fliegt ein, schwebt an einer oder mehreren
+/// Stellen, dreht sich zu jedem Symbol einzeln und wählt die Waffe nach Entfernung und Vorrat:
+/// nah die 30-mm-Kanone 2A42 (Feuerstoß mit Leuchtspur, die Treffer wandern auf das Symbol), mittel eine S-8-Zweiersalve aus den inneren
+/// Behältern B-8V20, weit eine Vikhr aus den äußeren Startern (Leitstrahl: der Hubschrauber hält das Ziel bis zum Einschlag).
+/// Jedes Symbol brennt erst, wenn es selbst getroffen ist (Reach), nicht schon durch die Druckwelle des ersten Treffers.</summary>
 sealed class HelicopterRaid : IAttack
 {
-    readonly Rect stage;
-    readonly double span, arrive, leave, gone, inHeading, outHeading;
-    readonly double enter = 0.3;
-    readonly Point entry, hover, exit;
-    readonly List<Shot> shots = [];
-    record Shot(Point Target, Point Launch, double Fire, double Impact, double Heading);
-    const double FlyIn = 2.6, Step = 0.34, FlyOut = 2.6;
+    public enum Weapon { Gun, Rockets, Vikhr }
+    internal record Engage(Point Target, Weapon Weapon, double Aim, double Start, double Done, double Hit, Point Hover);
+    record Leg(Point Hover, double From, double To);
+    record Round(Point From, Point To, double Fire, double Impact, Weapon Weapon);
 
-    public IReadOnlyList<(Point P, double T)> Blasts { get; }
+    const double Enter = 0.3, FlyIn = 2.4, FlyOut = 2.4;
+    const int Vikhrs = 12, Salvos = 20;                // 2 × 6 Vikhr, 2 × 20 S-8 (je Ziel zwei)
+    readonly Rect stage;
+    readonly double span, u, arrive, leave, gone, inHeading, outHeading;
+    readonly Point entry, exit;
+    readonly List<Leg> legs = [];
+    readonly List<Engage> engages = [];
+    readonly List<Round> rounds = [];
+    readonly List<(double T, double H)> keys = [];     // Blickrichtung über die Zeit
+    readonly List<(Point P, double T)> blasts = [];
+    readonly List<double> sizes = [];
+
+    public IReadOnlyList<(Point P, double T)> Blasts => blasts;
+    public IReadOnlyList<double>? BlastSizes => sizes;
+    public double Reach { get; }
     public double LastImpact { get; }
     public double End { get; }
     public bool Explodes => true;
+    internal IReadOnlyList<Engage> Plan => engages;
 
-    public HelicopterRaid(Rect stage, IReadOnlyList<Point> targets, double iconSize)
+    record Group(Point Hover, int Screen, List<Point> Targets);
+
+    /// <param name="stage">Hauptbildschirm (Einflug von rechts)</param>
+    /// <param name="screens">alle Bildschirme: Symbole auf den anderen werden ebenfalls einzeln angeflogen</param>
+    public HelicopterRaid(Rect stage, IReadOnlyList<Point> targets, double iconSize, IReadOnlyList<Rect>? screens = null)
     {
         this.stage = stage;
         span = Math.Clamp(stage.Width * 0.06, iconSize * 2.0, iconSize * 3.0);
-        double u = span / 100;
-        var list = targets.Count > 0 ? targets.ToList() : [new Point(stage.Left + stage.Width / 2, stage.Top + stage.Height / 2)];
-        hover = new Point(Math.Clamp(list.Average(p => p.X), stage.Left + stage.Width * 0.3, stage.Right - stage.Width * 0.3), stage.Top + stage.Height * 0.42);
-        entry = new Point(stage.Right + span * 1.2, stage.Top + stage.Height * 0.16);
-        exit = new Point(stage.Left - span * 1.8, stage.Top - span);
-        inHeading = Math.Atan2(hover.Y - entry.Y, hover.X - entry.X);
-        outHeading = Math.Atan2(exit.Y - hover.Y, exit.X - hover.X);
-        arrive = enter + FlyIn;
-        // im Kreis um den Schwebepunkt: der Hubschrauber dreht sich gleichmäßig von Ziel zu Ziel
-        double Around(Point p)
+        u = span / 100;
+        Reach = iconSize * 0.45;
+        double h = stage.Height;
+        var list = targets.Count > 0 ? targets.ToList() : [new Point(stage.Left + stage.Width / 2, stage.Top + h / 2)];
+        var areas = new List<Rect> { stage };
+        foreach (var a in screens ?? []) if (a != stage && a.Width > 0) areas.Add(a);
+        int ScreenOf(Point p)
         {
-            double a = Math.Atan2(p.Y - hover.Y, p.X - hover.X) - inHeading;
-            while (a < 0) a += Math.Tau;
-            while (a >= Math.Tau) a -= Math.Tau;
-            return a;
+            int i = areas.FindIndex(a => a.Contains(p));
+            return i >= 0 ? i : Enumerable.Range(0, areas.Count).MinBy(j => (new Point(areas[j].Left + areas[j].Width / 2, areas[j].Top + areas[j].Height / 2) - p).LengthSquared);
         }
-        var order = list.OrderBy(Around).ToList();
-        double fire = arrive + 0.6;
-        for (int i = 0; i < order.Count; i++)
+
+        // Schwebepunkte je Bildschirm: auf breiten zwei oder drei
+        var spots = new List<(Point P, int Screen)>();
+        for (int s = 0; s < areas.Count; s++)
         {
-            var d = order[i] - hover;
-            double heading = Math.Atan2(d.Y, d.X);
-            var launch = hover + Fly.Rot(new Vector(2, (i % 2 == 0 ? 1 : -1) * 20) * u, heading);
-            double flight = 0.32 + 0.4 * Math.Clamp((order[i] - launch).Length / (stage.Width * 0.4), 0, 1.4);
-            shots.Add(new Shot(order[i], launch, fire, fire + flight, heading));
-            fire += Step;
+            var a = areas[s];
+            int k = Math.Clamp((int)Math.Round(a.Width / (a.Height * 1.25)), 1, 3);
+            for (int j = 0; j < k; j++) spots.Add((new Point(a.Left + a.Width * (k - j - 0.5) / k, a.Top + a.Height * 0.45), s));
         }
-        leave = fire + 0.35;
+        var pending = list.GroupBy(p => { int s = ScreenOf(p); return Enumerable.Range(0, spots.Count).Where(i => spots[i].Screen == s).MinBy(i => Math.Abs(spots[i].P.X - p.X)); })
+            .Select(g => new Group(new Point((spots[g.Key].P.X + g.Average(p => p.X)) / 2, spots[g.Key].P.Y), spots[g.Key].Screen, g.ToList())).ToList();
+        // Reihenfolge: Hauptbildschirm von rechts nach links, dann jeweils der nächste Schwebepunkt (eigener Bildschirm zuerst)
+        var route = new List<Group>();
+        var onMain = pending.Where(g => g.Screen == 0).ToList();
+        var current = (onMain.Count > 0 ? onMain : pending).MaxBy(g => g.Hover.X)!;
+        while (true)
+        {
+            route.Add(current); pending.Remove(current);
+            if (pending.Count == 0) break;
+            var here = current;
+            var same = pending.Where(g => g.Screen == here.Screen).ToList();
+            current = (same.Count > 0 ? same : pending).MinBy(g => (g.Hover - here.Hover).LengthSquared)!;
+        }
+
+        entry = new Point(stage.Right + span * 1.2, stage.Top + h * 0.16);
+        var lastArea = areas[route[^1].Screen];
+        var lastHover = route[^1].Hover;
+        exit = new Point(lastHover.X - lastArea.Left < lastArea.Right - lastHover.X ? lastArea.Left - span * 1.8 : lastArea.Right + span * 1.8, lastArea.Top - span);
+        inHeading = Math.Atan2(route[0].Hover.Y - entry.Y, route[0].Hover.X - entry.X);
+        arrive = Enter + FlyIn;
+        Key(Enter, inHeading); Key(arrive - 0.4, inHeading);
+
+        int vikhr = Vikhrs, salvos = Salvos, n = 0;
+        double t = arrive, heading = inHeading;
+        Point? previous = null;
+        foreach (var group in route)
+        {
+            var hover = group.Hover;
+            if (previous is { } from)
+            {   // Umsetzen zum nächsten Schwebepunkt (auch auf einen anderen Bildschirm), Nase in Flugrichtung
+                double travel = Math.Atan2(hover.Y - from.Y, hover.X - from.X);
+                double move = Math.Clamp(0.9 + (hover - from).Length / (h * 1.1), 1.2, 3.2);
+                Key(t + 0.35, travel); Key(t + move - 0.35, travel);
+                t += move; heading = travel;
+            }
+            double legFrom = t;
+            double Around(Point p)
+            {
+                double a = Math.Atan2(p.Y - hover.Y, p.X - hover.X) - heading;
+                while (a < 0) a += Math.Tau;
+                while (a >= Math.Tau) a -= Math.Tau;
+                return a;
+            }
+            // Waffe nach Entfernung vom Schwebepunkt: nächstes Drittel Kanone, mittleres S-8, fernstes Vikhr (solange Vorrat da ist)
+            var ranked = group.Targets.OrderBy(p => (p - hover).LengthSquared).ToList();
+            foreach (var target in group.Targets.OrderBy(Around))
+            {
+                var d = target - hover;
+                double aim = Math.Atan2(d.Y, d.X);
+                double rank = ranked.Count == 1 ? 0.5 : ranked.IndexOf(target) / (double)(ranked.Count - 1);
+                double turn = Math.Abs(Fly.Turn(heading, aim, 1) - heading);
+                double start = t + 0.1 + 0.2 * turn / Math.PI;    // auf das Ziel drehen
+                var weapon = rank > 0.67 && vikhr > 0 ? Weapon.Vikhr : rank >= 0.34 && salvos > 0 ? Weapon.Rockets : Weapon.Gun;
+                var side = new Vector(-Math.Sin(aim), Math.Cos(aim));   // rechts der Blickrichtung
+                double hit, done;
+                switch (weapon)
+                {
+                    case Weapon.Gun:
+                    {   // Feuerstoß: 6 Schuss, Treffer wandern von vorn auf das Symbol
+                        var muzzle = hover + Fly.Rot(new Vector(30, 8.8) * u, aim);
+                        var back = d / d.Length;
+                        double speed = h * 3.0;
+                        for (int i = 0; i < 6; i++)
+                        {
+                            double jitter = Math.Sin(n * 12.9898 + i * 78.233) * 0.18 * iconSize;
+                            var to = target - back * (iconSize * (0.8 - 0.16 * i)) + side * jitter;
+                            double fire = start + i * 0.055;
+                            rounds.Add(new Round(muzzle, to, fire, fire + (to - muzzle).Length / speed, weapon));
+                        }
+                        hit = rounds[^3].Impact;
+                        blasts.Add((target, hit)); sizes.Add(0.6);
+                        done = start + 6 * 0.055 + 0.04;
+                        break;
+                    }
+                    case Weapon.Rockets:
+                    {   // Zweiersalve aus den inneren Behältern, rechts zuerst
+                        salvos--;
+                        hit = double.MaxValue;
+                        for (int i = 0; i < 2; i++)
+                        {
+                            double s = i == 0 ? 1 : -1;
+                            var launch = hover + Fly.Rot(new Vector(8, 12.8 * s) * u, aim);
+                            var to = target + side * (i == 0 ? 0.15 * iconSize : 0);
+                            double fire = start + i * 0.12, impact = fire + 0.22 + (to - launch).Length / (h * 1.7);
+                            rounds.Add(new Round(launch, to, fire, impact, weapon));
+                            blasts.Add((to, impact)); sizes.Add(i == 0 ? 0.8 : 0.9);
+                            hit = Math.Min(hit, impact);
+                        }
+                        done = start + 0.22;
+                        break;
+                    }
+                    default:
+                    {   // Vikhr vom äußeren Starter, abwechselnd links und rechts; Leitstrahl bis zum Einschlag
+                        double s = vikhr % 2 == 0 ? 1 : -1;
+                        vikhr--;
+                        var launch = hover + Fly.Rot(new Vector(9, 20.2 * s) * u, aim);
+                        double impact = start + 0.35 + (target - launch).Length / (h * 1.6);
+                        rounds.Add(new Round(launch, target, start, impact, weapon));
+                        blasts.Add((target, impact)); sizes.Add(1.15);
+                        hit = impact; done = impact + 0.05;
+                        break;
+                    }
+                }
+                engages.Add(new Engage(target, weapon, aim, start, done, hit, hover));
+                Key(start, aim); Key(done, aim);
+                heading = aim; t = done; n++;
+            }
+            legs.Add(new Leg(hover, legFrom, t));
+            previous = hover;
+        }
+        leave = t + 0.3;
+        outHeading = Math.Atan2(exit.Y - lastHover.Y, exit.X - lastHover.X);
         gone = leave + FlyOut;
-        Blasts = shots.Select(s => (s.Target, s.Impact)).ToList();
-        LastImpact = shots.Max(s => s.Impact);
-        End = Math.Max(LastImpact, gone);
+        Key(leave + 0.5, outHeading); Key(gone, outHeading);
+        LastImpact = blasts.Max(b => b.T);
+        End = Math.Max(LastImpact + 0.5, gone);
+    }
+
+    void Key(double t, double heading)
+    {
+        if (keys.Count > 0 && t <= keys[^1].T) t = keys[^1].T + 0.01;
+        keys.Add((t, heading));
+    }
+
+    double HeadingAt(double t)
+    {
+        if (t <= keys[0].T) return keys[0].H;
+        for (int i = 1; i < keys.Count; i++)
+            if (t < keys[i].T) return Fly.Turn(keys[i - 1].H, keys[i].H, Fly.Smooth((t - keys[i - 1].T) / (keys[i].T - keys[i - 1].T)));
+        return keys[^1].H;
     }
 
     (Point Pos, double Heading, double Altitude) Pose(double t)
     {
-        double bob = Math.Sin(t * 2.3) * span * 0.012;
+        var bob = new Vector(0, Math.Sin(t * 2.3) * span * 0.012);
+        double heading = HeadingAt(t);
         if (t < arrive)
         {
-            double k = Fly.EaseOut((t - enter) / FlyIn);
-            var control = new Point((entry.X + hover.X) / 2, Math.Min(entry.Y, hover.Y) - stage.Height * 0.06);
-            var p = Fly.Bez(entry, control, hover, k);
-            double turn = Fly.Smooth((t - (arrive - 0.6)) / 0.6);
-            double h = Fly.Turn(inHeading, shots.Count > 0 ? shots[0].Heading : inHeading, turn);
-            return (p + new Vector(0, bob), h, 0.5 - 0.15 * k);
+            double k = Fly.EaseOut((t - Enter) / FlyIn);
+            var first = legs[0].Hover;
+            var control = new Point((entry.X + first.X) / 2, Math.Min(entry.Y, first.Y) - stage.Height * 0.06);
+            return (Fly.Bez(entry, control, first, k) + bob, heading, 0.5 - 0.15 * k);
         }
-        if (t < leave)
+        if (t >= leave)
         {
-            int i = shots.FindIndex(s => s.Fire > t);
-            double prevH = i <= 0 ? (i == 0 ? shots[0].Heading : shots[^1].Heading) : shots[i - 1].Heading;
-            double prevT = i <= 0 ? (i == 0 ? arrive : shots[^1].Fire) : shots[i - 1].Fire;
-            double nextH = i >= 0 ? shots[i].Heading : outHeading, nextT = i >= 0 ? shots[i].Fire : leave;
-            double k = Fly.Smooth((t - prevT) / Math.Max(0.05, (nextT - prevT) * 0.7));
-            return (hover + new Vector(0, bob), Fly.Turn(prevH, nextH, k), 0.35);
+            double q = Fly.EaseIn((t - leave) / FlyOut);
+            var last = legs[^1].Hover;
+            return (last + (exit - last) * q + bob, heading, 0.35 + 0.3 * q);
         }
-        double q = Fly.EaseIn((t - leave) / FlyOut);
-        return (hover + (exit - hover) * q + new Vector(0, bob), outHeading, 0.35 + 0.3 * q);
+        for (int i = 1; i < legs.Count; i++)
+            if (t >= legs[i - 1].To && t < legs[i].From)
+            {
+                double k = Fly.Smooth((t - legs[i - 1].To) / (legs[i].From - legs[i - 1].To));
+                return (legs[i - 1].Hover + (legs[i].Hover - legs[i - 1].Hover) * k + bob, heading, 0.35 + 0.08 * Math.Sin(k * Math.PI));
+            }
+        var leg = legs.LastOrDefault(l => t >= l.From) ?? legs[0];
+        return (leg.Hover + bob, heading, 0.35);
     }
 
     public void Draw(DrawingContext dc, double t)
     {
-        double u = span / 100;
-        foreach (var s in shots)
-        {
-            if (t < s.Fire || t >= s.Impact) continue;
-            double k = (t - s.Fire) / (s.Impact - s.Fire);
-            Planes.Rocket(dc, s.Launch, s.Launch + (s.Target - s.Launch) * k, u * 1.2, t);
-        }
-        if (t < enter || t > gone) return;
         var (pos, heading, altitude) = Pose(t);
-        Planes.Ka52(dc, pos, heading, u, altitude, t);
-        foreach (var s in shots)   // Mündungsfeuer am Behälter
+        foreach (var r in rounds)
         {
-            double age = t - s.Fire;
-            if (age >= 0 && age < 0.09) Soft.Draw(dc, MuzzleFlash, s.Launch + Fly.Rot(new Vector(8 * u, 0), s.Heading), 6 * u, 4 * u, 1 - age / 0.09);
+            double age = t - r.Fire;
+            if (age < 0) continue;
+            double flight = r.Impact - r.Fire, k = Math.Clamp(age / flight, 0, 1);
+            switch (r.Weapon)
+            {
+                case Weapon.Gun:
+                    if (k < 1) Planes.Tracer(dc, r.From, r.From + (r.To - r.From) * k, u);
+                    else if (t - r.Impact < 0.5) Planes.GunHit(dc, r.To, t - r.Impact, u);
+                    break;
+                case Weapon.Rockets:
+                    if (k < 1) Planes.Rocket(dc, r.From, r.From + (r.To - r.From) * k, u * 1.2, t);
+                    break;
+                default:
+                    double eased = Math.Pow(k, 1.35);   // Startmotor: erst langsam, dann schnell
+                    var at = r.From + (r.To - r.From) * eased;
+                    double fade = k < 1 ? 1 : 1 - (t - r.Impact) / 0.9;
+                    if (fade > 0) Planes.VikhrTrail(dc, r.From, at, u, fade);
+                    if (k < 1)
+                    {
+                        Planes.Laser(dc, pos + Fly.Rot(new Vector(47, 0) * u, heading), r.To, u, 0.55 + 0.3 * Math.Sin(t * 41));
+                        Planes.Vikhr(dc, at, Math.Atan2(r.To.Y - r.From.Y, r.To.X - r.From.X), u);
+                    }
+                    break;
+            }
+        }
+        if (t < Enter || t > gone) return;
+        Planes.Ka52(dc, pos, heading, u, altitude, t);
+        foreach (var r in rounds)   // Mündungsfeuer: Kanone kurz, Raketen und Vikhr größer
+        {
+            double age = t - r.Fire, life = r.Weapon == Weapon.Gun ? 0.045 : r.Weapon == Weapon.Rockets ? 0.09 : 0.15;
+            if (age < 0 || age >= life) continue;
+            double size = r.Weapon == Weapon.Gun ? 3.2 : r.Weapon == Weapon.Rockets ? 6 : 8;
+            var dir = r.To - r.From; dir.Normalize();
+            Soft.Draw(dc, MuzzleFlash, r.From + dir * 4 * u, size * u, size * 0.7 * u, 1 - age / life);
         }
     }
     static readonly Brush MuzzleFlash = Art.Glow("#F8FFE4A0");

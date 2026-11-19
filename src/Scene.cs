@@ -30,6 +30,7 @@ sealed class Scene
     readonly NukeCloud? cloud;
     readonly IAttack? bomber;
     readonly List<(Point P, double T, double Seed)> raid = [];
+    readonly List<double> raidSize = [];
     readonly double iconSize, length, u, r, waveSpeed;
     readonly Point finalFlash;
     readonly Mote[] motes;
@@ -43,6 +44,7 @@ sealed class Scene
     public IEnumerable<Point> FlashCenters => bomber is not null ? raid.Select(b => b.P) : motes.Select(m => m.End).Append(finalFlash);
     public bool HasBomber => bomber is not null;
     internal IReadOnlyList<(Point P, double T, double Seed)> Raid => raid;
+    internal IAttack? Attack => bomber;
     public bool Nuke => nuke;
     double Burst => nuke ? NukeBurst : BurstTime;
     internal const double NukeBurst = NukeCloud.Length, NukeLaunch = 2.6;
@@ -107,14 +109,21 @@ sealed class Scene
         }
         // Luftangriff (Tu-160M, Tu-22M3, Su-34, Ka-52, Tu-95MS, Il-76): Einschläge nacheinander; Il-76 ohne Feuer, die Symbole werden weggetragen
         var onPrimary = icons.Where(i => primary.Contains(i.Center)).Select(i => i.Center).ToList();
-        if (attack is not null && Attacks.Create(attack, primary, points, onPrimary, this.iconSize) is { } strike)
+        if (attack is not null && Attacks.Create(attack, primary, points, onPrimary, this.iconSize, this.screens, icons.Select(i => i.Center).ToList()) is { } strike)
         {
             bomber = strike;
             foreach (var (p, when) in strike.Blasts) raid.Add((p, when, random.NextDouble()));
+            raidSize.AddRange(strike.BlastSizes ?? Enumerable.Repeat(1.0, raid.Count));
+            double reach = strike.Reach;
             foreach (var icon in icons)
+            {
+                // gezielter Angriff (Ka-52): ein Symbol brennt erst, wenn es selbst getroffen ist; nicht getroffene (anderer Bildschirm) wie bisher
+                var direct = double.IsFinite(reach) ? raid.Where(b => (b.P - icon.Center).Length <= reach).ToList() : [];
                 burnAt[icon.Id] = raid.Count == 0 ? Impact
-                    : strike.Explodes ? raid.Min(b => b.T + Math.Min(0.85, (b.P - icon.Center).Length / waveSpeed)) + 0.04 * random.NextDouble()
-                    : raid.OrderBy(b => (b.P - icon.Center).LengthSquared).First().T + 0.02;
+                    : !strike.Explodes ? raid.OrderBy(b => (b.P - icon.Center).LengthSquared).First().T + 0.02
+                    : direct.Count > 0 ? direct.Min(b => b.T) + 0.03 * random.NextDouble()
+                    : raid.Min(b => b.T + Math.Min(0.85, (b.P - icon.Center).Length / waveSpeed)) + 0.04 * random.NextDouble();
+            }
         }
         else if (jericho)
             foreach (var icon in icons)
@@ -177,10 +186,11 @@ sealed class Scene
         if (bomber is not null)
         {
             bomber.Draw(dc, t);
-            if (bomber.Explodes) foreach (var (p, when, seed) in raid)
+            if (bomber.Explodes) for (int i = 0; i < raid.Count; i++)
             {
+                var (p, when, seed) = raid[i];
                 double age = t - when;
-                if (age >= 0 && age <= BurstTime) DrawBurst(dc, p, age, 0.8 + 0.15 * seed, seed);
+                if (age >= 0 && age <= BurstTime) DrawBurst(dc, p, age, (0.8 + 0.15 * seed) * (i < raidSize.Count ? raidSize[i] : 1), seed);
             }
         }
         else if (nuke) DrawNuke(dc, t);
