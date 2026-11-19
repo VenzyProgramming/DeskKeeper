@@ -31,6 +31,7 @@ static class Check
         var sc = new Scene(icons, homes, iconSize, screens, primary, true, 64, attack: attack);
         Console.WriteLine($"{attack}: Dauer {sc.Duration:0.0} s, Einschläge {sc.Raid.Count}, Roboter ab {sc.RobotStart:0.0} s, " +
             $"jedes Symbol getroffen {icons.All(i => sc.Raid.Any(b => (b.P - i.Center).Length <= iconSize * 2.2))}");
+        if (sc.Attack is DuelRaid duel) { var m = duel.Metrics(iconSize); Console.WriteLine($"duel-messwerte: geschwindigkeit {m.SpeedRatio:0.00}x, startwinkel {m.LaunchAngle:0} grad, abstand gegner-einschlag {m.TargetMiss:0.0} symbole, gegner vor der nase: groesster winkel {180 - m.Behind:0} grad"); }
         foreach (var t in times) Save(Frame(sc, all, icons, t, 0.5), Path.Combine(output, $"{attack}-{t:0.0}.png"));
         return 0;
     }
