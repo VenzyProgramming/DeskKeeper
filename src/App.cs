@@ -113,6 +113,16 @@ static class Program
             }
             return 0;
         }
+        if (args.Length == 2 && args[0] == "--abweichung")
+        {
+            // Nur lesen: wie viele Symbole liegen anders als in einer gespeicherten Anordnung (Schnappschuss, Profil)?
+            using var desktop = new ShellDesktop();
+            var now = desktop.Snapshot();
+            var saved = Store.LoadSnapshot(args[1]) ?? [];
+            int moved = Keeper.MovedCount(saved, now), missing = saved.Keys.Count(k => !now.ContainsKey(k));
+            Console.WriteLine($"anordnung {Store.ScreenKey()} · symbole {now.Count} · gespeichert {saved.Count} · woanders {moved} · fehlen {missing}");
+            return 0;
+        }
         if (args.Length == 1 && args[0] == "--probe")
         {
             // Nur lesen: Schreibtisch öffnen, Symbole zählen, nichts bewegen.
