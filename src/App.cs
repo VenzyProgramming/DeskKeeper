@@ -113,6 +113,49 @@ static class Program
             }
             return 0;
         }
+        if (args.Length == 2 && args[0] == "--lage-bild")
+        {
+            // Nur lesen: jede gemerkte Anordnung wie in der Anordnungsansicht als Bild untereinander (Echttest auswerten)
+            string current = Store.ScreenKey();
+            var known = Store.Known().OrderByDescending(k => k.Key == current).ThenByDescending(k => k.Saved).ToList();
+            var stack = new System.Windows.Controls.StackPanel { Background = System.Windows.Media.Brushes.White };
+            foreach (var (key, count, saved) in known)
+            {
+                var screens = Store.ScreensOf(key);
+                var view = new ScreensView { Width = 1400, Height = 620 };
+                view.Show(screens, ViewData.Icons(key, current, screens));
+                stack.Children.Add(new System.Windows.Controls.TextBlock { Text = $"{(key == current ? "jetzt · " : "")}{Store.Describe(key)} · {count} Symbole · {saved:HH:mm:ss}", FontSize = 18, Margin = new Thickness(10, 10, 0, 0) });
+                stack.Children.Add(view);
+            }
+            stack.Measure(new Size(1400, double.PositiveInfinity)); stack.Arrange(new Rect(stack.DesiredSize)); stack.UpdateLayout();
+            var bmp = new System.Windows.Media.Imaging.RenderTargetBitmap(1400, (int)Math.Ceiling(stack.ActualHeight), 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+            bmp.Render(stack);
+            var png = new System.Windows.Media.Imaging.PngBitmapEncoder(); png.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bmp));
+            using (var f = System.IO.File.Create(args[1])) png.Save(f);
+            Console.WriteLine($"ok {known.Count} Anordnungen");
+            return 0;
+        }
+        if (args.Length == 1 && args[0] == "--spiegel")
+        {
+            // Nur lesen: was das Spiegeln für die jetzige Anordnung planen würde (ohne gemerkten Stand) und wo die Symbole liegen
+            using var desktop = new ShellDesktop();
+            var now = desktop.Snapshot();
+            string key = Store.ScreenKey();
+            var centers = now.ToDictionary(e => e.Key, e => desktop.CenterOf(e.Value), StringComparer.OrdinalIgnoreCase);
+            var monitors = Monitors.Current();
+            var history = Keeper.Rank(Store.PlansWithDevices().Skip(1), monitors);   // ohne die eigene, gerade gespeicherte Anordnung
+            var plan = Keeper.Plan(centers, null, history, monitors, desktop.Spacing, out int derived, desktop.SpacingY);
+            var names = desktop.Icons.ToDictionary(i => i.Id, i => i.Name, StringComparer.OrdinalIgnoreCase);
+            Console.WriteLine($"abstand {desktop.SpacingX}x{desktop.SpacingY} · abgeleitet {derived} · {string.Join(" | ", monitors.Select(m => $"{m.Model} {m.Bounds} {m.Dpi} dpi"))}");
+            foreach (var (id, c) in centers.OrderBy(e => e.Value.X).ThenBy(e => e.Value.Y))
+            {
+                var src = history.Select(h => h.TryGetValue(id, out var pl) ? pl : null).FirstOrDefault(pl => pl is not null);
+                var target = plan[id];
+                Console.WriteLine($"{(names.TryGetValue(id, out var n) ? n : id),-28} quelle {(src is null ? "-" : $"{src.Dx:0},{src.Dy:0} von {src.W:0}x{src.H:0}@{src.Dpi}")} · ziel {target.X:0},{target.Y:0} · jetzt {c.X:0},{c.Y:0}{((target - c).Length > 40 ? "  <== ABWEICHUNG" : "")}");
+            }
+            return 0;
+        }
+        if (args.Length == 1 && args[0] == "--qdc") { foreach (var l in Physical.TargetsReport()) Console.WriteLine(l); return 0; }
         if (args.Length == 1 && args[0] == "--lage")
         {
             // Nur lesen (Rekorder beim Echttest): Anordnung, je Bildschirm Symbolzahl und Umriss, Abstand zum gemerkten Stand

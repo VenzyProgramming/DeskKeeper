@@ -15,6 +15,8 @@ interface IKeeperWorld
     Dictionary<string, int[]>? Target(string key, Dictionary<string, int[]> current);
     /// <summary>Zurückstellen (echt: Дубина fährt und trägt die Symbole).</summary>
     void Apply(Dictionary<string, int[]> layout);
+    /// <summary>Sofort zurückstellen, nie mit DUM-E (Nachwache).</summary>
+    void ApplyQuick(Dictionary<string, int[]> layout);
     void Save(string key, Dictionary<string, int[]> layout);
     Dictionary<string, int[]>? Saved(string key);
     bool Blocked { get; }   // Szene läuft oder Sicherung offen
@@ -40,6 +42,8 @@ sealed class Keeper
     /// Taskleiste kommt nach), wird wieder zurückgestellt statt die Unordnung zu speichern .</summary>
     public double GuardSeconds = 20;
     Dictionary<string, int[]>? guard;
+    /// <summary>Was Explorer nach dem Zurückstellen tatsächlich angenommen hat (Einrasten): dagegen prüft die Nachwache.</summary>
+    Dictionary<string, int[]>? guardSeen;
     double guardUntil;
     int guardRepeats;
     string? key;
@@ -76,6 +80,7 @@ sealed class Keeper
             {
                 world.Apply(target); Report("restored", $"{MovedCount(target, current)} von {current.Count} Symbolen");
                 guard = target; guardUntil = now + GuardSeconds; guardRepeats = 0;
+                guardSeen = world.Blocked ? null : world.Read();   // DUM-E fährt: erst nach der Szene festhalten
                 return;
             }
             if (AutoSave && world.Saved(k) is null) { world.Save(k, current); Report("first", $"{current.Count} Symbole"); }
@@ -87,10 +92,15 @@ sealed class Keeper
         {
             var look = world.Read();
             if (look is null || world.Key() != k) return;
-            if (Misplaced(guard, look))
+            if (guardSeen is null) guardSeen = look;
+            else if (Misplaced(guardSeen, look))
             {
                 candidate = null;
-                if (guardRepeats++ < 2) { world.Apply(guard); Report("restored", $"Nachwache: {MovedCount(guard, look)} Symbole wieder an ihren Platz"); return; }
+                if (guardRepeats++ < 2)
+                {
+                    world.ApplyQuick(guard); guardSeen = world.Read();
+                    Report("restored", $"Nachwache: {MovedCount(guardSeen ?? look, look)} Symbole wieder an ihren Platz"); return;
+                }
                 guard = null;   // bleibt trotzdem so: gewollt, ab jetzt normal speichern
             }
         }
@@ -143,6 +153,15 @@ sealed class Keeper
     /// Sonst je Symbol der jüngste bekannte Platz auf einem jetzt angeschlossenen Bildschirm (gleiche Auflösung: pixelgenau,
     /// andere: anteilig). Symbole ohne bekannten Platz bleiben, wo sie sind. Abgeleitete Plätze rücken aus, wenn dort schon eins liegt.
     /// </summary>
+    /// <summary>
+    /// Reihenfolge der gemerkten Plätze: zuerst Anordnungen mit möglichst vielen der jetzt angeschlossenen Geräte, darin die jüngste.
+    /// 19.11.2026: Erweitern mit dem Widescreen als Hauptbildschirm schob alle 32 Symbole aufs Notebook, weil der jüngste Stand
+    /// aus „Nur PC-Bildschirm“ kam – dort hatten die Symbole gar keine Wahl. Eine Zwei-Bildschirm-Anordnung geht vor.
+    /// </summary>
+    internal static List<IReadOnlyDictionary<string, Placement>> Rank(IEnumerable<(IReadOnlyDictionary<string, Placement> Places, HashSet<string> Devices)> newestFirst, IReadOnlyList<MonitorInfo> monitors)
+        => newestFirst.Select((p, i) => (p.Places, Covered: monitors.Count(m => p.Devices.Contains(m.Id)), i))
+            .OrderByDescending(x => x.Covered).ThenBy(x => x.i).Select(x => x.Places).ToList();
+
     /// <param name="rowStep">senkrechter Rasterabstand (0 = wie spacing)</param>
     internal static Dictionary<string, Point> Plan(IReadOnlyDictionary<string, Point> current, IReadOnlyDictionary<string, Point>? exact,
         IEnumerable<IReadOnlyDictionary<string, Placement>> newestFirst, IReadOnlyList<MonitorInfo> monitors, double spacing, out int derived, double rowStep = 0)
@@ -151,6 +170,7 @@ sealed class Keeper
         var moved = new List<string>();
         var history = newestFirst.ToList();
         var main = monitors.FirstOrDefault(m => m.Primary) ?? monitors.FirstOrDefault();
+        var mirror = new List<(string, Placement)>();
         foreach (var id in current.Keys)
         {
             if (exact is not null && exact.TryGetValue(id, out var e)) { result[id] = e; continue; }
@@ -162,27 +182,31 @@ sealed class Keeper
                 newest ??= place;
                 if (Monitors.Locate(place, monitors, spacing * 0.45) is { } p) { result[id] = p; moved.Add(id); found = true; break; }
             }
-            // zuletzt auf einem Bildschirm, der fehlt: dieselbe Anordnung auf dem Hauptbildschirm
-            if (!found && newest is not null && main is not null) { result[id] = Monitors.Mirror(newest, main, spacing * 0.45); moved.Add(id); }
+            // zuletzt auf einem Bildschirm, der fehlt: dieselbe Anordnung auf dem Hauptbildschirm (gruppenweise, siehe Monitors.Mirror)
+            if (!found && newest is not null && main is not null) mirror.Add((id, newest));
         }
+        if (main is not null)
+            foreach (var (id, p) in Monitors.Mirror(mirror, main, spacing, rowStep > 0 ? rowStep : spacing)) { result[id] = p; moved.Add(id); }
         derived = moved.Count;
         // Zusammenstöße: abgeleitete Symbole weichen nach unten, dann eine Spalte zur Bildschirmmitte hin aus (wie das Windows-Raster).
         // Es zählen nur feste Plätze: gemerkte, unveränderte und schon gesetzte – nicht die Lage, in die Windows die übrigen geschoben hat.
         double down = rowStep > 0 ? rowStep : spacing;
         var movedSet = new HashSet<string>(moved, StringComparer.OrdinalIgnoreCase);
         var settled = result.Where(e => !movedSet.Contains(e.Key)).ToDictionary(e => e.Key, e => e.Value, StringComparer.OrdinalIgnoreCase);
-        double EdgeDistance(Point p) => monitors.FirstOrDefault(x => x.Bounds.Contains(p))?.Bounds is { } b ? Math.Min(p.X - b.Left, b.Right - p.X) : 0;
-        foreach (var id in moved.OrderBy(id => Math.Round(EdgeDistance(result[id]) / spacing)).ThenBy(id => result[id].Y))
+        Rect AreaOf(Point p) => monitors.FirstOrDefault(x => x.Bounds.Contains(p)) is { } mon ? (mon.Work.IsEmpty ? mon.Bounds : mon.Work) : Rect.Empty;
+        double EdgeDistance(Point p) => AreaOf(p) is { IsEmpty: false } a ? Math.Min(p.Y - a.Top, a.Bottom - p.Y) : 0;
+        foreach (var id in moved.OrderBy(id => Math.Round(EdgeDistance(result[id]) / down)).ThenBy(id => result[id].X))
         {
             var p = result[id];
-            var m = monitors.FirstOrDefault(x => x.Bounds.Contains(p))?.Bounds ?? Rect.Empty;
+            var m = AreaOf(p);
             double inward = m.IsEmpty || p.X < m.Left + m.Width / 2 ? spacing : -spacing;
+            double dir = m.IsEmpty || p.Y < m.Top + m.Height / 2 ? 1 : -1;   // von der nächsten waagrechten Kante zur Mitte hin
             for (int step = 0; step < 400 && Taken(settled, p, spacing, down); step++)
             {
-                p.Y += down;
-                if (!m.IsEmpty && p.Y > m.Bottom - down * 0.45)
+                p.Y += dir * down;
+                if (!m.IsEmpty && (p.Y > m.Bottom - down * 0.45 || p.Y < m.Top + down * 0.45))
                 {
-                    p.Y = m.Top + down * 0.5; p.X += inward;
+                    p.Y = dir > 0 ? m.Top + down * 0.5 : m.Bottom - down * 0.5; p.X += inward;
                     if (p.X > m.Right - spacing * 0.45) p.X = m.Left + spacing * 0.5;
                     if (p.X < m.Left + spacing * 0.45) p.X = m.Right - spacing * 0.5;
                 }
@@ -227,17 +251,20 @@ sealed class RealWorld : IKeeperWorld
         {
             using var d = new ShellDesktop();
             var exactRaw = Store.LoadAuto(key);
-            var plans = Store.Plans();
+            var monitors = Monitors.Current();
+            var plans = Keeper.Rank(Store.PlansWithDevices(), monitors);
             if (exactRaw is null && plans.Count == 0) return null;
             var centers = current.ToDictionary(e => e.Key, e => d.CenterOf(e.Value), StringComparer.OrdinalIgnoreCase);
             var exact = exactRaw?.ToDictionary(e => e.Key, e => d.CenterOf(e.Value), StringComparer.OrdinalIgnoreCase);
-            var plan = Keeper.Plan(centers, exact, plans, Monitors.Current(), d.Spacing, out _, d.SpacingY);
-            return plan.ToDictionary(e => e.Key, e => d.ItemOf(e.Value), StringComparer.OrdinalIgnoreCase);
+            var plan = Keeper.Plan(centers, exact, plans, monitors, d.Spacing, out _, d.SpacingY);
+            var items = plan.ToDictionary(e => e.Key, e => d.ItemOf(e.Value), StringComparer.OrdinalIgnoreCase);
+            return Store.LoadOptions().KeepGrid ? Snap(items, current.Values, d.SpacingX, d.SpacingY) : items;
         }
         catch { return null; }
     }
 
     public void Apply(Dictionary<string, int[]> layout) => Restore(layout);
+    public void ApplyQuick(Dictionary<string, int[]> layout) { try { using var d = new ShellDesktop(); d.RestoreSnapshot(layout); } catch { } }
 
     /// <summary>Zurückstellen laut Einstellung: sofort (wie DesktopOK) oder mit Дубина, die jedes Symbol trägt.</summary>
     public static void Restore(Dictionary<string, int[]> layout)
@@ -268,9 +295,27 @@ sealed class RealWorld : IKeeperWorld
         var places = new Dictionary<string, Placement>(StringComparer.OrdinalIgnoreCase);
         foreach (var (id, item) in layout)
             if (Monitors.Place(d.CenterOf(item) + shift, old) is { } p) places[id] = p;   // fehlt das Gerät, spiegelt Plan auf den Hauptbildschirm
-        var centers = d.Snapshot().ToDictionary(e => e.Key, e => d.CenterOf(e.Value), StringComparer.OrdinalIgnoreCase);
+        var snapshot = d.Snapshot();
+        var centers = snapshot.ToDictionary(e => e.Key, e => d.CenterOf(e.Value), StringComparer.OrdinalIgnoreCase);
         var plan = Keeper.Plan(centers, null, [places], now, d.Spacing, out _, d.SpacingY);
-        return plan.ToDictionary(e => e.Key, e => d.ItemOf(e.Value), StringComparer.OrdinalIgnoreCase);
+        var items = plan.ToDictionary(e => e.Key, e => d.ItemOf(e.Value), StringComparer.OrdinalIgnoreCase);
+        return Store.LoadOptions().KeepGrid ? Snap(items, snapshot.Values, d.SpacingX, d.SpacingY) : items;
+    }
+
+    /// <summary>
+    /// Abgeleitete Ziele auf das Explorer-Raster legen; Versatz und Abstand des Rasters stammen aus den jetzigen Elementpositionen.
+    /// Sonst lag ein gespiegeltes Ziel zwischen zwei Zellen, Explorer rastete es bis zu einer halben Zelle anders ein, und der Hüter
+    /// zählte das als verschoben (19.11.2026: „30 von 32 zurückgestellt“, obwohl alles lag). Gemerkte Stände liegen schon im Raster.
+    /// </summary>
+    internal static Dictionary<string, int[]> Snap(Dictionary<string, int[]> items, IEnumerable<int[]> grid, double sx, double sy)
+    {
+        var known = grid.ToList();
+        if (known.Count == 0 || sx < 8 || sy < 8) return items;
+        static int Offset(IEnumerable<int> values, double step) => values.Select(v => (int)Math.Round(((v % step) + step) % step) % (int)Math.Round(step))
+            .GroupBy(v => v).OrderByDescending(g => g.Count()).First().Key;
+        int ox = Offset(known.Select(p => p[0]), sx), oy = Offset(known.Select(p => p[1]), sy);
+        return items.ToDictionary(e => e.Key, e => new[] { ox + (int)Math.Round(Math.Round((e.Value[0] - ox) / sx) * sx), oy + (int)Math.Round(Math.Round((e.Value[1] - oy) / sy) * sy) },
+            StringComparer.OrdinalIgnoreCase);
     }
 
     static int MovedCount(Dictionary<string, int[]> layout)

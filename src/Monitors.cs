@@ -20,6 +20,8 @@ record MonitorInfo(string Id, Rect Bounds, bool Primary)
     public double Diagonal { get; init; }
     /// <summary>Skalierung des Bildschirms in dieser Anordnung (96 = 100 %), 0 = unbekannt.</summary>
     public int Dpi { get; init; }
+    /// <summary>Arbeitsfläche (ohne Taskleiste und Seitenleiste), leer = unbekannt.</summary>
+    public Rect Work { get; init; } = Rect.Empty;
 }
 
 /// <summary>Wo ein Symbol liegt, unabhängig von der Anordnung: auf welchem Gerät, Abstand von dessen linker oberer Ecke
@@ -45,7 +47,7 @@ static class Monitors
             int number = int.TryParse(new string(s.Device.Reverse().TakeWhile(char.IsDigit).Reverse().ToArray()), out int n) ? n : 0;
             list.Add(new MonitorInfo(device ?? s.Device + "|" + (int)s.Bounds.Width + "x" + (int)s.Bounds.Height, s.Bounds, s.Primary)
             {
-                Number = number, Maker = MakerOf(device), Model = f?.Model is { Length: > 0 } fm ? fm : s.Name, Diagonal = f?.DiagonalInch ?? 0, Dpi = (int)s.Dpi,
+                Number = number, Maker = MakerOf(device), Model = f?.Model is { Length: > 0 } fm ? fm : s.Name, Diagonal = f?.DiagonalInch ?? 0, Dpi = (int)s.Dpi, Work = s.Work,
                 Kind = DeviceFacts.Classify(f, s.Bounds.Width, s.Bounds.Height, touch),
             });
         }
@@ -71,19 +73,50 @@ static class Monitors
     }
 
     /// <summary>
-    /// Platz eines Bildschirms, der gerade fehlt, auf einen anderen übertragen – die Anordnung bleibt erkennbar (19.11.2026: auf dem
-    /// Notebook die Symbole so wie auf dem Widescreen). Je Achse: im ersten Drittel Abstand zum linken bzw. oberen Rand, im letzten
-    /// Drittel Abstand zum rechten bzw. unteren Rand, dazwischen anteilig. Abstände wachsen mit der Skalierung (Symbolraster).
+    /// Symbole eines Bildschirms, der gerade fehlt, auf einen anderen übertragen – die Anordnung bleibt erkennbar (19.11.2026: auf dem
+    /// Notebook die Symbole so wie auf dem Widescreen). Benachbarte Symbole (höchstens 1,6 Rasterabstände) bilden eine Gruppe; jede Gruppe
+    /// hält ihre Form und richtet sich an der Kante aus, der sie am nächsten liegt: links, Mitte oder rechts und oben, Mitte oder unten.
+    /// Einzeln je Drittel (bis 1.2.3) zerriss Spalten: Visual Studio rutschte in die Mitte, die Creo-Symbole landeten oben in der Nachbarspalte.
+    /// Abstände wachsen mit der Skalierung (Symbolraster).
     /// </summary>
-    public static Point Mirror(Placement p, MonitorInfo m, double margin)
+    public static Dictionary<string, Point> Mirror(IReadOnlyList<(string Id, Placement Place)> items, MonitorInfo m, double spacingX, double spacingY)
     {
-        double s = (m.Dpi > 0 ? m.Dpi : 96) / (double)(p.Dpi > 0 ? p.Dpi : 96);
-        double w = p.W > 0 ? p.W : m.Bounds.Width / s, h = p.H > 0 ? p.H : m.Bounds.Height / s;
-        static double Axis(double d, double f, double size, double target, double s) => f < 1 / 3.0 ? d * s : f > 2 / 3.0 ? target - (size - d) * s : f * target;
-        double x = Axis(p.Dx, p.Fx, w, m.Bounds.Width, s), y = Axis(p.Dy, p.Fy, h, m.Bounds.Height, s);
-        x = Math.Clamp(x, margin, Math.Max(margin, m.Bounds.Width - margin));
-        y = Math.Clamp(y, margin, Math.Max(margin, m.Bounds.Height - margin));
-        return new Point(m.Bounds.Left + x, m.Bounds.Top + y);
+        var result = new Dictionary<string, Point>(StringComparer.OrdinalIgnoreCase);
+        var b = m.Bounds;
+        var area = m.Work.IsEmpty ? b : m.Work;
+        double margin = Math.Min(spacingX, spacingY) * 0.45;
+        foreach (var source in items.GroupBy(i => i.Place.Monitor))
+        {
+            var list = source.ToList();
+            var first = list[0].Place;
+            double s = (m.Dpi > 0 ? m.Dpi : 96) / (double)(first.Dpi > 0 ? first.Dpi : 96);
+            double w = first.W > 0 ? first.W : b.Width / s, h = first.H > 0 ? first.H : b.Height / s;
+            double nx = spacingX / s * 1.6, ny = spacingY / s * 1.6;
+            var parent = Enumerable.Range(0, list.Count).ToArray();
+            int Find(int i) { while (parent[i] != i) i = parent[i] = parent[parent[i]]; return i; }
+            for (int i = 0; i < list.Count; i++)
+                for (int j = i + 1; j < list.Count; j++)
+                    if (Math.Abs(list[i].Place.Dx - list[j].Place.Dx) <= nx && Math.Abs(list[i].Place.Dy - list[j].Place.Dy) <= ny) parent[Find(i)] = Find(j);
+            foreach (var group in Enumerable.Range(0, list.Count).GroupBy(Find))
+            {
+                var members = group.Select(i => list[i]).ToList();
+                var mapX = Anchor(members.Min(e => e.Place.Dx), members.Max(e => e.Place.Dx), w, b.Left, b.Right, s);
+                var mapY = Anchor(members.Min(e => e.Place.Dy), members.Max(e => e.Place.Dy), h, b.Top, b.Bottom, s);
+                foreach (var (id, place) in members)
+                    result[id] = new Point(Math.Clamp(mapX(place.Dx), area.Left + margin, Math.Max(area.Left + margin, area.Right - margin)),
+                        Math.Clamp(mapY(place.Dy), area.Top + margin, Math.Max(area.Top + margin, area.Bottom - margin)));
+            }
+        }
+        return result;
+    }
+
+    /// <summary>Eine Achse: Gruppe von min bis max auf einem Bildschirm der Größe size → Abbildung auf start…end (Faktor s).</summary>
+    static Func<double, double> Anchor(double min, double max, double size, double start, double end, double s)
+    {
+        double toStart = min, toEnd = size - max, toMiddle = Math.Abs((min + max) / 2 - size / 2);
+        if (toStart <= toEnd && toStart <= toMiddle) return d => start + d * s;
+        if (toEnd <= toMiddle) return d => end - (size - d) * s;
+        return d => (start + end) / 2 + (d - size / 2) * s;
     }
 
     /// <summary>Platz → Symbolmitte, falls das Gerät angeschlossen ist. Andere Auflösung: anteilig.</summary>
@@ -210,7 +243,12 @@ static class Physical
                     d = d with { Bounds = real, Work = new Rect(real.X + (w.X - d.Bounds.X) * fx, real.Y + (w.Y - d.Bounds.Y) * fy, w.Width * fx, w.Height * fy) };
                 }
             }
-            if (targets.TryGetValue(d.Device, out var t)) d = d with { Hardware = t.Path, Name = t.Name, NativeWidth = t.Width, NativeHeight = t.Height };
+            // zuerst nach GDI-Name, sonst nach Lage der Quelle (beim Duplizieren heißen Quelle und Bildschirm verschieden)
+            var bounds = d.Bounds;
+            var t = targets.FirstOrDefault(x => string.Equals(x.Gdi, d.Device, StringComparison.OrdinalIgnoreCase))
+                ?? targets.FirstOrDefault(x => !x.Bounds.IsEmpty && Math.Abs(x.Bounds.X - bounds.X) < 1 && Math.Abs(x.Bounds.Y - bounds.Y) < 1)
+                ?? (targets.Count == 1 && list.Count == 1 ? targets[0] : null);
+            if (t is not null) d = d with { Hardware = t.Path, Name = t.Name, NativeWidth = t.Width, NativeHeight = t.Height };
             list[i] = d;
         }
         if (list.Count == 0)
@@ -229,14 +267,40 @@ static class Physical
     static Rect R(NativeRect r) => new(r.Left, r.Top, r.Right - r.Left, r.Bottom - r.Top);
 
     /// <summary>Aktive Anzeigewege: GDI-Name (\\.\DISPLAYn) → Gerätepfad, Name und bevorzugte Auflösung des Monitors (QueryDisplayConfig).</summary>
-    internal static Dictionary<string, (string Path, string Name, int Width, int Height)> Targets()
+    /// <summary>Nur zur Diagnose: rohe Anzeigewege mit Fehlercodes.</summary>
+    internal static IEnumerable<string> TargetsReport()
     {
-        var map = new Dictionary<string, (string, string, int, int)>(StringComparer.OrdinalIgnoreCase);
+        var lines = new List<string>();
+        int sizes = GetDisplayConfigBufferSizes(2, out uint paths, out uint modes);
+        lines.Add($"puffer {sizes} wege {paths} modi {modes}");
+        var path = new PathInfo[paths]; var mode = new ModeInfo[modes];
+        int q = QueryDisplayConfig(2, ref paths, path, ref modes, mode, IntPtr.Zero);
+        lines.Add($"abfrage {q} wege {paths}");
+        for (int i = 0; i < paths; i++)
+        {
+            var source = new SourceName { Header = new InfoHeader { Type = 1, Size = Marshal.SizeOf<SourceName>(), Adapter = path[i].SourceAdapter, Id = path[i].SourceId } };
+            int rs = DisplayConfigGetDeviceInfo(ref source);
+            var target = new TargetName { Header = new InfoHeader { Type = 2, Size = Marshal.SizeOf<TargetName>(), Adapter = path[i].TargetAdapter, Id = path[i].TargetId } };
+            int rt = DisplayConfigGetDeviceInfo(ref target);
+            lines.Add($"weg {i}: quelle {path[i].SourceId} → {rs} {source.GdiName} · ziel {path[i].TargetId} → {rt} {target.FriendlyName} {target.DevicePath} · flags {path[i].Flags:X} ziel-flags {path[i].TargetFlags:X}");
+        }
+        return lines;
+    }
+
+    /// <summary>Ein Anzeigeausgang (Quelle) mit Lage in Pixeln und allen Monitoren daran. Duplizieren: zwei Monitore an einer Quelle,
+    /// deren Kennungen mit „+“ verbunden (19.11.2026: im Duplizier-Modus fehlte die Kennung, und der GDI-Name der Quelle
+    /// (\\.\DISPLAY4) war ein anderer als der des Bildschirms (\\.\DISPLAY1)).</summary>
+    internal sealed record Target(string Gdi, Rect Bounds, string Path, string Name, int Width, int Height);
+
+    /// <summary>Aktive Anzeigewege nach Quelle zusammengefasst: GDI-Name, Lage, Gerätepfad(e), Name und bevorzugte Auflösung.</summary>
+    internal static List<Target> Targets()
+    {
+        var bySource = new Dictionary<string, List<(Rect Bounds, string Path, string Name, int W, int H)>>(StringComparer.OrdinalIgnoreCase);
         try
         {
-            if (GetDisplayConfigBufferSizes(2, out uint paths, out uint modes) != 0) return map;   // QDC_ONLY_ACTIVE_PATHS
+            if (GetDisplayConfigBufferSizes(2, out uint paths, out uint modes) != 0) return [];   // QDC_ONLY_ACTIVE_PATHS
             var path = new PathInfo[paths]; var mode = new ModeInfo[modes];
-            if (QueryDisplayConfig(2, ref paths, path, ref modes, mode, IntPtr.Zero) != 0) return map;
+            if (QueryDisplayConfig(2, ref paths, path, ref modes, mode, IntPtr.Zero) != 0) return [];
             for (int i = 0; i < paths; i++)
             {
                 var source = new SourceName { Header = new InfoHeader { Type = 1, Size = Marshal.SizeOf<SourceName>(), Adapter = path[i].SourceAdapter, Id = path[i].SourceId } };
@@ -245,11 +309,21 @@ static class Physical
                 if (DisplayConfigGetDeviceInfo(ref target) != 0 || string.IsNullOrEmpty(target.DevicePath)) continue;
                 var preferred = new PreferredMode { Header = new InfoHeader { Type = 3, Size = Marshal.SizeOf<PreferredMode>(), Adapter = path[i].TargetAdapter, Id = path[i].TargetId } };
                 bool native = DisplayConfigGetDeviceInfo(ref preferred) == 0;
-                map[source.GdiName] = (target.DevicePath, target.FriendlyName ?? "", native ? (int)preferred.Width : 0, native ? (int)preferred.Height : 0);
+                var bounds = Rect.Empty;
+                uint m = path[i].SourceMode;
+                if (m < modes && mode[m].Type == 1) bounds = new Rect(mode[m].X, mode[m].Y, mode[m].Width, mode[m].Height);   // DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE
+                if (!bySource.TryGetValue(source.GdiName, out var list)) bySource[source.GdiName] = list = [];
+                list.Add((bounds, target.DevicePath, target.FriendlyName ?? "", native ? (int)preferred.Width : 0, native ? (int)preferred.Height : 0));
             }
         }
-        catch (Exception e) when (e is EntryPointNotFoundException or DllNotFoundException or MarshalDirectiveException) { }
-        return map;
+        catch (Exception e) when (e is EntryPointNotFoundException or DllNotFoundException or MarshalDirectiveException) { return []; }
+        return bySource.Select(e =>
+        {
+            var parts = e.Value.OrderBy(x => x.Path, StringComparer.Ordinal).ToList();
+            var bounds = parts.Select(x => x.Bounds).FirstOrDefault(x => !x.IsEmpty, Rect.Empty);
+            return new Target(e.Key, bounds, string.Join("+", parts.Select(x => x.Path)), string.Join(" + ", parts.Select(x => x.Name).Where(n => n.Length > 0)),
+                parts.Min(x => x.W), parts.Min(x => x.H));
+        }).ToList();
     }
 
     [StructLayout(LayoutKind.Sequential)] struct Luid { public uint Low; public int High; }
@@ -260,7 +334,7 @@ static class Physical
         public Luid TargetAdapter; public uint TargetId, TargetMode, Technology, Rotation, Scaling, RefreshNum, RefreshDen, ScanLine; public int Available; public uint TargetFlags;
         public uint Flags;
     }
-    [StructLayout(LayoutKind.Sequential, Size = 64)] struct ModeInfo { public uint Type, Id; public Luid Adapter; }
+    [StructLayout(LayoutKind.Sequential, Size = 64)] struct ModeInfo { public uint Type, Id; public Luid Adapter; public uint Width, Height, Format; public int X, Y; }   // Quellmodus
     [StructLayout(LayoutKind.Sequential)] struct InfoHeader { public int Type, Size; public Luid Adapter; public uint Id; }
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     struct SourceName { public InfoHeader Header; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string GdiName; }

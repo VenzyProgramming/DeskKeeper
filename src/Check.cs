@@ -303,6 +303,7 @@ static class Check
         public Dictionary<string, int[]>? Target(string key, Dictionary<string, int[]> current)
             => Stored.TryGetValue(key, out var d) ? current.ToDictionary(e => e.Key, e => d.TryGetValue(e.Key, out var p) ? p.ToArray() : e.Value) : null;
         public void Apply(Dictionary<string, int[]> layout) { Applied++; foreach (var (k, v) in layout) Desk[k] = v.ToArray(); }
+        public void ApplyQuick(Dictionary<string, int[]> layout) => Apply(layout);
         public Dictionary<string, int[]>? Saved(string key) => Stored.TryGetValue(key, out var d) ? d : null;
         public void Save(string key, Dictionary<string, int[]> layout) => Stored[key] = layout.ToDictionary(e => e.Key, e => e.Value.ToArray());
     }
@@ -391,6 +392,31 @@ static class Check
         yield return ("plan-notebook-wie-widescreen", nm == 4 && mirrored["links-oben"].X < 150 && mirrored["links-oben"].Y < 150
             && mirrored["links-oben-2"].X < 150 && mirrored["links-oben-2"].Y > mirrored["links-oben"].Y + 100
             && mirrored["links-unten"].X < 150 && mirrored["links-unten"].Y is > 800 and < 1000 && mirrored["rechts-oben"].X > 1700 && mirrored["rechts-oben"].Y < 150);
+
+        // SMs Fall (19.11.2026): Spalte links unten (5 Symbole) bleibt eine Spalte unten, Reihenfolge gleich; Gruppe in der Mitte unten bleibt mittig
+        var column = new Dictionary<string, Placement>();
+        string[] order = ["vs", "lm", "db", "creo1", "creo2"];
+        for (int i = 0; i < 5; i++) column[order[i]] = new("G", 92, 928 + 99 * i, 92 / 3440.0, (928 + 99 * i) / 1440.0, 3440, 1440) { Dpi = 96 };
+        foreach (var (id, x) in new[] { ("lunar", 1716.0), ("minecraft", 1832.0), ("stardew", 1948.0), ("steam", 2064.0) })
+            column[id] = new("G", x, 1324, x / 3440.0, 1324 / 1440.0, 3440, 1440) { Dpi = 96 };
+        var flat = new List<MonitorInfo> { new("N", new Rect(0, 0, 1920, 1080), true) { Dpi = 96, Work = new Rect(0, 0, 1858, 1032) } };
+        var mixed = column.Keys.ToDictionary(k => k, k => new Point(500, 500), StringComparer.OrdinalIgnoreCase);
+        var sm = Keeper.Plan(mixed, null, [column], flat, 116, out _, 100);
+        bool sameColumn = order.All(k => Math.Abs(sm[k].X - sm["vs"].X) < 1) && order.Zip(order.Skip(1)).All(pq => sm[pq.Second].Y > sm[pq.First].Y + 90);
+        bool middle = new[] { "lunar", "minecraft", "stardew", "steam" }.All(k => sm[k].Y > 900 && sm[k].X is > 700 and < 1400);
+        yield return ("plan-spalte-bleibt-spalte-unten", sameColumn && sm["vs"].Y > 450 && sm["creo2"].Y < 1000 && middle);
+
+        // Erweitern nach „Nur PC-Bildschirm“: der jüngere Ein-Bildschirm-Stand darf die Zwei-Bildschirm-Anordnung nicht schlagen 
+        var onlyLaptop = new Dictionary<string, Placement> { ["a"] = new("N", 100, 100, 0.05, 0.09, 1920, 1080) };
+        var extended = new Dictionary<string, Placement> { ["a"] = new("G", 3000, 200, 0.87, 0.14, 3440, 1440) };
+        var both = new List<MonitorInfo> { new("G", new Rect(0, 0, 3440, 1440), true), new("N", new Rect(778, 1440, 1920, 1080), false) };
+        var ranked = Keeper.Rank([(onlyLaptop, new HashSet<string> { "N" }), (extended, new HashSet<string> { "G", "N" })], both);
+        var back = Keeper.Plan(new Dictionary<string, Point> { ["a"] = new(40, 40) }, null, ranked, both, 100, out _);
+        yield return ("plan-zwei-bildschirme-vor-juengerem-einzelstand", back["a"] == new Point(3000, 200));
+
+        // Gespiegelte Ziele zwischen den Zellen: aufs Raster der jetzigen Symbole (Versatz 0/1, Abstand 116×99)
+        var snapped = RealWorld.Snap(new Dictionary<string, int[]> { ["a"] = [977, 113], ["b"] = [233, 199] }, [[0, 1], [116, 100], [232, 199]], 116, 99);
+        yield return ("raster-ziele-einrasten", snapped["a"][0] == 928 && snapped["a"][1] == 100 && snapped["b"][0] == 232 && snapped["b"][1] == 199);
 
         // Monitor aus und wieder an; Windows mischt nach dem Zurückstellen noch einmal: Nachwache stellt wieder zurück 
         var w7 = new FakeWorld(); var k7 = new Keeper(w7); double t7 = 0;

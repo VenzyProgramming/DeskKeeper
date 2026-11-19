@@ -373,6 +373,30 @@ static class Store
         File.WriteAllText(temp, JsonSerializer.Serialize(places));
         File.Move(temp, path, overwrite: true);
     }
+    /// <summary>Plätze je gemerkter Anordnung mit deren Geräten (aus der Gerätedatei, sonst aus den Plätzen), jüngste zuerst.</summary>
+    internal static List<(IReadOnlyDictionary<string, Placement> Places, HashSet<string> Devices)> PlansWithDevices()
+    {
+        var list = new List<(DateTime, IReadOnlyDictionary<string, Placement>, HashSet<string>)>();
+        try
+        {
+            string dir = Path.Combine(Folder, "profile");
+            if (Directory.Exists(dir))
+                foreach (var f in Directory.EnumerateFiles(dir, "*-plaetze.json"))
+                    try
+                    {
+                        if (JsonSerializer.Deserialize<Dictionary<string, Placement>>(File.ReadAllText(f)) is not { } d) continue;
+                        var places = new Dictionary<string, Placement>(d, StringComparer.OrdinalIgnoreCase);
+                        string screens = f[..^"-plaetze.json".Length] + "-bildschirme.json";
+                        var devices = File.Exists(screens) && JsonSerializer.Deserialize<List<ScreenMeta>>(File.ReadAllText(screens)) is { Count: > 0 } meta
+                            ? meta.Select(m => m.Id).ToHashSet(StringComparer.OrdinalIgnoreCase) : places.Values.Select(p => p.Monitor).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                        list.Add((File.GetLastWriteTimeUtc(f), places, devices));
+                    }
+                    catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException) { }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        return list.OrderByDescending(x => x.Item1).Select(x => (x.Item2, x.Item3)).ToList();
+    }
+
     internal static List<IReadOnlyDictionary<string, Placement>> Plans()
     {
         var list = new List<(DateTime, IReadOnlyDictionary<string, Placement>)>();

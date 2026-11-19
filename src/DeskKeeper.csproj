@@ -9,7 +9,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>DeskKeeper</AssemblyName>
     <RootNamespace>DeskKeeper</RootNamespace>
-    <Version>1.2.3</Version>
+    <Version>1.2.4</Version>
     <Product>DeskKeeper</Product>
     <InvariantGlobalization>true</InvariantGlobalization>
     <DefineConstants>$(DefineConstants);PUBLIC_EDITION</DefineConstants>

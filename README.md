@@ -51,6 +51,16 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.2.4
+
+Tested on a real laptop + ultrawide setup in every Win+P mode (PC screen only, Duplicate, Extend with either main display, Second screen only):
+
+- **Groups stay groups.** Icons that sit next to each other move together onto the laptop screen, so a column at the bottom left stays a column at the bottom left.
+- **Two-screen layouts win.** Extending after a laptop-only session no longer pulls every icon onto the laptop: arrangements with the same displays as now come first, newer ones only after that.
+- **Duplicate mode** gets its own hardware ID (both monitors).
+- **The guard after a restore** compares against what Explorer actually accepted after snapping, and never starts DUM-E.
+- Derived targets snap to Explorer's grid, so icons are only counted as moved when they really are.
+
 ## What's new in 1.2.3
 
 - **Displays are remembered by their hardware ID.** Each arrangement is keyed by the monitor's device path from the Windows display configuration together with its real pixels and scaling, so two setups with the same resolution can no longer be mixed up. The laptop panel now gets its ID in laptop-only mode too. Existing arrangements are moved to the new keys automatically.
