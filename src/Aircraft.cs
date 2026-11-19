@@ -24,8 +24,8 @@ interface IAttack
 
 static class Attacks
 {
-    public const string Tu160 = "tu160", Tu22 = "tu22m3", Su34 = "su34", Ka52 = "ka52", Tu95 = "tu95", Il76 = "il76";
-    public static readonly string[] All = [Tu160, Tu22, Su34, Ka52, Tu95, Il76];
+    public const string Tu160 = "tu160", Tu22 = "tu22m3", Su34 = "su34", Ka52 = "ka52", Tu95 = "tu95", Il76 = "il76", Ac130 = "ac130";
+    public static readonly string[] All = [Tu160, Tu22, Su34, Ka52, Tu95, Il76, Ac130];
 
     /// <param name="clusters">dichteste Gruppen zuerst (für Marschflugkörper)</param>
     /// <param name="icons">Symbolmitten auf dem Hauptbildschirm (für Treffer je Symbol)</param>
@@ -47,6 +47,7 @@ static class Attacks
             Ka52 => new HelicopterRaid(stage, everywhere is { Count: > 0 } ? everywhere : each, iconSize, screens),
             Tu95 => new BearRaid(stage, aims12, iconSize) { Reach = radius12 + iconSize * 0.4 },
             Il76 => new AirborneRaid(stage, each, iconSize),
+            Ac130 => new GunshipRaid(area, all.Count > 0 ? all : each, iconSize, screens),
             _ => null,
         };
     }
@@ -131,7 +132,7 @@ static class Fly
 
 // ================================================================ Draufsichten (SVG-Pfade, 1 Einheit = Länge/100)
 
-static class Planes
+static partial class Planes
 {
     // ---------------------------------------------------------------- Ту-22М3 (Länge 42,5 m, Spannweite 34,3 m bei 20°, 23,3 m bei 65°)
     // Maße aus einer Dreiseitenansicht ausgemessen : spitze Nase mit Sonde, seitliche Keileinläufe ab +17,6, Handschuh
@@ -187,9 +188,11 @@ static class Planes
     static readonly Brush Tu22Light = Fly.B("#C9CDD1"), Tu22Shade = Fly.B("#B5BBC0");
     static readonly Pen Tu22Edge = Fly.P("#6C737A", 0.35), Seam = Fly.P("#8A9197", 0.22), Pitot = Fly.P("#5E656C", 0.5);
     static readonly Brush Glass = Fly.B("#2C3846"), Nozzle = Fly.B("#3A3E43"), Radome = Fly.B("#E2E4E6");
+    static readonly Brush Tu22Halo = Art.Glow("#70FF7A2A"), Tu22Flame = Art.Glow("#F0FFE8B0");
 
     /// <param name="sweep">Pfeilung der äußeren Flügel in Grad (20 Start/Landung, 30 Reiseflug, 65 Hochgeschwindigkeit)</param>
-    public static void Tu22(DrawingContext dc, Point at, double heading, double u, double altitude, double sweep = 30)
+    /// <param name="afterburner">0…1 Nachbrenner der beiden NK-25</param>
+    public static void Tu22(DrawingContext dc, Point at, double heading, double u, double altitude, double sweep = 30, double afterburner = 0, double t = 0)
     {
         var wing = Tu22Outer(sweep);
         Fly.ShadowOf(dc, at, heading, u, altitude, wing, Tu22Tail, Tu22Glove, Tu22Trunks, Tu22Body);
@@ -214,6 +217,12 @@ static class Planes
         foreach (double s in new[] { -1.0, 1.0 })
         {
             dc.DrawEllipse(Nozzle, Tu22Edge, new Point(-50.8, 2.6 * s), 1.0, 1.9);
+            if (afterburner > 0.01)
+            {
+                double flick = 0.85 + 0.15 * Math.Sin(t * 53 + s * 2);
+                Soft.Draw(dc, Tu22Halo, new Point(-57, 2.6 * s), 7.5 * afterburner * flick, 2.2, afterburner);
+                Soft.Draw(dc, Tu22Flame, new Point(-54, 2.6 * s), 3.6 * afterburner * flick, 1.2, 1);
+            }
             dc.DrawLine(Seam, new Point(-1, 6.4 * s), new Point(-15.4, 15.6 * s));   // Vorflügel am Handschuh
             dc.DrawLine(Seam, new Point(-26.6, 6.6 * s), new Point(-46, 5.2 * s));   // Triebwerkstunnel
         }
@@ -416,12 +425,22 @@ static class Planes
         dc.Pop();
     }
 
-    static void Propeller(DrawingContext dc, double x, double y, double angle, int dir)
+    static void Propeller(DrawingContext dc, double x, double y, double angle, int dir) => Propeller(dc, x, y, angle, dir, 6.2);
+
+    /// <summary>Granate der 105-mm-Haubitze im Flug: dunkler Körper mit glühendem Leuchtsatz.</summary>
+    public static void Shell(DrawingContext dc, Point at, double u)
+    {
+        Soft.Draw(dc, ShellGlow, at, 2.6 * Math.Max(0.6, u), 2.6 * Math.Max(0.6, u), 0.8);
+        dc.DrawEllipse(BombBody, null, at, 1.1 * Math.Max(0.6, u), 1.1 * Math.Max(0.6, u));
+    }
+    static readonly Brush ShellGlow = Art.Glow("#C0FFC870");
+
+    static void Propeller(DrawingContext dc, double x, double y, double angle, int dir, double radius)
     {
         for (int b = 0; b < 4; b++)
         {
             double a = angle + b * Math.PI / 2;
-            double len = 6.2 * Math.Sin(a);
+            double len = radius * Math.Sin(a);
             double lean = 0.5 * Math.Cos(a) * dir;
             dc.DrawLine(BladePen, new Point(x, y), new Point(x + lean, y + len));
         }
@@ -679,6 +698,9 @@ sealed class RowRaid : IAttack
     Point PlaneAt(int k, double t)
     {
         double x = startX + speed * (t - enter - k * gap);
+        // Tu-22M3: nach dem Zurückschwenken Nachbrenner und Beschleunigung auf gut das Dreifache 
+        double a = t - sweepFrom[k] - 0.9;
+        if (a > 0) x += speed * (a * a * 0.9 / (1 + a * 0.45));
         double y = rows[k] + Math.Sin(x / stage.Width * 3 + k * 1.7) * stage.Height * 0.012;
         double c = t - climbFrom[k];
         if (c > 0) y -= c * c * stage.Height * 0.12;
@@ -703,7 +725,7 @@ sealed class RowRaid : IAttack
             if (t < enter + k * gap) continue;
             var p = PlaneAt(k, t);
             if (p.X > stage.Right + span * 1.5 || p.Y < stage.Top - span * 2) continue;
-            if (kind == Kind.Carpet) Planes.Tu22(dc, p, HeadingAt(k, t), u, 1, 30 + 35 * Fly.Smooth((t - sweepFrom[k]) / 1.6));
+            if (kind == Kind.Carpet) Planes.Tu22(dc, p, HeadingAt(k, t), u, 1, 30 + 35 * Fly.Smooth((t - sweepFrom[k]) / 1.6), Fly.Smooth((t - sweepFrom[k] - 0.7) / 0.5), t);
             else Planes.Su34(dc, p, HeadingAt(k, t), u, 0.45, t);
         }
     }
@@ -1149,4 +1171,340 @@ sealed class AirborneRaid : IAttack
             Planes.Il76(dc, plane, 0, u, 1, ramp);
         }
     }
+}
+
+// ================================================================ AC-130U „Spooky“
+
+static partial class Planes
+{
+    // ---------------------------------------------------------------- AC-130U (C-130H-Zelle: Länge 29,8 m, Spannweite 40,4 m, 4 × T56 mit Vierblattpropellern)
+    // Maße aus einer Dreiseitenansicht ausgemessen (19.11.2026: „1:1 wie in der Realität“): Schulterflügel mit gerader Vorderkante bei +12,
+    // Triebwerke bei 17,4 und 35,1, Außentanks bei 26,5, Höhenleitwerk 16 m. Bewaffnung wie beim Original auf der linken Rumpfseite:
+    // 25-mm-GAU-12/U (fünf Läufe) vorn, 40-mm-Bofors L/60 und 105-mm-Haubitze M102 hinter dem Flügel; Sensortürme links an der Nase.
+    static readonly Geometry HercBody = Fly.G("M50,0 C50,-0.9 49.6,-1.6 49,-1.9 L48,-2.4 L46,-3.3 L44,-4.4 L40,-6.1 L35,-7.3 L30,-7.5 L-22,-7.5 L-25,-7.3 L-30,-6.4 L-35,-5.6 L-40,-4.4 L-45,-2.8 L-48,-1.6 L-50,-0.7 L-50,0.7 " +
+        "L-48,1.6 L-45,2.8 L-40,4.4 L-35,5.6 L-30,6.4 L-25,7.3 L-22,7.5 L30,7.5 L35,7.3 L40,6.1 L44,4.4 L46,3.3 L48,2.4 L49,1.9 C49.6,1.6 50,0.9 50,0 Z");
+    static readonly Geometry HercWing = Fly.G(Full([(12, 0), (12, 7.5), (11.7, 22), (11.2, 38), (10.9, 54), (10.6, 62), (10.5, 66), (9.7, 68.2), (6.9, 68.7), (3, 67.8), (1.9, 65), (1.3, 62),
+        (0.4, 54), (-0.6, 46), (-1.6, 38), (-2.5, 30), (-3.5, 22), (-3.8, 7.5), (-3.8, 0)]));
+    static readonly Geometry HercTail = Fly.Both("M-30,0 L-31.5,7 L-36.5,26.4 C-36.8,27.2 -37.6,27.4 -38.4,27.4 L-41.2,27.4 C-42,27.4 -42.6,27 -42.6,26.2 L-44.4,7 L-45,0 Z");
+    static readonly Geometry HercSponsons = Fly.Both("M6,7.3 C4,8.7 -9,8.9 -14,7.3 Z");   // Fahrwerksgondeln seitlich am Unterrumpf
+    static readonly Geometry HercFin = Fly.G("M-18,0 C-26,-0.8 -36,-1.3 -42,-1.2 L-49,-0.6 L-49,0.6 L-42,1.2 C-36,1.3 -26,0.8 -18,0 Z");
+    static readonly Geometry HercGlass = Fly.G("M46.9,-0.3 L46.6,-2.2 L45.6,-2.4 L45.8,-0.3 Z M46.9,0.3 L46.6,2.2 L45.6,2.4 L45.8,0.3 Z " +   // Frontscheiben
+        "M45.4,-2.6 L44.2,-3.9 L43.2,-3.9 L44.6,-2.6 Z M45.4,2.6 L44.2,3.9 L43.2,3.9 L44.6,2.6 Z " +                                           // Seitenfenster
+        "M44.8,-1.9 L43.4,-1.9 L43.4,-0.5 L44.8,-0.5 Z M44.8,1.9 L43.4,1.9 L43.4,0.5 L44.8,0.5 Z");                                         // Dachfenster
+    static readonly Geometry HercRadome = Fly.G("M50,0 C50,-0.9 49.6,-1.6 49,-1.9 L48,-2.4 L47.4,-2.7 L47.4,2.7 L48,2.4 L49,1.9 C49.6,1.6 50,0.9 50,0 Z");
+    static readonly Geometry HercFrames = Fly.G("M40,-6.1 L40,6.1 M30,-7.5 L30,7.5 M20,-7.5 L20,7.5 M-12,-7.5 L-12,7.5 M-22,-7.5 L-22,7.5 M-30,-6.4 L-30,6.4 " +
+        "M12,-7.5 L-3.8,-7.5 M12,7.5 L-3.8,7.5 M-26,-6.6 L-46,-2.4 M-26,6.6 L-46,2.4");   // Spanten, Flügelwurzel, Laderampe
+    static readonly Geometry HercHatches = Fly.G("M38,-1.6 L35,-1.6 L35,1.6 L38,1.6 Z M16,-1.4 L13.4,-1.4 L13.4,1.4 L16,1.4 Z M-8,-1.4 L-10.6,-1.4 L-10.6,1.4 L-8,1.4 Z");
+    static readonly Geometry HercControls = Fly.G("M-1.6,9 L1.3,60 M-1.6,-9 L1.3,-60 M-38.6,6 L-40.2,26 M-38.6,-6 L-40.2,-26 M-44,0 L-49,0");   // Klappen/Querruder, Höhenruder, Seitenruder
+    static readonly Brush NavRed = Art.Glow("#E0FF3030"), NavGreen = Art.Glow("#E040FF80"), Beacon = Art.Glow("#D0FF3020"), Exhaust = Fly.B("#24282C");
+    static readonly Pen HfWire = Fly.P("#40262A2E", 0.2), Antenna = Fly.P("#262A2E", 0.6);
+    static readonly Brush GunLight = Fly.B("#646C74"), GunShade = Fly.B("#565E66"), GunDark = Fly.B("#2E3338"), GunMetal = Fly.B("#1E2226");
+    static readonly Pen GunEdge = Fly.P("#33393F", 0.35), GunSeam = Fly.P("#4A5158", 0.25), GunBarrel = Fly.P("#1E2226", 0.9), GunBarrelThin = Fly.P("#1E2226", 0.45);
+    static readonly double[] HercEngines = [17.4, 35.1];
+    /// <summary>Mündungen auf der linken Seite (v negativ): 25 mm vorn, 40 mm und 105 mm hinter dem Flügel.</summary>
+    internal static readonly Vector Gun25 = new(23, -10.4), Gun40 = new(-10, -12.8), Gun105 = new(-17, -13.9);
+
+    /// <summary>Waffe in ihrem Lafettensystem zeichnen: Ursprung an der Pforte, +y zeigt quer nach links hinaus, gedreht um aim.</summary>
+    static void Turned(DrawingContext dc, Point mount, double aim, Action draw)
+    {
+        dc.PushTransform(new TranslateTransform(mount.X, mount.Y));
+        dc.PushTransform(new RotateTransform(180 + aim * 180 / Math.PI));   // +y lokal → −v (links)
+        draw();
+        dc.Pop(); dc.Pop();
+    }
+
+    static string Full((double U, double V)[] half)
+    {
+        var pts = half.Concat(half.Reverse().Where(p => p.V != 0).Select(p => (U: p.U, V: -p.V)));
+        return "M" + string.Join(" L", pts.Select(p => FormattableString.Invariant($"{p.U},{p.V}"))) + " Z";
+    }
+
+    /// <param name="aim">Schwenk der drei Waffen gegenüber quer links (Bogenmaß): 25 mm, 40 mm, 105 mm</param>
+    /// <param name="recoil">Rücklauf der Haubitze 0…1</param>
+    public static void AC130(DrawingContext dc, Point at, double heading, double u, double altitude, double t, (double G25, double G40, double G105) aim = default, double recoil = 0)
+    {
+        Fly.ShadowOf(dc, at, heading, u, altitude, HercWing, HercTail, HercBody);
+        dc.PushTransform(Fly.Frame(at, heading, u));
+        foreach (double s in new[] { -1.0, 1.0 })
+        {
+            // Außentanks und Triebwerksgondeln hängen unter dem Schulterflügel: von oben sieht man den Teil vor der Vorderkante
+            dc.DrawRoundedRectangle(GunShade, GunEdge, new Rect(-6, 26.5 * s - 1.8, 23, 3.6), 1.8, 1.8);
+            foreach (double y in HercEngines) dc.DrawRoundedRectangle(GunLight, GunEdge, new Rect(4, y * s - 2.1, 17.6, 4.2), 2.1, 2.1);
+        }
+        dc.DrawGeometry(GunShade, GunEdge, HercTail);
+        dc.DrawGeometry(GunShade, GunEdge, HercSponsons);
+        dc.DrawGeometry(GunLight, GunEdge, HercBody);
+        // Waffen links: Rohre ragen quer aus dem Rumpf (auf das Ziel in der Kreismitte)
+        // Geschützpforten links (Verkleidungen der Lafetten)
+        dc.DrawRoundedRectangle(GunDark, GunEdge, new Rect(Gun25.X - 2, -8.3, 4, 1.4), 0.5, 0.5);
+        dc.DrawRoundedRectangle(GunDark, GunEdge, new Rect(Gun40.X - 1.7, -8.4, 3.4, 1.6), 0.5, 0.5);
+        dc.DrawRoundedRectangle(GunDark, GunEdge, new Rect(Gun105.X - 2.3, -8.6, 4.6, 2.0), 0.6, 0.6);
+        // GAU-12/U: fünf Läufe in einer Trommel, Verkleidung bis zur Mündung
+        Turned(dc, new Point(Gun25.X, -7.9), aim.G25, () =>
+        {
+            dc.DrawRoundedRectangle(GunMetal, null, new Rect(-0.75, 0, 1.5, 1.2), 0.4, 0.4);
+            for (int b = -2; b <= 2; b++) dc.DrawLine(GunBarrelThin, new Point(b * 0.26, 1.0), new Point(b * 0.26, 2.4));
+            dc.DrawRoundedRectangle(null, GunBarrelThin, new Rect(-0.7, 2.2, 1.4, 0.35), 0.15, 0.15);   // Laufhalter vorn
+        });
+        // 40 mm Bofors L/60: langes Rohr mit kegelförmigem Feuerdämpfer
+        Turned(dc, new Point(Gun40.X, -7.9), aim.G40, () =>
+        {
+            dc.DrawRectangle(GunMetal, null, new Rect(-0.6, 0, 1.2, 1.3));
+            dc.DrawLine(GunBarrel, new Point(0, 1.2), new Point(0, 4.0));
+            dc.DrawGeometry(GunMetal, null, Fly.G("M-0.35,4 L0.35,4 L0.6,4.9 L-0.6,4.9 Z"));
+        });
+        // 105 mm M102: kurzes, dickes Rohr mit Doppel-Mündungsbremse, läuft beim Schuss zurück
+        Turned(dc, new Point(Gun105.X, -8.0), aim.G105, () =>
+        {
+            double back = -1.6 * recoil;
+            dc.DrawRectangle(GunMetal, null, new Rect(-1.0, 0, 2.0, 1.5));   // Wiege
+            dc.DrawLine(Fly.P("#1E2226", 1.3), new Point(0, 1.3 + back), new Point(0, 5.4 + back));
+            dc.DrawRectangle(GunMetal, null, new Rect(-1.0, 4.6 + back, 2.0, 0.55));
+            dc.DrawRectangle(GunMetal, null, new Rect(-1.0, 5.35 + back, 2.0, 0.5));
+        });
+        dc.DrawGeometry(GunShade, GunEdge, HercWing);
+        foreach (double s in new[] { -1.0, 1.0 })
+        {
+            foreach (double y in HercEngines) dc.DrawRoundedRectangle(GunLight, GunEdge, new Rect(-5, y * s - 1.3, 17, 2.6), 1.3, 1.3);   // Gondel über dem Flügel
+            dc.DrawLine(GunSeam, new Point(-2.4, 9 * s), new Point(1.3, 60 * s));   // Klappen und Querruder
+        }
+        dc.DrawGeometry(GunShade, GunEdge, HercFin);
+        dc.DrawGeometry(GunLight, GunEdge, HercRadome);
+        dc.DrawGeometry(null, GunSeam, HercFrames);
+        dc.DrawGeometry(null, GunSeam, HercHatches);
+        dc.DrawGeometry(null, GunSeam, HercControls);
+        dc.DrawGeometry(GunDark, GunEdge, HercGlass);
+        dc.DrawLine(HfWire, new Point(40, 0), new Point(-30, 0));                      // HF-Antennendraht zum Seitenleitwerk
+        dc.DrawLine(Antenna, new Point(28, -0.8), new Point(26.4, -0.8));               // SATCOM- und UHF-Antennen
+        dc.DrawLine(Antenna, new Point(6, 0.9), new Point(4.6, 0.9));
+        dc.DrawEllipse(GunMetal, null, new Point(18, 0), 0.9, 0.9);                      // Antennenkuppel
+        foreach (double s in new[] { -1.0, 1.0 })
+        {
+            dc.DrawEllipse(GunMetal, GunEdge, new Point(-33, 6.6 * s), 0.9, 0.9);      // LAIRCM-Infrarotstörer
+            dc.DrawRoundedRectangle(GunDark, null, new Rect(-27, 7.2 * s - 0.4, 3, 0.8), 0.3, 0.3);   // Täuschkörperwerfer
+            foreach (double y in HercEngines) dc.DrawRoundedRectangle(Exhaust, null, new Rect(-3.2, y * s - 0.55, 4.2, 1.1), 0.5, 0.5);   // Abgas oben auf der Gondel
+        }
+        dc.DrawEllipse(GunMetal, GunEdge, new Point(40, -6.6), 1.5, 1.5);   // Infrarot-Sensorturm links an der Nase
+        dc.DrawEllipse(GunMetal, GunEdge, new Point(36, -7.2), 1.1, 1.1);   // Fernsehkamera (ALLTV)
+        Soft.Draw(dc, NavRed, new Point(8.2, -68.4), 1.6, 1.6, 1);       // Positionslichter an den Flügelspitzen: links rot, rechts grün
+        Soft.Draw(dc, NavGreen, new Point(8.2, 68.4), 1.6, 1.6, 1);
+        Soft.Draw(dc, Beacon, new Point(10, 0), (t % 1.1) < 0.12 ? 2.4 : 0.9, (t % 1.1) < 0.12 ? 2.4 : 0.9, 1);   // Blinklicht
+        foreach (double s in new[] { -1.0, 1.0 })
+            foreach (double y in HercEngines)
+            {
+                dc.DrawRectangle(PropDisc, null, new Rect(21, y * s - 6.9, 1.6, 13.8));
+                Propeller(dc, 21.6, y * s, t * 22 + y, 1, 6.9);
+                dc.DrawEllipse(GunLight, GunEdge, new Point(22.4, y * s), 1.4, 1.3);   // Spinner
+            }
+        dc.Pop();
+    }
+}
+
+/// <summary>
+/// AC-130U: kreist in einer Linkskurve um eine Symbolgruppe – die Waffen zeigen nach links in die Kreismitte. Die Gruppe hält erst ein paar
+/// Sekunden durch (Feuerstöße schlagen daneben ein, 19.11.2026: „man möchte ja die Show sehen“), dann wird ein Symbol nach dem anderen
+/// zerstört (40 mm, 105 mm auf das mittlere, ab und zu ein 25-mm-Feuerstoß), danach fliegt die Maschine zur nächsten Gruppe.
+/// </summary>
+sealed class GunshipRaid : IAttack
+{
+    public enum Gun { G25, G40, G105 }
+    internal record Shot(Gun Gun, double Fire, double Impact, Point To, bool Kill);
+    record Segment(double From, double To, Func<double, Point> At);
+
+    readonly List<Segment> path = [];
+    internal readonly List<Shot> Shots = [];
+    readonly double span, u;
+    const double Warm = 2.8, Per = 0.62;
+    public IReadOnlyList<(Point P, double T)> Blasts { get; }
+    public IReadOnlyList<double>? BlastSizes { get; }
+    public double LastImpact { get; }
+    public double End { get; }
+    public bool Explodes => true;
+    public double Reach { get; }
+    internal int Orbits { get; }
+
+    public GunshipRaid(Rect stage, IReadOnlyList<Point> targets, double iconSize, IReadOnlyList<Rect>? screens = null)
+    {
+        span = Math.Clamp(stage.Width * 0.085, iconSize * 2.8, iconSize * 4.2);   // Spannweite in Pixeln
+        u = span / 137;
+        Reach = iconSize * 0.5;
+        double speed = Math.Max(stage.Height * 0.36, span * 1.6);
+        var random = new Random(130);
+        var groups = Gather(targets, iconSize * 2.4);
+        var pos = new Point(stage.Right + span * 1.2, stage.Top + stage.Height * 0.2);
+        var dir = new Vector(-1, 0.15); dir.Normalize();
+        double t = 0.3;
+        var blasts = new List<(Point, double)>(); var sizes = new List<double>();
+        // Reihenfolge: jeweils die nächste Gruppe
+        var pending = groups.ToList();
+        int orbits = 0;
+        while (pending.Count > 0)
+        {
+            var here = pos;
+            var g = pending.OrderBy(x => (x.Center - here).LengthSquared).First();
+            pending.Remove(g);
+            orbits++;
+            double radius = Math.Max(g.Radius + iconSize * 1.8, span * 0.85);
+            // Kreis ganz auf dem Bildschirm der Gruppe: am Rand die Mitte nach innen schieben (die Waffen zielen trotzdem auf die Symbole)
+            var screen = screens?.FirstOrDefault(r => r.Contains(g.Center)) ?? stage;
+            if (screen.IsEmpty) screen = stage;
+            radius = Math.Min(radius, Math.Max(span * 0.6, Math.Min(screen.Width, screen.Height) / 2 - span * 0.55));
+            double inset = radius + span * 0.55;
+            var orbit = new Point(screen.Width > 2 * inset ? Math.Clamp(g.Center.X, screen.Left + inset, screen.Right - inset) : screen.Left + screen.Width / 2,
+                screen.Height > 2 * inset ? Math.Clamp(g.Center.Y, screen.Top + inset, screen.Bottom - inset) : screen.Top + screen.Height / 2);
+            // Einflugpunkt: Kreis so treffen, dass die linke Seite zur Mitte zeigt
+            var away = pos - orbit; if (away.LengthSquared < 1) away = new Vector(1, 0); away.Normalize();
+            var p0 = orbit + Fly.Rot(away, -1.0) * radius;
+            var n = orbit - p0; n.Normalize();
+            var tangent = new Vector(-n.Y, n.X);   // links der Flugrichtung liegt die Mitte
+            double length = (p0 - pos).Length;
+            double hop = Math.Max(0.9, length * 1.15 / speed);
+            path.Add(Hermite(t, t + hop, pos, dir * length, p0, tangent * length));
+            t += hop;
+            // Kreisen
+            double theta0 = Math.Atan2(p0.Y - orbit.Y, p0.X - orbit.X);
+            double sign = Vector.CrossProduct(p0 - orbit, tangent) > 0 ? 1 : -1;
+            double omega = speed / radius * sign;
+            var members = g.Members.OrderBy(m => (m - g.Center).LengthSquared).ToList();
+            double stay = Warm + members.Count * Per + 0.6;
+            double t0 = t, c0 = theta0; var center = orbit;
+            path.Add(new Segment(t0, t0 + stay, q => center + new Vector(Math.Cos(c0 + omega * (q - t0)), Math.Sin(c0 + omega * (q - t0))) * radius));
+            // Show: erst daneben (25-mm-Feuerstöße, ein 40-mm-Schuss), dann ein Symbol nach dem anderen
+            for (double b = t0 + 0.4; b < t0 + Warm - 0.2; b += 0.42)
+            {
+                var near = members[random.Next(members.Count)];
+                var miss = near + Fly.Rot(new Vector(iconSize * (0.75 + 0.6 * random.NextDouble()), 0), random.NextDouble() * Math.Tau);
+                for (int i = 0; i < 5; i++)
+                {
+                    double fire = b + i * 0.045;
+                    var to = miss + new Vector((random.NextDouble() - 0.5) * iconSize * 0.4, (random.NextDouble() - 0.5) * iconSize * 0.4);
+                    Shots.Add(new Shot(Gun.G25, fire, fire + 0.18, to, false));
+                }
+            }
+            var close = members[0] + Fly.Rot(new Vector(iconSize * 0.9, 0), random.NextDouble() * Math.Tau);
+            Shots.Add(new Shot(Gun.G40, t0 + Warm * 0.7, t0 + Warm * 0.7 + 0.26, close, false));
+            for (int k = 0; k < members.Count; k++)
+            {
+                double kill = t0 + Warm + k * Per;
+                var target = members[k];
+                var gun = k == 0 && members.Count >= 3 ? Gun.G105 : k % 3 == 2 ? Gun.G25 : Gun.G40;
+                double flight = gun == Gun.G105 ? 0.42 : gun == Gun.G40 ? 0.26 : 0.18;
+                if (gun == Gun.G25)
+                    for (int i = 0; i < 6; i++)
+                    {   // Feuerstoß wandert auf das Symbol
+                        double fire = kill - flight - (5 - i) * 0.045;
+                        var to = target + new Vector(iconSize * (0.7 - 0.14 * i), 0) * (i % 2 == 0 ? 1 : -1);
+                        Shots.Add(new Shot(Gun.G25, fire, fire + flight, i == 5 ? target : to, i == 5));
+                    }
+                else
+                {
+                    if (gun == Gun.G40) Shots.Add(new Shot(Gun.G40, kill - flight - 0.22, kill - 0.22, target + Fly.Rot(new Vector(iconSize * 0.55, 0), random.NextDouble() * Math.Tau), false));
+                    Shots.Add(new Shot(gun, kill - flight, kill, target, true));
+                }
+                blasts.Add((target, kill)); sizes.Add(gun == Gun.G105 ? 1.35 : gun == Gun.G40 ? 0.85 : 0.6);
+            }
+            t = t0 + stay;
+            pos = path[^1].At(t);
+            var after = pos - path[^1].At(t - 0.02); after.Normalize();
+            dir = after;
+        }
+        Orbits = orbits;
+        // Abflug nach links oben aus dem Bild
+        var exit = new Point(stage.Left - span * 2, stage.Top - span);
+        double outLength = (exit - pos).Length;
+        double outHop = Math.Max(1.2, outLength * 1.1 / speed);
+        path.Add(Hermite(t, t + outHop, pos, dir * outLength, exit, new Vector(-1, -0.3) * outLength));
+        End = t + outHop;
+        Blasts = blasts; BlastSizes = sizes;
+        LastImpact = blasts.Count > 0 ? blasts.Max(b => b.Item2) : 2;
+    }
+
+    record Group(Point Center, double Radius, List<Point> Members);
+
+    /// <summary>Benachbarte Symbole (Radius r) zu Gruppen zusammenfassen; jede Gruppe wird einmal umkreist.</summary>
+    static List<Group> Gather(IReadOnlyList<Point> icons, double r)
+    {
+        var open = icons.ToList(); var result = new List<Group>();
+        while (open.Count > 0)
+        {
+            var seed = open.OrderByDescending(c => open.Count(o => (o - c).Length <= r)).First();
+            var members = open.Where(o => (o - seed).Length <= r).ToList();
+            var center = new Point(members.Average(c => c.X), members.Average(c => c.Y));
+            result.Add(new Group(center, members.Max(m => (m - center).Length), members));
+            open.RemoveAll(members.Contains);
+        }
+        return result;
+    }
+
+    static Segment Hermite(double from, double to, Point a, Vector da, Point b, Vector db) => new(from, to, q =>
+    {
+        double k = Math.Clamp((q - from) / Math.Max(1e-6, to - from), 0, 1), k2 = k * k, k3 = k2 * k;
+        return (Point)((Vector)a * (2 * k3 - 3 * k2 + 1) + da * (k3 - 2 * k2 + k) + (Vector)b * (-2 * k3 + 3 * k2) + db * (k3 - k2));
+    });
+
+    Point At(double t)
+    {
+        foreach (var s in path) if (t <= s.To) return s.At(Math.Max(t, s.From));
+        return path[^1].At(path[^1].To);
+    }
+    double HeadingAt(double t) { var a = At(t - 0.02); var b = At(t + 0.02); return Math.Atan2(b.Y - a.Y, b.X - a.X); }
+    internal Point PlaneAt(double t) => At(t);
+
+    Point Muzzle(Gun gun, double t)
+    {
+        var offset = gun == Gun.G25 ? Planes.Gun25 : gun == Gun.G40 ? Planes.Gun40 : Planes.Gun105;
+        return At(t) + Fly.Rot(offset * u, HeadingAt(t));
+    }
+
+    public void Draw(DrawingContext dc, double t)
+    {
+        foreach (var s in Shots)
+        {
+            if (t < s.Fire) continue;
+            double k = (t - s.Fire) / (s.Impact - s.Fire);
+            var from = Muzzle(s.Gun, s.Fire);
+            if (k < 1)
+            {
+                var head = from + (s.To - from) * k;
+                if (s.Gun == Gun.G105) Planes.Shell(dc, head, u);
+                else Planes.Tracer(dc, from + (s.To - from) * Math.Max(0, k - 0.35), head, s.Gun == Gun.G40 ? u * 1.5 : u);
+            }
+            else if (!s.Kill && t - s.Impact < 0.5) Planes.GunHit(dc, s.To, t - s.Impact, s.Gun == Gun.G40 ? u * 1.8 : u);
+        }
+        if (t >= 0.3 && t <= End)
+        {
+            double heading = HeadingAt(t);
+            double Aim(Gun gun)
+            {   // Lafette folgt dem nächsten bzw. letzten Ziel dieser Waffe, höchstens ±35° aus der Querlage
+                var shot = Shots.Where(s => s.Gun == gun && s.Fire >= t - 0.4).OrderBy(s => Math.Abs(s.Fire - t)).FirstOrDefault();
+                if (shot is null) return 0;
+                var mount = At(t) + Fly.Rot((gun == Gun.G25 ? new Vector(23, -7.9) : gun == Gun.G40 ? new Vector(-10, -7.9) : new Vector(-17, -8)) * u, heading);
+                var d = shot.To - mount;
+                double rel = Math.Atan2(d.Y, d.X) - heading + Math.PI / 2;   // 0 = quer links
+                while (rel > Math.PI) rel -= Math.Tau; while (rel < -Math.PI) rel += Math.Tau;
+                return Math.Clamp(rel, -0.6, 0.6);
+            }
+            var last105 = Shots.Where(s => s.Gun == Gun.G105 && s.Fire <= t).Select(s => t - s.Fire).DefaultIfEmpty(9).Min();
+            double recoil = last105 < 0.08 ? last105 / 0.08 : Math.Max(0, 1 - (last105 - 0.08) / 0.55);
+            Planes.AC130(dc, At(t), heading, u, 0.9, t, (Aim(Gun.G25), Aim(Gun.G40), Aim(Gun.G105)), recoil);
+        }
+        foreach (var s in Shots)   // Mündungsfeuer links am Rumpf
+        {
+            double age = t - s.Fire, life = s.Gun == Gun.G25 ? 0.04 : s.Gun == Gun.G40 ? 0.09 : 0.16;
+            if (age < 0 || age >= life) continue;
+            double size = s.Gun == Gun.G25 ? 3 : s.Gun == Gun.G40 ? 5.5 : 9;
+            var muzzle = Muzzle(s.Gun, s.Fire);
+            var outward = s.To - muzzle; outward.Normalize();
+            Soft.Draw(dc, Flash, muzzle + outward * 2 * u, size * u, size * 0.8 * u, 1 - age / life);
+        }
+        foreach (var s in Shots.Where(s => s.Gun != Gun.G25 && t >= s.Fire && t - s.Fire < 0.9))   // Pulverrauch zieht nach hinten ab
+        {
+            double age = t - s.Fire;
+            var drift = At(s.Fire) - At(Math.Max(0, s.Fire - 0.05)); drift.Normalize();
+            var puff = Muzzle(s.Gun, s.Fire) - drift * (age * span * 0.3);
+            double size = (s.Gun == Gun.G105 ? 7 : 4) * u * (1 + age * 1.6);
+            Soft.Draw(dc, Smoke, puff, size, size, 0.55 * (1 - age / 0.9));
+        }
+    }
+    static readonly Brush Flash = Art.Glow("#F8FFE6A8"), Smoke = Art.Glow("#80B8B4AE");
 }

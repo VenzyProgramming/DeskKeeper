@@ -92,7 +92,12 @@ static class Loc
         // Szene
         ["destruction"] = new("Zerstörung", "Destruction", "Разрушение"),
         ["skin.graphit"] = new("Graphit", "Graphite", "Графит"),
-        ["robot"] = new("DUM-E", "DUM-E", "Дубина"),   // 18.11.2026: deutsch/englisch DUM-E, russisch Дубина
+        ["robot"] = new("DUM-E", "DUM-E", "Дубина"),
+        ["helper"] = new("Helfer", "Helper", "Помощник"),
+        ["h.dume"] = new("DUM-E", "DUM-E", "Дубина"),
+        ["h.stapler"] = new("Gabelstapler", "Forklift", "Погрузчик"),
+        ["h.kran"] = new("Kranwagen", "Crane truck", "Автокран"),
+        ["h.drohnen"] = new("Lieferdrohnen", "Delivery drones", "Дроны доставки"),   // 18.11.2026: deutsch/englisch DUM-E, russisch Дубина
         ["w.jericho"] = new("Jericho", "Jericho", "Иерихон"),
         ["w.nuke"] = new("Atombombe", "Nuke", "Ядерная"),
         ["w.tu160"] = new("Tu-160M", "Tu-160M", "Ту-160М"),
@@ -101,6 +106,7 @@ static class Loc
         ["w.ka52"] = new("Ka-52", "Ka-52", "Ка-52"),
         ["w.tu95"] = new("Tu-95MS", "Tu-95MS", "Ту-95МС"),
         ["w.il76"] = new("Il-76", "Il-76", "Ил-76"),
+        ["w.ac130"] = new("AC-130U", "AC-130U", "AC-130U"),
         // Werkzeuge
         ["t.windows"] = new("Fenster", "Windows", "Окна"),
         ["t.minimize"] = new("Alle Fenster minimieren", "Minimize all windows", "Свернуть все окна"),

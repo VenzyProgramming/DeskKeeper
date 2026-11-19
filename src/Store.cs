@@ -346,7 +346,11 @@ static class Store
     internal static Options LoadOptions() { try { return File.Exists(OptionsFile) ? JsonSerializer.Deserialize<Options>(File.ReadAllText(OptionsFile)) ?? new() : new(); } catch { return new(); } }
     internal static void SaveOptions(Options o) { try { Directory.CreateDirectory(Folder); File.WriteAllText(OptionsFile, JsonSerializer.Serialize(o)); } catch { } }
 
-    internal sealed record Choice(string Weapon = "jericho", string Skin = "graphit");
+    internal sealed record Choice(string Weapon = "jericho", string Skin = "graphit")
+    {
+        /// <summary>Helfer: dume, stapler, kran, drohnen.</summary>
+        public string Helper { get; init; } = "dume";
+    }
     static string ChoiceFile => Path.Combine(Folder, "auswahl.json");
     internal static Choice LoadChoice() { try { return File.Exists(ChoiceFile) ? JsonSerializer.Deserialize<Choice>(File.ReadAllText(ChoiceFile)) ?? new() : new(); } catch { return new(); } }
     internal static void SaveChoice(Choice c) { try { Directory.CreateDirectory(Folder); File.WriteAllText(ChoiceFile, JsonSerializer.Serialize(c)); } catch { } }

@@ -51,6 +51,12 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.2.6
+
+- **New scene: AC-130U gunship.** It circles each group of icons in a left-hand orbit, lets the group hold out for a few seconds with near misses, then takes the icons out one after another with the 105 mm howitzer, the 40 mm Bofors and the 25 mm GAU-12, and flies on to the next group. The guns turn towards their target, the howitzer recoils, and powder smoke drifts off the gun ports. Drawn from the real top view: four T56 engines with six-blade props, external tanks, sensor turrets, flare dispensers, LAIRCM turrets and navigation lights.
+- **Three new helpers** besides DUM-E, chosen under Scene → Helper: a forklift with a pallet, a crane truck with outriggers and a slewing boom, and a swarm of delivery drones with a landing pad.
+- **Tu-22M3:** after the last bomb it sweeps its wings back to 65°, lights both afterburners and accelerates away.
+
 ## What's new in 1.2.5
 
 - **Bombs hit icons, not empty desktop.** Every attack now aims at your actual icons, wherever they sit on your screens. Cruise missiles (Tu-160M, Tu-95MS) target groups of neighbouring icons, with each impact on an icon. The Tu-22M3 and Su-34 fly their rows where your icons are, across all displays, and the carpet drops a second bomb next to each icon instead of into the gaps. Jericho's main blast and its rockets land on an icon, not between icons. The Ka-52's rockets and Vikhr missiles hit the icon itself.

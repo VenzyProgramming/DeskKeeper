@@ -136,7 +136,7 @@ sealed class Scene
         // Дубина von oben mit Anhänger; jedes Symbol einzeln.
         robotStart = jericho ? Math.Max((burnAt.Count > 0 ? burnAt.Values.Max() : Impact) + BurnTime + 0.25, nuke ? Impact + 3.9 : bomber is not null ? Math.Max(bomber.LastImpact + 0.9, bomber.Explodes ? 0 : bomber.End - 0.4) : 0) : 0.2;
         var order = jericho ? HomeRoute() : MovedRoute(new Point(primary.Left, primary.Bottom));
-        robot = new Robot(icons, id => start[id], home, jericho, robotStart, r, this.screens, primary, order);
+        robot = Helpers.Create(Helpers.Current, icons, id => start[id], home, jericho, robotStart, r, this.screens, primary, order);   // DUM-E, Gabelstapler, Kranwagen oder Lieferdrohnen
         Duration = robot.End;
     }
 

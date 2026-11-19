@@ -154,7 +154,7 @@ static class Check
             }
 
             // Neue Luftangriffe : je Angriff alle Symbole weg vor DUM-E, am Ende alle zuhause, Dauer begrenzt, Standbilder
-            foreach (var (attack, frames) in new (string, double[])[] { (Attacks.Tu22, [1.6, 2.6, 4.2]), (Attacks.Su34, [1.0, 1.9, 2.9]), (Attacks.Ka52, [1.6, 3.8, 6.0]), (Attacks.Tu95, [2.2, 3.8, 5.4]), (Attacks.Il76, [2.6, 4.2, 6.8]) })
+            foreach (var (attack, frames) in new (string, double[])[] { (Attacks.Tu22, [1.6, 2.6, 4.2]), (Attacks.Su34, [1.0, 1.9, 2.9]), (Attacks.Ka52, [1.6, 3.8, 6.0]), (Attacks.Tu95, [2.2, 3.8, 5.4]), (Attacks.Il76, [2.6, 4.2, 6.8]), (Attacks.Ac130, [2.4, 4.6, 7.4]) })
             {
                 var sc = new Scene(icons, homes, iconSize, screens, primary, true, 64, attack: attack);
                 Pass(attack + "-einschlaege-vorhanden", sc.Raid.Count >= 1);
@@ -163,7 +163,7 @@ static class Check
                 if (attack != Attacks.Il76) Pass(attack + "-kein-einschlag-ins-leere", sc.Raid.All(b => icons.Any(i => (b.P - i.Center).Length <= iconSize * 1.2)));
                 Pass(attack + "-alle-symbole-weg-vor-dume", sc.IconCenters(sc.RobotStart - 0.05).Values.All(v => v is null));
                 Pass(attack + "-am-ende-alle-zuhause", sc.IconCenters(sc.Duration).All(e => e.Value is { } v && (v - homes[e.Key]).Length < 0.5));
-                double limit = attack == Attacks.Ka52 ? 110 : 100;   // Ka-52 greift jedes Symbol einzeln an : dauert mit der Symbolzahl länger
+                double limit = attack == Attacks.Ka52 ? 110 : attack == Attacks.Ac130 ? 140 : 100;   // AC-130: Show je Gruppe    // Ka-52 greift jedes Symbol einzeln an : dauert mit der Symbolzahl länger
                 Pass($"{attack}-dauer-unter-{limit:0}-s", sc.Duration < limit);
                 results[attack + "-dauer-s"] = Math.Round(sc.Duration, 1);
                 var (mean, p95) = DrawCost(sc, sc.RobotStart);
@@ -173,6 +173,14 @@ static class Check
                 // Deckkraftebenen je brennendem Symbol und je Funkenregen kosteten 60 % bzw. 30 % der Bildzeit (Tu-22M3 149 ms → 17 ms)
                 Pass($"{attack}-rendern-unter-60-ms", soft < 60);
                 for (int f = 0; f < frames.Length; f++) Save(Frame(sc, all, icons, frames[f], 0.5), Path.Combine(output, $"{attack}-{f + 1}.png"));
+                if (sc.Attack is GunshipRaid gunship)
+                {
+                    var kills = gunship.Shots.Where(s => s.Kill).ToList();
+                    Pass("ac130-kreist-auf-dem-bildschirm", kills.All(s => screens.Any(r => r.Contains(gunship.PlaneAt(s.Fire)))));
+                    Pass("ac130-gruppe-haelt-erst-durch", kills.Count > 0 && gunship.Shots.Any(s => !s.Kill && s.Fire < kills.Min(k => k.Fire)));
+                    results["ac130-kreise"] = gunship.Orbits;
+                    Pass("ac130-alle-drei-waffen", kills.Select(s => s.Gun).Distinct().Count() == 3);
+                }
                 if (sc.Attack is HelicopterRaid heli)
                 {   // Ka-52 : jedes Symbol einzeln, Waffe nach Entfernung
                     var plan = heli.Plan;
@@ -200,15 +208,38 @@ static class Check
                     }
                 }
             }
+            // Weitere Helfer : nach einer Szene aus dem Lager, beim Wiederherstellen von dort, wo Windows die Symbole hingelegt hat
+            foreach (var helper in new[] { Helpers.Forklift, Helpers.Crane, Helpers.Drones })
+            {
+                Helpers.Current = helper;
+                try
+                {
+                    var after = new Scene(icons, homes, iconSize, screens, primary, true, 64, attack: Attacks.Tu160);
+                    Pass($"helfer-{helper}-nach-szene-alle-zuhause", after.IconCenters(after.Duration).All(e => e.Value is { } v && (v - homes[e.Key]).Length < 0.5));
+                    Pass($"helfer-{helper}-traegt-alle", after.CarriedCount == icons.Count);
+                    results[$"helfer-{helper}-dauer-s"] = Math.Round(after.Duration - after.RobotStart, 1);
+                    double mid = after.RobotStart + (after.Duration - after.RobotStart) * 0.35;
+                    Save(Frame(after, all, icons, mid, 0.5), Path.Combine(output, $"helfer-{helper}-1.png"));
+                    Save(Frame(after, all, icons, after.RobotStart + (after.Duration - after.RobotStart) * 0.7, 0.5), Path.Combine(output, $"helfer-{helper}-2.png"));
+                    var moved = icons.Select((i, n) => i with { Center = i.Center + new Vector(300 + n * 13, 40) }).ToList();
+                    var back = new Scene(moved, homes, iconSize, screens, primary, false, 64);
+                    Pass($"helfer-{helper}-wiederherstellen-alle-zuhause", back.IconCenters(back.Duration).All(e => e.Value is { } v && (v - homes[e.Key]).Length < 0.5));
+                    results[$"helfer-{helper}-wiederherstellen-s"] = Math.Round(back.Duration, 1);
+                    Pass($"helfer-{helper}-unter-120-s", back.Duration < 120 && after.Duration - after.RobotStart < 120);
+                }
+                finally { Helpers.Current = Helpers.Dume; }
+            }
+
             {   // Typentafel: alle fünf Draufsichten groß, Rotoren und Propeller in zwei Stellungen
                 var v = new DrawingVisual();
                 using (var dc = v.RenderOpen())
                 {
-                    dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x2B, 0x3A, 0x4E)), null, new Rect(0, 0, 1800, 1300));
+                    dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x2B, 0x3A, 0x4E)), null, new Rect(0, 0, 1800, 1750));
                     Planes.Tu22(dc, new Point(230, 220), 0, 3.6, 0.6);
                     Planes.Tu22(dc, new Point(230, 1130), 0, 3.6, 0.6, 65);   // Flügel ganz zurückgeschwenkt
                     Planes.Tu22(dc, new Point(640, 1130), 0, 3.6, 0.6, 20);   // ganz ausgeschwenkt (Start, Landung)
                     Planes.Tu22(dc, new Point(1000, 1130), 0, 3.6, 0.6, 45);
+                    Planes.AC130(dc, new Point(560, 1530), 0, 2.9, 0.6, 0.07);
                     Planes.Su34(dc, new Point(640, 220), 0, 3.6, 0.4, 0.2);
                     Planes.Ka52(dc, new Point(1070, 230), 0, 3.0, 0.3, 0.05);
                     Planes.Ka52(dc, new Point(1520, 230), -Math.PI / 2, 3.0, 0.3, 0.19);
@@ -221,7 +252,7 @@ static class Check
                     Planes.Parachute(dc, new Point(1300, 860), 70, 1, 0, 0.2);
                     Planes.Carrier(dc, new Point(1520, 860), 0, 70, 1.2, 1);
                 }
-                var bmp = new RenderTargetBitmap(1800, 1300, 96, 96, PixelFormats.Pbgra32); bmp.Render(v);
+                var bmp = new RenderTargetBitmap(1800, 1750, 96, 96, PixelFormats.Pbgra32); bmp.Render(v);
                 Save(bmp, Path.Combine(output, "0-flugzeuge.png"));
             }
 

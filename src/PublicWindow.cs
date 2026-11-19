@@ -31,12 +31,15 @@ sealed class PublicWindow : Window, IDeskWindow
     readonly Popup legendPopup = new();
     readonly Button save, restore, start;
     ToggleButton pickJericho = null!, pickNuke = null!, pickTu = null!;
-    static readonly string[] Weapons = ["jericho", "nuke", Attacks.Tu160, Attacks.Tu22, Attacks.Su34, Attacks.Ka52, Attacks.Tu95, Attacks.Il76];
+    static readonly string[] Weapons = ["jericho", "nuke", Attacks.Tu160, Attacks.Tu22, Attacks.Su34, Attacks.Ka52, Attacks.Tu95, Attacks.Il76, Attacks.Ac130];
     readonly Dictionary<string, ToggleButton> weaponTiles = [];
     string Weapon() => weaponTiles.FirstOrDefault(w => w.Value.IsChecked == true).Key ?? "jericho";
     readonly List<ToggleButton> skinButtons = [];
     readonly Dictionary<string, Image> scenePictures = [];
     readonly List<Image> skinPictures = [];
+    readonly Dictionary<string, Image> helperPictures = [];
+    readonly List<ToggleButton> helperButtons = [];
+    string HelperId() => helperButtons.FirstOrDefault(b => b.IsChecked == true)?.Tag as string ?? Helpers.Dume;
     readonly FrameworkElement[] pages = new FrameworkElement[4];
     readonly Border[] navItems = new Border[4];
     readonly Grid root = new();
@@ -223,6 +226,19 @@ sealed class PublicWindow : Window, IDeskWindow
         }
         p.Children.Add(SectionLabel(T("robot"), null));
         p.Children.Add(CardBox(skins, new Thickness(0)));
+        var helpers = new UniformGrid { Columns = Helpers.All.Length, Margin = new Thickness(16) };
+        string helperKnown = Helpers.All.Contains(choice.Helper) ? choice.Helper : Helpers.Dume;
+        foreach (var kind in Helpers.All)
+        {
+            var chip = Tile(kind, T("h." + kind), kind == helperKnown, 4.0 / 3, helperPictures);
+            chip.Tag = kind;
+            chip.Margin = new Thickness(0, 0, kind == Helpers.All[^1] ? 0 : 10, 0);
+            chip.Checked += (_, _) => { foreach (var o in helperButtons) if (o != chip) o.IsChecked = false; Remember(); };
+            chip.Unchecked += (_, _) => { if (!helperButtons.Any(b => b.IsChecked == true)) chip.IsChecked = true; };
+            helperButtons.Add(chip); helpers.Children.Add(chip);
+        }
+        p.Children.Add(SectionLabel(T("helper"), null));
+        p.Children.Add(CardBox(helpers, new Thickness(0)));
         return p;
     }
 
@@ -362,6 +378,11 @@ sealed class PublicWindow : Window, IDeskWindow
             int index = k; var img = skinPictures[k];
             queue.Enqueue(() => { int w = (int)Math.Ceiling(Math.Max(img.ActualWidth, 110) * dpi); img.Source = Preview.SkinImage(Art.Skins[index], w, (int)Math.Round(w * 3.0 / 4)); });
         }
+        foreach (var (id, image) in helperPictures)
+        {
+            var (kind, img) = (id, image);
+            queue.Enqueue(() => { int w = (int)Math.Ceiling(Math.Max(img.ActualWidth, 90) * dpi); img.Source = Preview.HelperImage(kind, w, (int)Math.Round(w * 3.0 / 4)); });
+        }
         void Next()
         {
             if (queue.Count == 0) return;
@@ -421,7 +442,8 @@ sealed class PublicWindow : Window, IDeskWindow
     // ---------------------------------------------------------------- Aktionen
     void Remember()
     {
-        choice = new Store.Choice(Weapon(), Art.Current.Id);
+        choice = new Store.Choice(Weapon(), Art.Current.Id) { Helper = HelperId() };
+        Helpers.Current = choice.Helper;
         Store.SaveChoice(choice);
     }
 

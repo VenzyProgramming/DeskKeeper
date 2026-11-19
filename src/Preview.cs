@@ -36,7 +36,13 @@ static class Preview
         var icons = Icons();
         var homes = icons.ToDictionary(i => i.Id, i => i.Center);
         var s = new Scene(icons, homes, 48, [Desk], Desk, true, 64, nuclear: scene == "nuke", attack: Attacks.All.Contains(scene) ? scene : null);
-        double t = scene switch { "nuke" => DeskKeeper.Scene.Impact + 1.3, "tu160" => 1.8, "tu22m3" => 2.2, "su34" => 1.3, "ka52" => 4.1, "tu95" => 3.4, "il76" => 3.2, _ => DeskKeeper.Scene.Impact + 0.35 };
+        double t = scene switch { "nuke" => DeskKeeper.Scene.Impact + 1.3, "tu160" => 1.8, "tu22m3" => 2.2, "su34" => 1.3, "ka52" => 4.1, "tu95" => 3.4, "il76" => 3.2, "ac130" => 5.0, _ => DeskKeeper.Scene.Impact + 0.35 };
+        if (s.Attack is GunshipRaid gunship)
+        {   // Kanonenboot ganz im Bild, kurz nach einem Schuss der Haubitze
+            var inner = Desk; inner.Inflate(-90, -60);
+            var shot = gunship.Shots.Where(x => x.Gun == GunshipRaid.Gun.G105 && inner.Contains(gunship.PlaneAt(x.Fire + 0.1))).OrderBy(x => x.Fire).Skip(1).FirstOrDefault();
+            if (shot is not null) t = shot.Fire + 0.1;
+        }
         double scale = width / Desk.Width;
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())
@@ -86,6 +92,26 @@ static class Preview
             return bitmap;
         }
         finally { Art.Current = keep; }
+    }
+
+    /// <summary>Helfer von oben (DUM-E im aktuellen Skin, sonst Fahrzeug bzw. Drohnen).</summary>
+    public static BitmapSource HelperImage(string kind, int width, int height)
+    {
+        if (kind == Helpers.Dume) return SkinImage(Art.Current, width, height);
+        string id = $"helper:{kind}:{width}x{height}";
+        if (cache.TryGetValue(id, out var hit)) return hit;
+        var visual = new DrawingVisual();
+        using (var dc = visual.RenderOpen())
+        {
+            dc.DrawRectangle(Wall, null, new Rect(0, 0, width, height));
+            double size = kind == Helpers.Crane ? height * 0.2 : kind == Helpers.Drones ? height * 0.3 : height * 0.3;
+            var at = kind == Helpers.Crane ? new Point(width * 0.42, height * 0.6) : new Point(width * 0.5, height * 0.5);
+            Helpers.DrawPortrait(dc, kind, at, size);
+        }
+        var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(visual);
+        bitmap.Freeze();
+        return cache[id] = bitmap;
     }
 
     static readonly Brush Wall = Frozen(new LinearGradientBrush(Color.FromRgb(0x24, 0x3B, 0x55), Color.FromRgb(0x5A, 0x3A, 0x4E), 35));

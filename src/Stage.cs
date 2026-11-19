@@ -200,6 +200,7 @@ static class Runner
             var all = screens.Aggregate(Rect.Union);
             // Дубина so groß wie der Saugroboter von Seitenleisten-Ausgabe (Ø 64 DIP) bei der Skalierung des Hauptbildschirms
             double robot = 64 * main.Dpi / 96.0;
+            Helpers.Current = Helpers.All.Contains(Store.LoadChoice().Helper) ? Store.LoadChoice().Helper : Helpers.Dume;
             var scene = new Scene(desktop.Icons, homes, desktop.IconSize, screens, primary, jericho, robot, nuclear, attack: attack);
             // Verbrannte Symbole liegen außerhalb aller Bildschirme (unter der Unterkante), bis Дубина sie holt.
             var stash = new Point(all.Left + desktop.IconSize * 2, all.Bottom + desktop.IconSize * 30);
