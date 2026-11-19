@@ -105,72 +105,133 @@ static class Fly
 
 static class Planes
 {
-    // ---------------------------------------------------------------- Ту-22М3 (Länge 42,5 m, Spannweite 34,3 m bei 20°; hier Reiseflug ~30°)
-    static readonly Geometry Tu22Body = Fly.G("M50,0 C48.6,-1.5 44.5,-2.8 38,-3.4 L20,-3.8 L-42,-3.8 L-50,-2.4 L-50,2.4 L-42,3.8 L20,3.8 L38,3.4 C44.5,2.8 48.6,1.5 50,0 Z");
-    static readonly Geometry Tu22Trunks = Fly.Both("M27,3.4 L23.5,7.6 L-44,7.9 L-50.5,6.4 L-50.5,3 Z");
-    static readonly Geometry Tu22Glove = Fly.Both("M15,7.4 L-13,13.4 L-24,13.4 L-22,7.6 Z");
-    static readonly Geometry Tu22Wing = Fly.Both("M-8,12.8 L-26,41 L-31.5,41.6 L-24,13.2 Z");
-    static readonly Geometry Tu22Tail = Fly.Both("M-34,6.5 L-46,20.5 L-51,21 L-48.5,6 Z");
-    static readonly Geometry Tu22Fin = Fly.G("M-20,-0.9 L-50,-1 L-53.5,0 L-50,1 L-20,0.9 Z");
+    // ---------------------------------------------------------------- Ту-22М3 (Länge 42,5 m, Spannweite 34,3 m bei 20°, 23,3 m bei 65°)
+    // Maße aus einer Dreiseitenansicht ausgemessen : spitze Nase mit Sonde, seitliche Keileinläufe ab +17,6, Handschuh
+    // 57°, Schwenkflügel um das Gelenk am Handschuhende (20° bis 65°), schmales Höhenleitwerk über das Heck hinaus, zwei Düsen.
+    static readonly Geometry Tu22Body = Fly.G("M50,0 C49.2,-0.9 47,-1.7 44,-2.2 L38,-2.8 C30,-3.1 24,-3.3 18,-3.5 L-40,-3.5 L-50.6,-2.4 L-50.6,2.4 L-40,3.5 L18,3.5 C24,3.3 30,3.1 38,2.8 L44,2.2 C47,1.7 49.2,0.9 50,0 Z");
+    static readonly Geometry Tu22Trunks = Fly.Both("M18.2,3.5 L17.2,7.1 L0,7.1 L-26,6.6 L-38,6.1 L-46,5.4 L-50.6,4.6 L-50.6,3 Z");
+    static readonly Geometry Tu22Mouth = Fly.Both("M18.2,3.7 L17.3,6.9 L16.5,6.9 L17.4,3.7 Z");
+    static readonly Geometry Tu22Glove = Fly.Both("M0.5,7.1 L-15.9,17.1 L-22.4,17.1 L-26.6,6.9 Z");
+    static readonly Geometry Tu22Tail = Fly.Both("M-37.1,5.4 L-51.8,13.9 C-52.8,14.5 -55.6,14.6 -56.6,13.6 L-57.4,12 L-52.2,5.4 Z");
+    static readonly Geometry Tu22Fin = Fly.G("M-18,0 C-26,-0.9 -38,-1.3 -48,-1.1 L-53,-0.4 L-53,0.4 L-48,1.1 C-38,1.3 -26,0.9 -18,0 Z");
+    static readonly Geometry Tu22Canopy = Fly.G("M35.8,0 C35.4,-1.6 34,-2.3 31.5,-2.4 L28.2,-2.3 L28.2,2.3 L31.5,2.4 C34,2.3 35.4,1.6 35.8,0 Z");
+    static readonly Geometry Tu22Nose = Fly.G("M50,0 C49.2,-0.9 47,-1.7 44,-2.2 L44,2.2 C47,1.7 49.2,0.9 50,0 Z");
+    // Schwenkflügel wie bei der Tu-160 (19.11.2026: „dieselben Fehler wie anfangs bei der Tu-160“): nicht eine Stellung starr um einen
+    // geschätzten Punkt drehen, sondern beide Stellungen aus dem Riss nehmen (20° oben, 65° unten), den Drehpunkt daraus errechnen
+    // (Vorder- und Hinterkante beider Stellungen, kleinste Fehler: (−17,5; ±13,9), Schwenkwinkel 42,4°) und jeden Konturpunkt in Winkel
+    // und Abstand um den Drehpunkt von der 20°- zur 65°-Kontur laufen lassen. Die Wurzel liegt in beiden Stellungen im Handschuh.
+    static readonly Point Tu22Pivot = new(-17.5, 13.9);
+    // Punkt für Punkt einander zugeordnet: Wurzel innen vorn, Vorderkante am Handschuh, Vorderkante Spitze, Randbogen, Hinterkante Spitze,
+    // Hinterkante Wurzel, Wurzel innen hinten; dazu Klappenfuge (2 Punkte) und Stern
+    static readonly Point[] Tu22Wing20 = [new(-15, 12), new(-13.75, 17.1), new(-23.8, 42.6), new(-25.8, 43.6), new(-27.6, 42.8), new(-24.3, 10), new(-20, 10)];
+    static readonly Point[] Tu22Wing65 = [new(-14.4, 14.2), new(-14.6, 17.6), new(-37.5, 29), new(-41, 30.7), new(-43.6, 28.7), new(-24.2, 10), new(-16.7, 9.3)];
+    static readonly Point[] Tu22Marks20 = [new(-24.4, 18), new(-26.9, 41), new(-24.4, 33)];
+    static readonly Point[] Tu22Marks65 = [new(-30.4, 18), new(-40.3, 27), new(-33.5, 24)];
+    static Point Tu22Blend(Point a20, Point a65, double k, double side)
+    {
+        var c = Tu22Pivot;
+        var v1 = a20 - c; var v2 = a65 - c;
+        double t1 = Math.Atan2(v1.Y, v1.X), t2 = Math.Atan2(v2.Y, v2.X);
+        double d = t2 - t1; while (d > Math.PI) d -= Math.Tau; while (d < -Math.PI) d += Math.Tau;
+        double r = v1.Length + (v2.Length - v1.Length) * k, t = t1 + d * k;
+        return new Point(c.X + Math.Cos(t) * r, side * (c.Y + Math.Sin(t) * r));
+    }
+    static readonly Dictionary<int, Geometry> tu22Wings = [];
+    /// <summary>Beide Außenflügel bei dieser Pfeilung (auf 1° gerundet, zwischengespeichert).</summary>
+    static Geometry Tu22Outer(double sweep)
+    {
+        int key = (int)Math.Round(Math.Clamp(sweep, 20, 65));
+        lock (tu22Wings)
+        {
+            if (tu22Wings.TryGetValue(key, out var g)) return g;
+            double k = (key - 20) / 45.0;
+            var geometry = new StreamGeometry();
+            using (var c = geometry.Open())
+                foreach (double side in new[] { 1.0, -1.0 })
+                {
+                    c.BeginFigure(Tu22Blend(Tu22Wing20[0], Tu22Wing65[0], k, side), true, true);
+                    for (int n = 1; n < Tu22Wing20.Length; n++) c.LineTo(Tu22Blend(Tu22Wing20[n], Tu22Wing65[n], k, side), true, true);
+                }
+            geometry.Freeze();
+            return tu22Wings[key] = geometry;
+        }
+    }
     static readonly Brush Tu22Light = Fly.B("#C9CDD1"), Tu22Shade = Fly.B("#B5BBC0");
-    static readonly Pen Tu22Edge = Fly.P("#6C737A", 0.35), Seam = Fly.P("#8A9197", 0.22);
+    static readonly Pen Tu22Edge = Fly.P("#6C737A", 0.35), Seam = Fly.P("#8A9197", 0.22), Pitot = Fly.P("#5E656C", 0.5);
     static readonly Brush Glass = Fly.B("#2C3846"), Nozzle = Fly.B("#3A3E43"), Radome = Fly.B("#E2E4E6");
 
-    public static void Tu22(DrawingContext dc, Point at, double heading, double u, double altitude)
+    /// <param name="sweep">Pfeilung der äußeren Flügel in Grad (20 Start/Landung, 30 Reiseflug, 65 Hochgeschwindigkeit)</param>
+    public static void Tu22(DrawingContext dc, Point at, double heading, double u, double altitude, double sweep = 30)
     {
-        Fly.ShadowOf(dc, at, heading, u, altitude, Tu22Wing, Tu22Tail, Tu22Glove, Tu22Trunks, Tu22Body);
+        var wing = Tu22Outer(sweep);
+        Fly.ShadowOf(dc, at, heading, u, altitude, wing, Tu22Tail, Tu22Glove, Tu22Trunks, Tu22Body);
         dc.PushTransform(Fly.Frame(at, heading, u));
-        dc.DrawGeometry(Tu22Shade, Tu22Edge, Tu22Wing);
+        dc.DrawGeometry(Tu22Shade, Tu22Edge, wing);
+        double k = (Math.Round(Math.Clamp(sweep, 20, 65)) - 20) / 45;
+        foreach (double s in new[] { -1.0, 1.0 })
+        {   // Klappenfuge und Stern laufen mit dem Flügel
+            dc.DrawLine(Seam, Tu22Blend(Tu22Marks20[0], Tu22Marks65[0], k, s), Tu22Blend(Tu22Marks20[1], Tu22Marks65[1], k, s));
+            Art.Star(dc, Tu22Blend(Tu22Marks20[2], Tu22Marks65[2], k, s), 2.0, 0);
+        }
         dc.DrawGeometry(Tu22Shade, Tu22Edge, Tu22Tail);
         dc.DrawGeometry(Tu22Light, Tu22Edge, Tu22Glove);
         dc.DrawGeometry(Tu22Light, Tu22Edge, Tu22Trunks);
         dc.DrawGeometry(Tu22Light, Tu22Edge, Tu22Body);
+        dc.DrawGeometry(Nozzle, null, Tu22Mouth);                               // Einlaufschlitze
         dc.DrawGeometry(Tu22Shade, Tu22Edge, Tu22Fin);
-        dc.DrawGeometry(Radome, Tu22Edge, Fly.G("M50,0 C49,-1 47,-2 44,-2.4 L44,2.4 C47,2 49,1 50,0 Z"));
-        dc.DrawEllipse(Glass, Tu22Edge, new Point(35, 0), 4.4, 1.8);
+        dc.DrawGeometry(Radome, Tu22Edge, Tu22Nose);
+        dc.DrawLine(Pitot, new Point(50, 0), new Point(52.2, 0));
+        dc.DrawGeometry(Glass, Tu22Edge, Tu22Canopy);
+        dc.DrawLine(Seam, new Point(28.2, 0), new Point(35.8, 0));
         foreach (double s in new[] { -1.0, 1.0 })
         {
-            dc.DrawLine(Seam, new Point(-21.4, 16.5 * s), new Point(-29.2, 38.6 * s));   // Klappen
-            dc.DrawLine(Seam, new Point(-9, 13.8 * s), new Point(-25, 39.4 * s));        // Vorflügel
-            dc.DrawLine(Seam, new Point(-24.5, 13.2 * s), new Point(-8.2, 12.9 * s));    // Schwenkfuge
-            dc.DrawEllipse(Nozzle, Tu22Edge, new Point(-50.5, 4.9 * s), 1.1, 1.9);
-            dc.DrawLine(Seam, new Point(22, 6.2 * s), new Point(14, 7.6 * s));           // Lufteinlauf
-            Art.Star(dc, new Point(-21.5, 29 * s), 2.3, 0);
+            dc.DrawEllipse(Nozzle, Tu22Edge, new Point(-50.8, 2.6 * s), 1.0, 1.9);
+            dc.DrawLine(Seam, new Point(-1, 6.4 * s), new Point(-15.4, 15.6 * s));   // Vorflügel am Handschuh
+            dc.DrawLine(Seam, new Point(-26.6, 6.6 * s), new Point(-46, 5.2 * s));   // Triebwerkstunnel
         }
         Art.Star(dc, new Point(-44, 0), 1.0, 0);
         dc.Pop();
     }
 
-    // ---------------------------------------------------------------- Су-34 (Länge 23,3 m, Spannweite 14,7 m; Entennase, Canards, zwei Seitenleitwerke)
-    static readonly Geometry Su34Body = Fly.G("M50,0 C49.6,-3.2 47,-5.2 41,-5.6 L28,-5.8 L18,-6.6 L-36,-6.6 L-48,-5 L-50.5,-3 L-50.5,3 L-48,5 L-36,6.6 L18,6.6 L28,5.8 L41,5.6 C47,5.2 49.6,3.2 50,0 Z");
-    static readonly Geometry Su34Wing = Fly.Both("M27,6 C15,8.2 3,10.2 -5,12.6 L-24.5,31.5 L-31,32 L-29.5,15 L-37.5,10 L-37.5,6.6 Z");
-    static readonly Geometry Su34Canard = Fly.Both("M25,6 L20.5,13.5 L16.8,13.5 L17.4,6 Z");
-    static readonly Geometry Su34Tail = Fly.Both("M-36,9 L-47,21.5 L-51.5,21.5 L-50.5,8.6 Z");
-    static readonly Geometry Su34Fins = Fly.Both("M-27,7.4 L-46,7.4 L-48.5,8.3 L-46,9.2 L-27,8.8 Z");
-    static readonly Geometry Su34Sting = Fly.G("M-48,-1.8 L-57,-1.1 L-57,1.1 L-48,1.8 Z");
+    // ---------------------------------------------------------------- Су-34 (Länge 23,3 m, Spannweite 14,7 m)
+    // Maße ausgemessen : schmale Nase mit großem Radom, Nebeneinander-Cockpit, lange Vorderkantenwurzel, Canards
+    // an der Wurzel (+9,5…−5), Flügel 43° mit Startschienen an den Spitzen, schräg stehende Seitenleitwerke, Höhenleitwerk 45°, Heckstachel.
+    static readonly Geometry Su34Body = Fly.G("M50,0 C50,-1.2 49.4,-2.2 48,-2.6 C46,-3.1 42,-3.6 38,-3.95 L28,-4.5 C24,-4.8 21,-5.4 18,-6.2 C14,-7 9,-8.3 4,-9.7 L-2,-10.6 L-30,-10.8 L-46,-10.6 L-49.6,-9.4 L-50.2,-3 " +
+        "L-50.2,3 L-49.6,9.4 L-46,10.6 L-30,10.8 L-2,10.6 L4,9.7 C9,8.3 14,7 18,6.2 C21,5.4 24,4.8 28,4.5 L38,3.95 C42,3.6 46,3.1 48,2.6 C49.4,2.2 50,1.2 50,0 Z");
+    static readonly Geometry Su34Wing = Fly.Both("M1,9.6 L-25.9,35.2 L-26.8,35.7 L-35.4,35.6 L-34,30 L-28.8,10 Z");
+    static readonly Geometry Su34Rail = Fly.Both("M-20,35.5 L-35.8,35.5 L-35.8,36.4 L-20,36.4 Z");
+    static readonly Geometry Su34Canard = Fly.Both("M9.5,8.4 L-0.2,16.3 L-2.6,16.4 L-5.2,8.6 Z");
+    static readonly Geometry Su34Tail = Fly.Both("M-33.6,10.4 L-46.4,23.6 L-47.8,24 L-50.2,23.4 L-50.6,10.4 Z");
+    static readonly Geometry Su34Fins = Fly.Both("M-30.5,10.8 L-40.5,13.4 L-48.2,13.6 L-48.6,11.2 L-46,10.8 Z");
+    static readonly Geometry Su34Sting = Fly.G("M-49.5,-2.4 L-63,-2.2 L-66.2,-1.2 L-66.2,1.2 L-63,2.2 L-49.5,2.4 Z");
+    static readonly Geometry Su34Canopy = Fly.G("M38.3,0 C38,-2.6 36,-3.4 33,-3.4 L28.6,-3.3 C28.2,-2 28.2,2 28.6,3.3 L33,3.4 C36,3.4 38,2.6 38.3,0 Z");
+    static readonly Geometry Su34Radome = Fly.G("M50,0 C50,-1.2 49.4,-2.2 48,-2.6 C46.6,-2.9 45.2,-3.1 44,-3.2 L44,3.2 C45.2,3.1 46.6,2.9 48,2.6 C49.4,2.2 50,1.2 50,0 Z");
+    static readonly Geometry Su34Patches = Fly.Both("M-6,14.6 L-16.5,24.8 L-24,24 L-21.5,15.4 Z M-38,12 L-44,19.6 L-48.4,19.2 L-47.6,12 Z");
     static readonly Brush Su34Light = Fly.B("#93A3B1"), Su34Shade = Fly.B("#7E8F9E"), Su34Camo = Fly.B("#6F8191"), Su34Nose = Fly.B("#C9CED2");
     static readonly Pen Su34Edge = Fly.P("#4B5660", 0.35);
 
     public static void Su34(DrawingContext dc, Point at, double heading, double u, double altitude, double t)
     {
-        Fly.ShadowOf(dc, at, heading, u, altitude, Su34Wing, Su34Tail, Su34Canard, Su34Body);
+        Fly.ShadowOf(dc, at, heading, u, altitude, Su34Wing, Su34Tail, Su34Canard, Su34Body, Su34Sting);
         dc.PushTransform(Fly.Frame(at, heading, u));
         dc.DrawGeometry(Su34Shade, Su34Edge, Su34Wing);
+        dc.DrawGeometry(Nozzle, null, Su34Rail);                               // Startschienen an den Flügelspitzen
         dc.DrawGeometry(Su34Shade, Su34Edge, Su34Tail);
         dc.DrawGeometry(Su34Light, Su34Edge, Su34Body);
+        dc.DrawGeometry(Su34Camo, null, Su34Patches);                          // Tarnflecken
         dc.DrawGeometry(Su34Light, Su34Edge, Su34Canard);
-        dc.DrawGeometry(Su34Camo, null, Fly.Both("M8,6.6 L-2,10.8 L-14,16.6 L-20,13 L-6,6.6 Z"));   // Tarnflecken
         dc.DrawGeometry(Su34Shade, Su34Edge, Su34Fins);
         dc.DrawGeometry(Su34Shade, Su34Edge, Su34Sting);
-        dc.DrawGeometry(Su34Nose, Su34Edge, Fly.G("M50,0 C49.6,-3.2 47.5,-4.9 43,-5.4 L43,5.4 C47.5,4.9 49.6,3.2 50,0 Z"));
-        dc.DrawEllipse(Glass, Su34Edge, new Point(35.5, 0), 5.4, 3.7);
-        dc.DrawLine(Seam, new Point(35.5, -3.7), new Point(35.5, 3.7));
+        dc.DrawGeometry(Su34Nose, Su34Edge, Su34Radome);
+        dc.DrawGeometry(Glass, Su34Edge, Su34Canopy);
+        dc.DrawLine(Seam, new Point(28.4, 0), new Point(38.3, 0));
         foreach (double s in new[] { -1.0, 1.0 })
         {
-            dc.DrawEllipse(Nozzle, Su34Edge, new Point(-50.5, 3.4 * s), 1.2, 1.7);
-            Soft.Draw(dc, Heat, new Point(-55, 3.4 * s), 3.6 + 0.4 * Math.Sin(t * 47 + s), 1.4, 0.7);
-            dc.DrawLine(Seam, new Point(-27, 15 * s), new Point(-29.5, 29 * s));
-            Art.Star(dc, new Point(-17, 21 * s), 1.8, 0);
+            dc.DrawRoundedRectangle(Nozzle, Su34Edge, new Rect(-50, 6 * s - 2.8, 6.2, 5.6), 1.2, 1.2);
+            Soft.Draw(dc, Heat, new Point(-54, 6 * s), 3.6 + 0.4 * Math.Sin(t * 47 + s), 1.6, 0.7);
+            dc.DrawLine(Seam, new Point(-27.2, 12 * s), new Point(-30.8, 33 * s));   // Flaperon
+            dc.DrawLine(Seam, new Point(-10.5, 17 * s), new Point(-23.5, 33 * s));   // Vorflügel
+            Art.Star(dc, new Point(-25, 24 * s), 1.6, 0);
         }
         dc.Pop();
     }
@@ -338,15 +399,21 @@ static class Planes
         }
     }
 
-    // ---------------------------------------------------------------- Ил-76МД (Länge 46,6 m, Spannweite 50,5 m, Schulterdecker, T-Leitwerk, 4 Strahltriebwerke)
-    static readonly Geometry Il76Body = Fly.G("M50,0 C50,-5 47,-6.8 40,-7 L-30,-7 L-46,-4 L-52,-1.6 L-52,1.6 L-46,4 L-30,7 L40,7 C47,6.8 50,5 50,0 Z");
-    static readonly Geometry Il76Wing = Fly.Both("M10,6.6 L-14,54 L-21,54.6 L-14,20 L-18,6.6 Z");
-    static readonly Geometry Il76Tail = Fly.Both("M-40,1 L-50,19.5 L-55,20 L-53,1 Z");
-    static readonly Geometry Il76Gear = Fly.Both("M14,6.8 L12,10 L-14,10 L-16,6.8 Z");
+    // ---------------------------------------------------------------- Ил-76МД (Länge 46,6 m, Spannweite 50,5 m)
+    // Maße ausgemessen : Rumpf halb 5,2, Schulterflügel über dem Rumpf (Wurzelvorderkante +19, 27° gepfeilt), Triebwerke
+    // bei 13,6 und 23,2 weit vor der Vorderkante, seitliche Fahrwerksgondeln, T-Leitwerk 17,4 m breit, verglaste Navigatornase.
+    static readonly Geometry Il76Body = Fly.G("M50,0 C50,-1.4 49.2,-2.5 47.6,-3.1 C45.6,-3.7 43,-4.2 40,-4.6 C37,-5 35,-5.2 32,-5.2 L-22,-5.2 C-28,-4.6 -34,-3.6 -40,-2.8 L-50,-1.6 C-51.4,-1.3 -52,-0.8 -52,0 " +
+        "C-52,0.8 -51.4,1.3 -50,1.6 L-40,2.8 C-34,3.6 -28,4.6 -22,5.2 L32,5.2 C35,5.2 37,5 40,4.6 C43,4.2 45.6,3.7 47.6,3.1 C49.2,2.5 50,1.4 50,0 Z");
+    static readonly Geometry Il76Wing = Fly.G("M19,0 L19,5.2 L11.6,20 L-4.6,52 L-5.8,54 L-6.6,55.4 L-7.6,56.3 L-13.4,56.3 L-12.9,54 L-12.3,52 L-3.9,20 L-2.7,10 L-2.7,0 L-2.7,-10 L-3.9,-20 L-12.3,-52 L-12.9,-54 L-13.4,-56.3 L-7.6,-56.3 L-6.6,-55.4 L-5.8,-54 L-4.6,-52 L11.6,-20 L19,-5.2 Z");
+    static readonly Geometry Il76Tail = Fly.Both("M-36.2,1 L-46.9,18.2 C-47.4,18.9 -48.6,19.2 -49.6,19 L-51.2,18.4 L-46,1 Z");
+    static readonly Geometry Il76Fin = Fly.G("M-24.9,0 L-36,-1.2 L-46.7,-1 L-48.2,0 L-46.7,1 L-36,1.2 Z");
+    static readonly Geometry Il76Gear = Fly.Both("M1,5 C-1,6.4 -4,6.8 -6,6.8 C-9,6.8 -11.5,6.2 -13,5 Z");
+    static readonly Geometry Il76Fairing = Fly.G("M-2.7,-3.4 C-6,-3.4 -9.4,-2.8 -11,-1.2 L-11,1.2 C-9.4,2.8 -6,3.4 -2.7,3.4 Z");
+    static readonly Geometry Il76Cockpit = Fly.G("M45.6,0 C45.6,-1.9 45,-2.7 43.6,-2.9 L42.6,-2.9 L42.6,2.9 L43.6,2.9 C45,2.7 45.6,1.9 45.6,0 Z");
     static readonly Brush IlLight = Fly.B("#CBD0D4"), IlShade = Fly.B("#BAC0C5"), Intake = Fly.B("#4A4F55");
     static readonly Pen IlEdge = Fly.P("#77808A", 0.35);
-    static readonly double[] IlEngines = [17, 32];
-    static double IlLeading(double y) => 10 - 24 * (y - 6.6) / 47.4;
+    /// <summary>Triebwerke: Lage quer zur Flugrichtung, Einlauf vorn, Ende hinten, halbe Breite.</summary>
+    static readonly (double Y, double Front, double Back, double Half)[] IlEngines = [(13.6, 24.4, 10.6, 2.2), (23.2, 19.4, 5.6, 1.9)];
 
     public static void Il76(DrawingContext dc, Point at, double heading, double u, double altitude, bool rampOpen)
     {
@@ -354,22 +421,24 @@ static class Planes
         dc.PushTransform(Fly.Frame(at, heading, u));
         dc.DrawGeometry(IlLight, IlEdge, Il76Gear);
         dc.DrawGeometry(IlLight, IlEdge, Il76Body);
-        if (rampOpen) dc.DrawGeometry(Intake, IlEdge, Fly.G("M-44,-3.4 L-52,-1.4 L-52,1.4 L-44,3.4 Z"));   // offene Heckrampe
+        if (rampOpen) dc.DrawGeometry(Intake, IlEdge, Fly.G("M-40,-2.6 L-49,-1.6 L-49,1.6 L-40,2.6 Z"));   // offene Heckrampe
+        foreach (double s in new[] { -1.0, 1.0 })
+            foreach (var (y, front, back, half) in IlEngines)
+            {   // Triebwerke hängen unter dem Flügel: von oben sieht man nur den Teil vor der Vorderkante
+                dc.DrawRoundedRectangle(IlLight, IlEdge, new Rect(back, y * s - half, front - back, half * 2), half, half);
+                dc.DrawEllipse(Intake, null, new Point(front - 0.5, y * s), 0.7, half - 0.5);
+            }
         dc.DrawGeometry(IlShade, IlEdge, Il76Wing);          // Schulterdecker: Flügel liegt über dem Rumpf
+        dc.DrawGeometry(IlLight, IlEdge, Il76Fairing);
         foreach (double s in new[] { -1.0, 1.0 })
         {
-            foreach (double y in IlEngines)
-            {
-                double x = IlLeading(y);
-                dc.DrawRoundedRectangle(IlLight, IlEdge, new Rect(x - 9, y * s - 2.4, 16, 4.8), 2.4, 2.4);
-                dc.DrawEllipse(Intake, null, new Point(x + 7, y * s), 0.8, 1.8);
-            }
-            dc.DrawLine(Seam, new Point(-15, 8 * s), new Point(-19.6, 52 * s));
-            Art.Star(dc, new Point(-8, 40 * s), 2.2, 0);
+            dc.DrawLine(Seam, new Point(-1.1, 10 * s), new Point(-10.7, 52 * s));   // Klappen und Querruder
+            Art.Star(dc, new Point(-3.6, 40 * s), 2.2, 0);
         }
+        dc.DrawGeometry(IlShade, IlEdge, Il76Fin);
         dc.DrawGeometry(IlShade, IlEdge, Il76Tail);          // T-Leitwerk ganz oben
-        dc.DrawEllipse(Glass, IlEdge, new Point(43.5, 0), 3.2, 3.6);
-        dc.DrawEllipse(Glass, IlEdge, new Point(48.2, 0), 1.5, 2.6);   // verglaste Navigatorkanzel
+        dc.DrawGeometry(Glass, IlEdge, Il76Cockpit);
+        dc.DrawEllipse(Glass, IlEdge, new Point(48.3, 0), 1.3, 1.2);   // verglaste Navigatorkanzel
         dc.Pop();
     }
 
@@ -521,6 +590,7 @@ sealed class RowRaid : IAttack
     readonly double enter = 0.3;
     readonly double[] rows;
     readonly double[] climbFrom = [double.MaxValue, double.MaxValue];
+    readonly double[] sweepFrom = [double.MaxValue, double.MaxValue];
     readonly List<Drop> drops = [];
     record Drop(int Plane, Point From, Point To, double Release, double Impact);
 
@@ -566,6 +636,7 @@ sealed class RowRaid : IAttack
             }
         }
         if (!carpet) for (int k = 0; k < 2; k++) climbFrom[k] = lastRelease[k] + 0.25;   // Su-34 zieht nach dem letzten Abwurf hoch
+        else for (int k = 0; k < 2; k++) sweepFrom[k] = lastRelease[k] + 0.3;            // Tu-22M3 schwenkt die Flügel zurück
         Blasts = drops.Select(d => (d.To, d.Impact)).ToList();
         LastImpact = drops.Count > 0 ? drops.Max(d => d.Impact) : enter + 2;
         End = Math.Max(LastImpact, enter + gap + (stage.Right + span * 1.5 - startX) / speed);
@@ -598,7 +669,7 @@ sealed class RowRaid : IAttack
             if (t < enter + k * gap) continue;
             var p = PlaneAt(k, t);
             if (p.X > stage.Right + span * 1.5 || p.Y < stage.Top - span * 2) continue;
-            if (kind == Kind.Carpet) Planes.Tu22(dc, p, HeadingAt(k, t), u, 1);
+            if (kind == Kind.Carpet) Planes.Tu22(dc, p, HeadingAt(k, t), u, 1, 30 + 35 * Fly.Smooth((t - sweepFrom[k]) / 1.6));
             else Planes.Su34(dc, p, HeadingAt(k, t), u, 0.45, t);
         }
     }

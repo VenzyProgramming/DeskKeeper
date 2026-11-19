@@ -51,6 +51,13 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.2.3
+
+- **Displays are remembered by their hardware ID.** Each arrangement is keyed by the monitor's device path from the Windows display configuration together with its real pixels and scaling, so two setups with the same resolution can no longer be mixed up. The laptop panel now gets its ID in laptop-only mode too. Existing arrangements are moved to the new keys automatically.
+- **Laptop only? Same layout as on the big screen.** When the display an icon was last seen on is missing, DeskKeeper places it on the main display in the same spot: columns on the left stay on the left, the group in the top right stays in the top right, icons near the bottom stay at the bottom.
+- Real pixels come from the current display mode, so a host app with system DPI can no longer skew them.
+- **Tu-22M3, Su-34 and Il-76 redrawn** from measured three-view drawings. The Tu-22M3 now sweeps its wings back to 65° after the last bomb. Like the Tu-160, both wing positions come from the drawing and every outline point turns around the pivot that both positions define.
+
 ## What's new in 1.2.2
 
 - **Mixed scaling fixed.** Started while the laptop screen (125 %) was the main display, DeskKeeper saw a 3440×1440 monitor as 4300×1800. Layouts landed under a wrong key, icons were squeezed, and older snapshots seemed to be gone. DeskKeeper now always works in real pixels, the way Explorer does. Arrangements that were stored with the wrong scaling are moved aside (`profile\quarantaene-dpi`), not deleted.

@@ -36,7 +36,11 @@ sealed class Engine : IDisposable
         var options = Store.LoadOptions();
         keeper.AutoRestore = keeper.AutoSave = options.Watch;
         keeper.RestoreOnStart = autostarted ? options.RestoreAtLogin : options.RestoreAtStart;
-        keeper.Acted += what => ui.BeginInvoke(() => Acted?.Invoke(what));
+        keeper.Acted += what =>
+        {
+            Fault.Note($"Hüter: {what} · {keeper.LastDetail}");   // nachvollziehbar ohne Fernsteuerung (Echttest Monitor aus/an)
+            ui.BeginInvoke(() => Acted?.Invoke(what));
+        };
 
         if (ownThread)
         {

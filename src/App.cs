@@ -113,6 +113,27 @@ static class Program
             }
             return 0;
         }
+        if (args.Length == 1 && args[0] == "--lage")
+        {
+            // Nur lesen (Rekorder beim Echttest): Anordnung, je Bildschirm Symbolzahl und Umriss, Abstand zum gemerkten Stand
+            try
+            {
+                using var desktop = new ShellDesktop();
+                var now = desktop.Snapshot();
+                string key = Store.ScreenKey();
+                var saved = Store.LoadAuto(key);
+                var line = new System.Text.StringBuilder($"{Store.Describe(key)} · {now.Count} Symbole · gemerkt {(saved is null ? "nein" : Keeper.MovedCount(saved, now) + " woanders")}");
+                foreach (var m in Monitors.Current())
+                {
+                    var on = now.Values.Select(desktop.CenterOf).Where(c => m.Bounds.Contains(c)).ToList();
+                    string box = on.Count == 0 ? "" : $" x {on.Min(c => c.X) - m.Bounds.X:0}..{on.Max(c => c.X) - m.Bounds.X:0} y {on.Min(c => c.Y) - m.Bounds.Y:0}..{on.Max(c => c.Y) - m.Bounds.Y:0}";
+                    line.Append($" | {m.Model} {m.Bounds.Width}x{m.Bounds.Height}{(m.Primary ? " haupt" : "")}: {on.Count}{box}");
+                }
+                Console.WriteLine(line.ToString());
+                return 0;
+            }
+            catch (Exception error) { Console.WriteLine("fehler " + error.Message); return 1; }
+        }
         if (args.Length == 2 && args[0] == "--abweichung")
         {
             // Nur lesen: wie viele Symbole liegen anders als in einer gespeicherten Anordnung (Schnappschuss, Profil)?
@@ -131,6 +152,7 @@ static class Program
                 using var desktop = new ShellDesktop();
                 Console.WriteLine($"ok symbole={desktop.Icons.Count} groesse={desktop.IconSize:0} autoanordnen={desktop.AutoArrange} raster={desktop.SnapInfo}");
                 foreach (var m in Monitors.Current()) Console.WriteLine($"bildschirm {m.Number} {(m.Primary ? "haupt " : "")}{m.Kind} {m.Model} {m.Diagonal:0.0}in {m.Bounds.Width}x{m.Bounds.Height} @{m.Bounds.X},{m.Bounds.Y} {m.Id}");
+                foreach (var d in Physical.Displays()) Console.WriteLine($"anzeige {d.Device} {d.Bounds} arbeitsfläche {d.Work} {d.Dpi} dpi · {d.Name} nativ {d.NativeWidth}x{d.NativeHeight} · {d.Hardware}");
                 Console.WriteLine("anordnung " + Store.Describe(Store.ScreenKey()) + " · abstand " + desktop.Spacing);
                 Console.WriteLine($"symbolmitte geschätzt {desktop.EstimatedAnchor.X:0},{desktop.EstimatedAnchor.Y:0} · gemessen {(desktop.AnchorMeasured ? $"{desktop.Anchor.X:0},{desktop.Anchor.Y:0}" : "nein")} · bildgröße {desktop.ViewIconSize()}");
                 return 0;

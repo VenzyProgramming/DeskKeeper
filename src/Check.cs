@@ -203,10 +203,13 @@ static class Check
                 {
                     dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x2B, 0x3A, 0x4E)), null, new Rect(0, 0, 1800, 1300));
                     Planes.Tu22(dc, new Point(230, 220), 0, 3.6, 0.6);
+                    Planes.Tu22(dc, new Point(230, 1130), 0, 3.6, 0.6, 65);   // Flügel ganz zurückgeschwenkt
+                    Planes.Tu22(dc, new Point(640, 1130), 0, 3.6, 0.6, 20);   // ganz ausgeschwenkt (Start, Landung)
+                    Planes.Tu22(dc, new Point(1000, 1130), 0, 3.6, 0.6, 45);
                     Planes.Su34(dc, new Point(640, 220), 0, 3.6, 0.4, 0.2);
                     Planes.Ka52(dc, new Point(1070, 230), 0, 3.0, 0.3, 0.05);
                     Planes.Ka52(dc, new Point(1520, 230), -Math.PI / 2, 3.0, 0.3, 0.19);
-                    Planes.Ka52(dc, new Point(1450, 1130), 0, 3.0, 0.3, 0, rotors: false);   // Rumpf ohne Rotoren zum Vergleich mit der Vorlage
+                    Planes.Ka52(dc, new Point(1500, 1130), 0, 2.6, 0.3, 0, rotors: false);   // Rumpf ohne Rotoren zum Vergleich mit der Vorlage
                     Planes.Tu95(dc, new Point(330, 700), 0, 3.6, 0.6, 0.03);
                     Planes.Il76(dc, new Point(860, 700), 0, 3.6, 0.6, true);
                     Planes.Bomb(dc, new Point(1250, 600), 0, 6, 1);
@@ -356,7 +359,8 @@ static class Check
         var onlyWide = new List<MonitorInfo> { new("W", new Rect(0, 0, 3440, 1440), true) };
         var cur = new Dictionary<string, Point> { ["a"] = new(40, 40), ["b"] = new(40, 150) };
         var plan1 = Keeper.Plan(cur, null, history, onlyWide, 100, out int n1);
-        yield return ("plan-notebook-zu-symbol-bleibt-auf-seinem-bildschirm", plan1["a"] == new Point(100, 120) && plan1["b"] == new Point(40, 150) && n1 == 1);
+        // b lag zuletzt auf dem Notebook, das fehlt: kommt in derselben Ecke auf den Hauptbildschirm (Spiegeln, 19.11.2026)
+        yield return ("plan-notebook-zu-symbol-bleibt-auf-seinem-bildschirm", plan1["a"] == new Point(100, 120) && plan1["b"] == new Point(50, 50) && n1 == 2);
         // Hauptbildschirm getauscht: Breitbild links (negativ), Notebook bei 0,0
         var swapped = new List<MonitorInfo> { new("W", new Rect(-3440, 0, 3440, 1440), false), new("L", new Rect(0, 0, 1920, 1080), true) };
         var plan2 = Keeper.Plan(new Dictionary<string, Point> { ["a"] = new(40, 40), ["b"] = new(40, 400) }, null, history, swapped, 100, out _);
@@ -376,6 +380,17 @@ static class Check
         var plan6 = Keeper.Plan(new Dictionary<string, Point> { ["a"] = new(10, 10) }, null, [new Dictionary<string, Placement> { ["a"] = frac }],
             new List<MonitorInfo> { new("L", new Rect(0, 0, 1920, 1080), true) }, 100, out _);
         yield return ("plan-fremder-schnappschuss-anteilig", plan6["a"] == new Point(960, 540));
+
+        // Nur Notebook (1920×1080, 125 %): Symbole des fehlenden Widescreens (3440×1440, 100 %) in derselben Anordnung
+        var wide = new Dictionary<string, Placement> { ["links-oben"] = new("G", 35, 40, 35 / 3440.0, 40 / 1440.0, 3440, 1440) { Dpi = 96 },
+            ["links-unten"] = new("G", 35, 1276, 35 / 3440.0, 1276 / 1440.0, 3440, 1440) { Dpi = 96 }, ["rechts-oben"] = new("G", 3339, 40, 3339 / 3440.0, 40 / 1440.0, 3440, 1440) { Dpi = 96 },
+            ["links-oben-2"] = new("G", 35, 138, 35 / 3440.0, 138 / 1440.0, 3440, 1440) { Dpi = 96 } };
+        var notebook = new List<MonitorInfo> { new("N", new Rect(0, 0, 1920, 1080), true) { Dpi = 120 } };
+        var piled = wide.Keys.ToDictionary(k => k, k => new Point(60, 60), StringComparer.OrdinalIgnoreCase);   // Windows hat alles links oben gestapelt
+        var mirrored = Keeper.Plan(piled, null, [wide], notebook, 147, out int nm, 122);
+        yield return ("plan-notebook-wie-widescreen", nm == 4 && mirrored["links-oben"].X < 150 && mirrored["links-oben"].Y < 150
+            && mirrored["links-oben-2"].X < 150 && mirrored["links-oben-2"].Y > mirrored["links-oben"].Y + 100
+            && mirrored["links-unten"].X < 150 && mirrored["links-unten"].Y is > 800 and < 1000 && mirrored["rechts-oben"].X > 1700 && mirrored["rechts-oben"].Y < 150);
 
         // Monitor aus und wieder an; Windows mischt nach dem Zurückstellen noch einmal: Nachwache stellt wieder zurück 
         var w7 = new FakeWorld(); var k7 = new Keeper(w7); double t7 = 0;

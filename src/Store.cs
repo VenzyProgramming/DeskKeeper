@@ -35,19 +35,99 @@ static class Store
     static string Pending => Path.Combine(Folder, "laufende-szene.json");
     static string ProfileFile(string key) => Path.Combine(Folder, "profile", Hash(key) + ".json");
 
-    /// <summary>Schlüssel der aktuellen Bildschirmanordnung: Lage, Größe, Skalierung, Hauptbildschirm (Reihenfolge egal).</summary>
-    internal static string ScreenKey() => Demo.On ? Demo.CurrentKey : string.Join(";", Physical.Displays()
-        .Select(s => $"{(int)s.Bounds.X},{(int)s.Bounds.Y},{(int)s.Bounds.Width},{(int)s.Bounds.Height},{(s.Primary ? 1 : 0)},{s.Dpi}").OrderBy(x => x, StringComparer.Ordinal));
+    /// <summary>
+    /// Schlüssel der aktuellen Bildschirmanordnung (Reihenfolge egal): je Bildschirm die Hardware-Kennung (Gerätepfad des Monitors laut
+    /// Windows-Anzeigekonfiguration) und Lage, Größe, Hauptbildschirm, Skalierung in echten Pixeln – „Kennung@x,y,b,h,haupt,dpi“.
+    /// 19.11.2026: die Pixel eines Bildschirms an seiner Hardware merken, damit Anordnungen nie verwechselt werden.
+    /// </summary>
+    internal static string ScreenKey() => Demo.On ? Demo.CurrentKey : Compose(Physical.Displays()
+        .Select(s => new KeyPart(s.Hardware, (int)s.Bounds.X, (int)s.Bounds.Y, (int)s.Bounds.Width, (int)s.Bounds.Height, s.Primary, (int)s.Dpi)));
+
+    /// <summary>Ein Bildschirm im Schlüssel. Hardware leer: Schlüssel aus der Zeit vor 1.2.3 (nur Lage) oder Gerät ohne Kennung.</summary>
+    internal readonly record struct KeyPart(string Hardware, int X, int Y, int W, int H, bool Primary, int Dpi)
+    {
+        public override string ToString() => (Hardware.Length > 0 ? Hardware + "@" : "") + $"{X},{Y},{W},{H},{(Primary ? 1 : 0)},{Dpi}";
+        public System.Windows.Rect Bounds => new(X, Y, W, H);
+    }
+    internal static string Compose(IEnumerable<KeyPart> parts) => string.Join(";", parts.Select(p => p.ToString()).OrderBy(x => x, StringComparer.Ordinal));
+    /// <summary>Schlüssel zerlegen (alte Form „x,y,b,h,haupt[,dpi]“ und neue Form mit Kennung).</summary>
+    internal static List<KeyPart> Split(string key)
+    {
+        var list = new List<KeyPart>();
+        foreach (var part in key.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            int at = part.LastIndexOf('@');
+            var f = part[(at + 1)..].Split(',');
+            if (f.Length < 5 || !int.TryParse(f[0], out int x) || !int.TryParse(f[1], out int y) || !int.TryParse(f[2], out int w) || !int.TryParse(f[3], out int h)) continue;
+            list.Add(new KeyPart(at > 0 ? part[..at] : "", x, y, w, h, f[4] == "1", f.Length > 5 && int.TryParse(f[5], out int dpi) ? dpi : 96));
+        }
+        return list;
+    }
     /// <summary>Schlüssel bis 2.6 (ohne Skalierung), damit vorhandene Profile weiter gelten.</summary>
-    static string LegacyKey(string key) => string.Join(";", key.Split(';').Select(p => string.Join(",", p.Split(',').Take(5))));
+    static string LegacyKey(string key) => string.Join(";", Split(key).Select(p => $"{p.X},{p.Y},{p.W},{p.H},{(p.Primary ? 1 : 0)}"));
+
+    /// <summary>Gemerkte Anordnungen mit Schlüssel ohne Kennung auf die neue Form umstellen, wenn die Gerätedatei die Geräte nennt:
+    /// Dateien umbenennen, Verzeichnis anpassen. Schon vorhandene neue Schlüssel werden nicht überschrieben.</summary>
+    internal static int MigrateKeys()
+    {
+        int moved = 0;
+        try
+        {
+            string dir = Path.Combine(Folder, "profile"), index = Path.Combine(dir, "anordnungen.json");
+            if (!File.Exists(index)) return 0;
+            var keys = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(index)) ?? [];
+            foreach (var k in keys.ToList())
+            {
+                var parts = Split(k);
+                if (parts.Count == 0 || parts.Any(p => p.Hardware.Length > 0) || !File.Exists(ScreensFile(k))) continue;
+                var metas = JsonSerializer.Deserialize<List<ScreenMeta>>(File.ReadAllText(ScreensFile(k))) ?? [];
+                var mapped = parts.Select(p => metas.FirstOrDefault(m => (int)m.X == p.X && (int)m.Y == p.Y && (int)m.W == p.W && (int)m.H == p.H && m.Id.StartsWith(@"\\?\", StringComparison.Ordinal)) is { } m ? p with { Hardware = m.Id } : p).ToList();
+                if (mapped.Any(p => p.Hardware.Length == 0)) continue;
+                string nk = Compose(mapped);
+                if (keys.Contains(nk)) continue;
+                foreach (var f in Directory.EnumerateFiles(dir, Hash(k) + "*").ToList())
+                {
+                    string target = Path.Combine(dir, Hash(nk) + Path.GetFileName(f)[Hash(k).Length..]);
+                    if (!File.Exists(target)) File.Move(f, target);
+                }
+                keys[keys.IndexOf(k)] = nk; moved++;
+                if (LastKey == k) LastKey = nk;
+                Fault.Note($"Anordnung mit Hardware-Kennung: {Hash(k)} → {Hash(nk)} ({Describe(nk)})");
+            }
+            if (moved > 0) File.WriteAllText(index, JsonSerializer.Serialize(keys));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { Fault.Report(e); }
+        return moved;
+    }
+
+    /// <summary>Geräte merken: Kennung → Name, native Auflösung, gesehene Auflösungen und Skalierungen (profile\geraete.json).</summary>
+    internal sealed record DeviceRecord(string Name, int NativeWidth, int NativeHeight, List<string> Seen);
+    internal static void RememberDevices(IEnumerable<Physical.Display> displays)
+    {
+        try
+        {
+            string file = Path.Combine(Folder, "profile", "geraete.json");
+            var known = File.Exists(file) ? JsonSerializer.Deserialize<Dictionary<string, DeviceRecord>>(File.ReadAllText(file)) ?? [] : [];
+            bool changed = false;
+            foreach (var d in displays.Where(d => d.Hardware.Length > 0))
+            {
+                string seen = $"{(int)d.Bounds.Width}x{(int)d.Bounds.Height}@{d.Dpi}";
+                if (!known.TryGetValue(d.Hardware, out var r)) { known[d.Hardware] = r = new DeviceRecord(d.Name, d.NativeWidth, d.NativeHeight, []); changed = true; }
+                if (!r.Seen.Contains(seen)) { r.Seen.Add(seen); changed = true; }
+            }
+            if (!changed) return;
+            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+            File.WriteAllText(file, JsonSerializer.Serialize(known, new JsonSerializerOptions { WriteIndented = true }));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { Fault.Report(e); }
+    }
 
     /// <summary>Lesbar: „2 Bildschirme · 2560×1440 · 1920×1080 (150 %)“ in der eingestellten Sprache.</summary>
     internal static string Describe(string key)
     {
-        var parts = key.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(p => p.Split(',')).Where(p => p.Length >= 5)
-            .OrderByDescending(p => p[4]).ThenBy(p => int.Parse(p[0])).ToArray();
+        var parts = Split(key).OrderByDescending(p => p.Primary).ThenBy(p => p.X).ToArray();
         string screens = Loc.Count(parts.Length, "screens");
-        return screens + " · " + string.Join(" · ", parts.Select(p => $"{p[2]}×{p[3]}" + (p.Length > 5 && p[5] != "96" ? $" ({int.Parse(p[5]) * 100 / 96} %)" : "")));
+        return screens + " · " + string.Join(" · ", parts.Select(p => $"{p.W}×{p.H}" + (p.Dpi != 96 ? $" ({p.Dpi * 100 / 96} %)" : "")));
     }
 
 
@@ -105,22 +185,19 @@ static class Store
         return moved;
     }
 
-    static List<(int W, int H, bool Primary, int Dpi, int X)> Parts(string key) => key.Split(';', StringSplitOptions.RemoveEmptyEntries)
-        .Select(p => p.Split(',')).Where(p => p.Length >= 6 && p.Take(4).All(v => int.TryParse(v, out _)) && int.TryParse(p[5], out _))
-        .Select(p => (int.Parse(p[2]), int.Parse(p[3]), p[4] == "1", int.Parse(p[5]), int.Parse(p[0])))
-        .OrderByDescending(p => p.Item3).ThenBy(p => p.Item5).ToList();
+    static List<KeyPart> Parts(string key) => Split(key).OrderByDescending(p => p.Primary).ThenBy(p => p.X).ToList();
 
     internal static bool ScaledTwinKey(string twin, string real) => ScaledTwin(Parts(twin), Parts(real));
 
     /// <summary>Alle Teile mit derselben (System-)Skalierung und je Bildschirm um dieses Verhältnis gestreckt – mindestens einer wirklich anders.</summary>
-    internal static bool ScaledTwin(List<(int W, int H, bool Primary, int Dpi, int X)> twin, List<(int W, int H, bool Primary, int Dpi, int X)> real)
+    internal static bool ScaledTwin(List<KeyPart> twin, List<KeyPart> real)
     {
         if (twin.Count == 0 || twin.Count != real.Count || twin.Any(p => p.Dpi != twin[0].Dpi)) return false;
         bool scaled = false;
         for (int i = 0; i < twin.Count; i++)
         {
             var (a, b) = (twin[i], real[i]);
-            if (a.Primary != b.Primary || b.Dpi <= 0) return false;
+            if (a.Primary != b.Primary || b.Dpi <= 0 || a.Hardware.Length > 0 && b.Hardware.Length > 0 && a.Hardware != b.Hardware) return false;
             double f = (double)a.Dpi / b.Dpi;
             if (Math.Abs(a.W - b.W * f) > 2 || Math.Abs(a.H - b.H * f) > 2) return false;
             if (a.Dpi != b.Dpi) scaled = true;
@@ -217,7 +294,7 @@ static class Store
         try
         {
             Directory.CreateDirectory(Path.Combine(Folder, "profile"));
-            File.WriteAllText(ScreensFile(key), JsonSerializer.Serialize(monitors.Select(m => new ScreenMeta(m.Id, m.Number, m.Maker, m.Bounds.X, m.Bounds.Y, m.Bounds.Width, m.Bounds.Height, m.Primary) { Kind = m.Kind, Model = m.Model, Diagonal = m.Diagonal }).ToList()));
+            File.WriteAllText(ScreensFile(key), JsonSerializer.Serialize(monitors.Select(m => new ScreenMeta(m.Id, m.Number, m.Maker, m.Bounds.X, m.Bounds.Y, m.Bounds.Width, m.Bounds.Height, m.Primary) { Kind = m.Kind, Model = m.Model, Diagonal = m.Diagonal, Dpi = m.Dpi }).ToList()));
         }
         catch { }
     }
@@ -226,6 +303,7 @@ static class Store
         public DeviceKind Kind { get; init; }
         public string Model { get; init; } = "";
         public double Diagonal { get; init; }
+        public int Dpi { get; init; }
     }
     /// <summary>Geräte einer Anordnung; für Stände ohne Gerätedatei aus dem Schlüssel (Nummer nach Lage).</summary>
     internal static List<MonitorInfo> ScreensOf(string key)
@@ -233,14 +311,16 @@ static class Store
         try
         {
             if (File.Exists(ScreensFile(key)) && JsonSerializer.Deserialize<List<ScreenMeta>>(File.ReadAllText(ScreensFile(key))) is { Count: > 0 } list)
-                return list.Select(m => new MonitorInfo(m.Id, new System.Windows.Rect(m.X, m.Y, m.W, m.H), m.Primary) { Number = m.Number, Maker = m.Maker, Kind = m.Kind, Model = m.Model, Diagonal = m.Diagonal }).ToList();
+            {
+                var parts = Split(key);   // Skalierung älterer Gerätedateien aus dem Schlüssel
+                return list.Select(m => new MonitorInfo(m.Id, new System.Windows.Rect(m.X, m.Y, m.W, m.H), m.Primary) { Number = m.Number, Maker = m.Maker, Kind = m.Kind, Model = m.Model, Diagonal = m.Diagonal,
+                    Dpi = m.Dpi > 0 ? m.Dpi : parts.FirstOrDefault(p => p.X == (int)m.X && p.Y == (int)m.Y && p.W == (int)m.W && p.H == (int)m.H).Dpi }).ToList();
+            }
         }
         catch { }
         if (key == ScreenKey()) return Monitors.Current();
-        var parts = key.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(p => p.Split(',')).Where(p => p.Length >= 5)
-            .Select(p => (R: new System.Windows.Rect(double.Parse(p[0]), double.Parse(p[1]), double.Parse(p[2]), double.Parse(p[3])), Primary: p[4] == "1"))
-            .OrderByDescending(p => p.Primary).ThenBy(p => p.R.X).ToList();
-        return parts.Select((p, i) => new MonitorInfo("", p.R, p.Primary) { Number = i + 1 }).ToList();
+        return Split(key).OrderByDescending(p => p.Primary).ThenBy(p => p.X)
+            .Select((p, i) => new MonitorInfo(p.Hardware, p.Bounds, p.Primary) { Number = i + 1, Dpi = p.Dpi }).ToList();
     }
 
     /// <summary>Einstellungen (nach dem Vorbild von DesktopOK, erweitert). RestoreMode: instant | robot.</summary>
