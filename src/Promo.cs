@@ -323,7 +323,7 @@ static class Promo
         var scene = new Scene(icons, homes, 52, [desk], desk, true, 64, attack: Attacks.Duel);
         var duel = (DuelRaid)scene.Attack!;
         const double intro = 2.4, outro = 3.2, s0 = 0.9;   // s0: Szenenzeit beim Schnitt, die Jets sind dann schon im Bild
-        double fight = duel.BreakAt + 2.3 - s0;
+        double fight = Math.Max(duel.BreakAt + 2.3, duel.CrashAt + 2.4) - s0;
         var cues = new List<Cue>
         {
             new(0.2, "riser", 0, 0.8),
@@ -338,6 +338,7 @@ static class Promo
         var booms = new List<Cue>();
         foreach (var r in scene.Raid.OrderBy(r => r.T))
             if (InFight(r.T) && !booms.Any(o => Math.Abs(o.T - At(r.T)) < 0.06)) booms.Add(new Cue(At(r.T), "boom", Pan(r.P.X), 0.75));
+        foreach (var (bp, bt, bs) in duel.AirBursts) if (InFight(bt)) booms.Add(new Cue(At(bt), bs >= 1 ? "bigboom" : "boom", Pan(bp.X), bs >= 1 ? 0.95 : 0.6));
         cues.AddRange(booms);
         var shake = booms.Select(c => c with { T = c.T - intro }).ToList();
         double total = intro + fight + outro;
@@ -373,7 +374,7 @@ static class Promo
                     if (t < 3.4)
                     {
                         dc.PushOpacity(Math.Min(1, (3.4 - t) / 0.5));
-                        Caption(dc, t, "Duel", "Rolling scissors · missiles · flares · nobody wins");
+                        Caption(dc, t, "Duel", "Rolling scissors · missiles · flares");
                         dc.Pop();
                     }
                     Film.Chip(dc, t, "DeskKeeper 1.5", 16, Regular, Brushes.White, new SolidColorBrush(Color.FromArgb(0x90, 0x10, 0x14, 0x24)), W / 2.0, 22);
@@ -397,7 +398,8 @@ static class Promo
         for (double k = 0; k <= 0.8; k += 0.1, n++)
         {
             double ti = time - k;
-            var a = duel.PlaneAt(true, ti); var b = duel.PlaneAt(false, ti);
+            // nach dem Treffer: Wrack und Aufschlag im Bild, danach der Sieger
+            var a = ti >= duel.KillAt ? duel.WreckAt(ti) : duel.PlaneAt(true, ti); var b = duel.PlaneAt(false, Math.Min(ti, duel.CrashAt + 0.4));
             focus.X += (a.X + b.X) / 2; focus.Y += (a.Y + b.Y) / 2;
             zoom += Math.Clamp(1250 / ((a - b).Length + 520), 1.2, 1.75);
         }

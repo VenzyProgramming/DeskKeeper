@@ -11,7 +11,9 @@ namespace DeskKeeper;
 /// Symbolgruppen, die Führung wechselt nach jeder Gruppe (der Hintere zieht seitlich vorbei, der Vordere fällt zurück – rollende Schere).
 /// Wer hinten liegt, feuert nach vorn: Luft-Luft-Raketen aus der Nase heraus auf den Vorderen, dazu Kanonenstöße. Der Vordere wirft über
 /// der Gruppe Täuschkörperfächer, die Raketen gehen auf die Täuschkörper und schlagen in die Symbole darunter ein.
-/// Lange Rauchspuren, Wirbelschleppen an den Flügelspitzen, Nachbrenner. Zum Schluss brechen beide mit Nachbrenner auseinander. Keiner gewinnt.
+/// Lange Rauchspuren, Wirbelschleppen an den Flügelspitzen, Nachbrenner.
+/// Finale (19.11.2026: „der Su-57 sollte am Ende den F-35 jagen / zerstören“): die Su-57 setzt sich hinter die F-35, die erste Rakete
+/// geht auf die Täuschkörper, die zweite trifft; die F-35 explodiert, stürzt trudelnd mit Feuer und Rauch ab und schlägt auf, die Su-57 zieht davon.
 /// Nachbesserung 19.11.2026 („schießen blind irgendwo hin oder teleportieren sich random“): Querversatz an einer geglätteten
 /// Bahnrichtung (vorher sprang er in engen Kurven bis 10-fache Fluggeschwindigkeit), Raketen starten in Flugrichtung des Schützen
 /// (vorher bis 171° daneben) und treffen nur Symbole unter dem Gegner (vorher bis 40 Symbolgrößen entfernt).
@@ -31,7 +33,12 @@ sealed class DuelRaid : IAttack
     internal IReadOnlyList<Fan> Fans => fans;
     readonly List<double> passes = [];   // Zeitpunkte, zu denen der Vordere über einer Gruppe ist
     readonly List<double> leads = [];    // +1: F-35A vorn, −1: Su-57 vorn
-    readonly double speed, spanF, spanS, uF, uS, along, side, t0, length, breakAt;
+    readonly double speed, spanF, spanS, uF, uS, along, side, t0, length, breakAt, killAt = double.MaxValue / 4, crashAt = double.MaxValue / 4;
+    readonly List<(Point P, double T, double Size)> airBursts = [];
+    Point killPoint; Vector killVelocity; double killHeading;
+    internal double KillAt => killAt;
+    internal double CrashAt => crashAt;
+    internal IReadOnlyList<(Point P, double T, double Size)> AirBursts => airBursts;
     const double Flight = 1.25, TrailLife = 4.0, Smooth = 150;
 
     public IReadOnlyList<(Point P, double T)> Blasts { get; }
@@ -125,6 +132,8 @@ sealed class DuelRaid : IAttack
             }
             index.Add(bestIndex); lastPass = bestIndex;
         }
+        int finaleIndex = line.Count - 1;
+        for (double run = 0; run < speed * 7.5; run += speed * dt) Steer(mid);   // Finale: weiter Bogen über der Bildschirmmitte
         double diag = Math.Sqrt(area.Width * area.Width + area.Height * area.Height);
         for (double run = 0; run < diag * 1.6 + spanS * 10; run += speed * dt) { Turn(0); Step(); }   // ausrollen, dann geradeaus hinaus
         length = cum[^1];
@@ -162,9 +171,45 @@ sealed class DuelRaid : IAttack
         }
         Blasts = blasts; BlastSizes = blasts.Select(_ => 1.05).ToList();
         LastImpact = blasts.Count > 0 ? blasts.Max(b => b.Item2) : 2;
-        breakAt = (passes.Count > 0 ? passes[^1] : 1.5) + 0.7;
+
+        // Finale: F-35A vorn, Su-57 dahinter (Führung +1); erst Täuschkörper, dann der Treffer
+        double finalPass = passes.Count > 0 ? passes[^1] : 1.8;
+        passes.Add(finalPass + 3.5); leads.Add(1);
+        double Aim(double from, double to)
+        {   // Zeitpunkt, zu dem die F-35A der Su-57 am genauesten vor der Nase ist
+            double best = from, bestAngle = double.MaxValue;
+            for (double fire = from; fire <= to; fire += 0.05)
+            {
+                var v = PlaneAt(true, fire) - PlaneAt(false, fire);
+                double off = Math.Abs(Math.IEEERemainder(Math.Atan2(v.Y, v.X) - Heading(false, fire), 2 * Math.PI));
+                if (off < bestAngle - 0.02) { bestAngle = off; best = fire; }
+            }
+            return best;
+        }
+        double fire1 = Aim(finalPass + 3.6, finalPass + 4.6), hit1 = fire1 + 1.25;
+        fans.Add(new Fan(true, fire1 + 0.45));
+        {
+            double hh = Heading(true, hit1 - 0.5);
+            var back = -new Vector(Math.Cos(hh), Math.Sin(hh)); var across = new Vector(-back.Y, back.X);
+            var decoy = PlaneAt(true, hit1 - 0.5) + back * spanF * 1.6 + across * spanF * 0.9;
+            Shots.Add(new Shot(false, fire1, hit1, decoy));
+            airBursts.Add((decoy, hit1, 0.6));
+        }
+        bursts.Add(new Burst(false, fire1 + 0.25));
+        double fire2 = Aim(fire1 + 0.7, fire1 + 1.5);
+        killAt = fire2 + 1.25;
+        fans.Add(new Fan(true, killAt - 0.7));
+        killPoint = PlaneAt(true, killAt);
+        killVelocity = (PlaneAt(true, killAt) - PlaneAt(true, killAt - 0.05)) / 0.05;
+        killHeading = Heading(true, killAt);
+        Shots.Add(new Shot(false, fire2, killAt, killPoint));
+        airBursts.Add((killPoint, killAt, 1.4));
+        crashAt = killAt + 2.6;
+        airBursts.Add((WreckAt(crashAt), crashAt, 1.7));
+        breakAt = killAt + 0.9;   // die Su-57 zieht nach dem Treffer davon
+        LastImpact = Math.Max(LastImpact, crashAt + 1.0);   // DUM-E wartet, bis die F-35A aufgeschlagen ist
         if (Environment.GetEnvironmentVariable("DK_DUEL_DEBUG") is "1") Console.WriteLine($"gruppen {groups.Count}, ueberfluege {string.Join(" ", passes.Select(p => p.ToString("0.0")))}");
-        End = Math.Max(LastImpact + 0.4, breakAt + 3.2);
+        End = Math.Max(Math.Max(LastImpact + 0.4, breakAt + 3.2), crashAt + 2.6);
     }
 
     Point OnLine(double d)
@@ -178,6 +223,16 @@ sealed class DuelRaid : IAttack
     }
 
     internal double BreakAt => breakAt;
+
+    /// <summary>Wrack der F-35A nach dem Treffer: gleitet mit abnehmender Geschwindigkeit weiter, dreht sich immer schneller,
+    /// sinkt bis zum Aufschlag (Schatten wandert unter das Wrack).</summary>
+    internal Point WreckAt(double t)
+    {
+        double tau = Math.Clamp(t - killAt, 0, crashAt - killAt);
+        return killPoint + killVelocity * (1.1 * (1 - Math.Exp(-tau / 1.1)));
+    }
+
+    double WreckHeading(double t) { double tau = Math.Max(0, t - killAt); return killHeading + 1.8 * tau * tau; }
 
     /// <summary>Führung der F-35A: +1 vorn, −1 hinten. Wechsel in den ersten 80 % zwischen zwei Überflügen (weich),
     /// damit beim Schießen und Täuschen die Rollen klar sind.</summary>
@@ -401,8 +456,71 @@ sealed class DuelRaid : IAttack
             }
         }
         // Jets: wer hinten ist, zuerst
+        Wreck(dc, t);
         bool fFirst = F35Ahead(t);
-        foreach (bool f in fFirst ? new[] { false, true } : new[] { true, false }) Jet(dc, f, t);
+        foreach (bool f in fFirst ? new[] { false, true } : new[] { true, false })
+            if (!(f && t >= killAt)) Jet(dc, f, t);
+        foreach (var (p, at, size) in airBursts) AirBurst(dc, p, t - at, size);
+    }
+
+    static readonly Brush Soot = Art.Glow("#B0262628"), Fire = Art.Glow("#F0FF8A2A"), FireCore = Art.Glow("#F8FFE6A0"), Heat = Art.Glow("#90FFB060"), Ash = Fly.B("#2A2A2C");
+
+    /// <summary>Brennendes Wrack mit Rauchfahne, Trümmerteile aus dem Treffer, nach dem Aufschlag eine Rauchsäule.</summary>
+    void Wreck(DrawingContext dc, double t)
+    {
+        if (t < killAt) return;
+        double tau = t - killAt, fall = crashAt - killAt;
+        // Rauchfahne: frühere Lagen des Wracks, wächst und verblasst
+        for (int j = 14; j >= 1; j--)
+        {
+            double tj = t - j * 0.09;
+            if (tj < killAt) continue;
+            double age = t - tj;
+            Soft.Draw(dc, Soot, WreckAt(tj), spanF * (0.3 + age * 0.6), spanF * (0.3 + age * 0.6), 0.9 * (1 - age / 1.35));
+        }
+        // Trümmerteile
+        for (int k = 0; k < 8; k++)
+        {
+            double a = k * 0.785 + 0.4, v = speed * (0.35 + 0.08 * (k % 4));
+            double life = 1.4 + 0.15 * (k % 3);
+            if (tau > life) continue;
+            var dir = new Vector(Math.Cos(a), Math.Sin(a));
+            var p = killPoint + killVelocity * (0.6 * (1 - Math.Exp(-tau / 0.6))) + dir * v * (0.8 * (1 - Math.Exp(-tau / 0.8)));
+            double fade = 1 - tau / life, z = spanF * (0.05 + 0.02 * (k % 3));
+            Soft.Draw(dc, Fire, p, z * 2.2, z * 2.2, 0.6 * fade);
+            dc.PushTransform(new RotateTransform((tau * (200 + 60 * k)) % 360, p.X, p.Y));
+            dc.DrawRectangle(Soft.Fade(Ash, fade), null, new Rect(p.X - z, p.Y - z * 0.5, z * 2, z));
+            dc.Pop();
+        }
+        if (tau < fall)
+        {   // das Wrack selbst: dreht, sinkt, brennt
+            var p = WreckAt(t); double k = tau / fall;
+            Soft.Draw(dc, Fire, p, spanF * (0.6 + 0.12 * Math.Sin(t * 31)), spanF * 0.5, 0.95);
+            Planes.F35(dc, p, WreckHeading(t), uF * (1 - 0.15 * k), 0.45 * (1 - Fly.Smooth(k)), t);
+            Soft.Draw(dc, FireCore, p + new Vector(Math.Cos(WreckHeading(t)), Math.Sin(WreckHeading(t))) * -spanF * 0.25, spanF * 0.26, spanF * 0.2, 0.95);
+            Soft.Draw(dc, Fire, p + new Vector(Math.Cos(WreckHeading(t) + 1.6), Math.Sin(WreckHeading(t) + 1.6)) * spanF * 0.3, spanF * 0.22, spanF * 0.18, 0.85);
+        }
+        else
+        {   // nach dem Aufschlag: Rauchsäule von oben gesehen, langsam breiter und heller
+            double age = tau - fall;
+            var c = WreckAt(crashAt);
+            for (int j = 0; j < 4; j++)
+                Soft.Draw(dc, Soot, c + new Vector(Math.Cos(j * 1.7) * spanF * 0.3 * age, Math.Sin(j * 1.7) * spanF * 0.3 * age), spanF * (0.6 + age * 0.45), spanF * (0.55 + age * 0.4), Math.Max(0, 0.65 - age * 0.18));
+        }
+    }
+
+    /// <summary>Explosion in der Luft bzw. beim Aufschlag: Blitz, Feuerball aus der Bildfolge der Szene, Hitzeschein.</summary>
+    void AirBurst(DrawingContext dc, Point p, double age, double size)
+    {
+        const double burst = 1.3;
+        if (age < 0 || age > burst) return;
+        double s = spanF * 0.55 * size;
+        double flash = 1 - Fly.Smooth(age / 0.25);
+        if (flash > 0.01) { Soft.Draw(dc, Heat, p, s * 3.4, s * 3.2, flash); Soft.Draw(dc, FireCore, p, s * 1.1, s * 1.1, flash); }
+        var frames = Art.Explosion;
+        var image = frames[(int)(Math.Clamp(age / burst, 0, 0.999) * frames.Length)];
+        double d = s * 6;
+        dc.DrawImage(image, new Rect(p.X - d / 2, p.Y - d / 2, d, d));
     }
 
     void Jet(DrawingContext dc, bool f35, double t)
