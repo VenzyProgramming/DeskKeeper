@@ -32,7 +32,7 @@ sealed class DuelRaid : IAttack
     readonly List<double> passes = [];   // Zeitpunkte, zu denen der Vordere über einer Gruppe ist
     readonly List<double> leads = [];    // +1: F-35A vorn, −1: Su-57 vorn
     readonly double speed, spanF, spanS, uF, uS, along, side, t0, length, breakAt;
-    const double Flight = 0.85, TrailLife = 3.2, Smooth = 150;
+    const double Flight = 1.25, TrailLife = 4.0, Smooth = 150;
 
     public IReadOnlyList<(Point P, double T)> Blasts { get; }
     public IReadOnlyList<double>? BlastSizes { get; }
@@ -45,58 +45,83 @@ sealed class DuelRaid : IAttack
     {
         spanF = Scale.PerMeter(iconSize) * 10.7; spanS = Scale.PerMeter(iconSize) * 14.1;
         uF = spanF / 68; uS = spanS / 70;
-        along = spanS * 1.15; side = spanS * 1.25;
-        speed = Math.Max(area.Width / 3.9, spanS * 4.5);
+        speed = Math.Max(area.Width / 7.5, spanS * 2.4);
+        double turnRate = 70 * Math.PI / 180, radius = speed / turnRate;
+        along = side = Math.Min(spanS * 1.1, radius * 0.45);   // gleich groß: der Abstand der Jets bleibt beim Überholen konstant
         Reach = iconSize * 0.5;
         breakAt = double.MaxValue / 4;
 
-        // Gruppen: bis zu vier benachbarte Symbole, Reihenfolge als Kette vom linken Rand
+        // Gruppen: bis zu sechs benachbarte Symbole, Reihenfolge als Kette vom linken Rand
         var open = targets.ToList();
         var groups = new List<List<Point>>();
         var inner = area; inner.Inflate(-spanS * 2.5, -spanS * 2.5);
         if (inner.IsEmpty) inner = area;
         var mid = new Point(inner.X + inner.Width / 2, inner.Y + inner.Height / 2);
-        var start = new Point(area.Left - spanS * 10, open.Count > 0 ? open.OrderBy(p => p.X).First().Y : mid.Y);
-        var way = new List<Point> { start };
-        var index = new List<int>();
+        var start = new Point(area.Left - spanS * 6, open.Count > 0 ? open.OrderBy(p => p.X).First().Y : mid.Y);
         Point prev = start;
-        double minLeg = speed * 1.8;
         while (open.Count > 0)
         {
             var here = prev;
             var seed = open.OrderBy(p => (p - here).LengthSquared).First();
             var g = open.OrderBy(p => (p - seed).LengthSquared).Take(6).Where(p => (p - seed).Length < iconSize * 4.8).ToList();
-            open.RemoveAll(g.Contains);
-            var c = new Point(g.Average(p => p.X), g.Average(p => p.Y));
-            if (groups.Count > 0 && (c - prev).Length < minLeg)
-            {   // zu nah: erst weit ausholen (in den freien Raum), dann zurück – ergibt eine Schleife statt eines Zickzacks
-                var outv = mid - prev; if (outv.Length < 1) outv = new Vector(1, 0);
-                outv.Normalize();
-                double turn = (groups.Count % 2 == 0 ? 1 : -1) * 0.75;
-                outv = new Vector(outv.X * Math.Cos(turn) - outv.Y * Math.Sin(turn), outv.X * Math.Sin(turn) + outv.Y * Math.Cos(turn));
-                var swing = prev + outv * minLeg * 0.55;
-                swing = new Point(Math.Clamp(swing.X, inner.Left, inner.Right), Math.Clamp(swing.Y, inner.Top, inner.Bottom));
-                way.Add(swing);
-            }
-            way.Add(c); index.Add(way.Count - 1); groups.Add(g);
-            prev = c;
+            open.RemoveAll(g.Contains); groups.Add(g);
+            prev = new Point(g.Average(p => p.X), g.Average(p => p.Y));
         }
-        var exitDir = way.Count > 1 ? way[^1] - way[^2] : new Vector(1, 0);
-        if (exitDir.Length < 1) exitDir = new Vector(1, 0);
-        exitDir.Normalize();
+
+        // Flugbahn als Simulation (19.11.2026: „buggt herum, zu schnell“): feste Geschwindigkeit, Drehrate höchstens 70°/s, steuert
+        // die Gruppen nacheinander an. Liegt eine Gruppe zu nah, ergibt sich eine saubere Schleife statt einer Haarnadel.
+        var index = new List<int>();
+        const double dt = 1 / 120.0;
+        double capture = Math.Max(iconSize * 2.2, radius * 0.9);
+        var pos = start;
+        double hd = groups.Count > 0 ? Math.Atan2(groups[0].Average(p => p.Y) - start.Y, groups[0].Average(p => p.X) - start.X) : 0;
+        void Step()
+        {
+            pos += new Vector(Math.Cos(hd), Math.Sin(hd)) * speed * dt;
+            cum.Add(line.Count == 0 ? 0 : cum[^1] + (pos - line[^1]).Length); line.Add(pos);
+        }
+        line.Add(pos); cum.Add(0);
+        const double minGap = 3.0;
+        void Steer(Point aim)
+        {
+            double want = Math.Atan2(aim.Y - pos.Y, aim.X - pos.X);
+            hd += Math.Clamp(Math.IEEERemainder(want - hd, 2 * Math.PI), -turnRate * dt, turnRate * dt);
+            Step();
+        }
+        for (int gi = 0; gi < groups.Count; gi++)
+        {
+            var g = groups[gi];
+            var c = new Point(g.Average(p => p.X), g.Average(p => p.Y));
+            if (gi > 0)
+            {   // nach jeder Gruppe erst hinaus in den freien Raum, damit zwischen zwei Überflügen Zeit für den Führungswechsel bleibt
+                var away = mid + (mid - c) * 0.35;
+                for (double run = 0; run < speed * minGap * 0.5; run += speed * dt) Steer((away - pos).Length > radius * 1.5 ? away : pos + new Vector(Math.Cos(hd), Math.Sin(hd)) * 100);
+            }
+            double turned = 0, best = double.MaxValue; int bestIndex = line.Count - 1;
+            for (int guard = 0; guard < 120 * 30; guard++)
+            {
+                double dist = (c - pos).Length;
+                if (dist < best) { best = dist; bestIndex = line.Count - 1; }
+                if (dist < capture) break;
+                if (turned > 2 * Math.PI && dist > best + speed * 0.3) break;   // kreist sonst um eine Gruppe im Wendekreis
+                double want = Math.Atan2(c.Y - pos.Y, c.X - pos.X);
+                double delta = Math.IEEERemainder(want - hd, 2 * Math.PI);
+                double stepTurn = Math.Clamp(delta, -turnRate * dt, turnRate * dt);
+                hd += stepTurn; turned += Math.Abs(stepTurn);
+                Step();
+            }
+            index.Add(bestIndex);
+        }
         double diag = Math.Sqrt(area.Width * area.Width + area.Height * area.Height);
-        way.Add(way[^1] + exitDir * (diag * 0.5));
-        way.Add(way[^1] + exitDir * (diag + spanS * 10));
-        const int steps = 32;
-        Sample(way, steps);
+        for (double run = 0; run < diag * 1.6 + spanS * 10; run += speed * dt) Step();   // geradeaus hinaus
         length = cum[^1];
 
         // Überflugzeiten: der Vordere (Weg + along) ist über der Gruppe; erste Gruppe frühestens nach 1,6 s
-        double firstD = groups.Count > 0 ? cum[index[0] * steps] : 0;
-        t0 = Math.Min(0.3, 1.6 - (firstD - along) / speed);
+        double firstD = groups.Count > 0 ? cum[index[0]] : 0;
+        t0 = Math.Max(0.3, 1.8 - (firstD - along) / speed);   // erste Gruppe frühestens nach 1,8 s, davor kommen die Jets von außen herein
         for (int i = 0; i < groups.Count; i++)
         {
-            passes.Add(t0 + (cum[index[i] * steps] - along) / speed);
+            passes.Add(t0 + (cum[index[i]] - along) / speed);
             leads.Add(i % 2 == 0 ? 1 : -1);
         }
 
@@ -110,8 +135,8 @@ sealed class DuelRaid : IAttack
             var g = groups[i].OrderBy(p => (p - PlaneAt(!byF35, tp - 0.4)).Length).ToList();
             for (int k = 0; k < g.Count; k++)
             {
-                double impact = tp + 0.05 + k * 0.13, best = impact - Flight, bestAngle = double.MaxValue;
-                for (double fire = impact - 1.15; fire <= impact - 0.5; fire += 0.05)
+                double impact = tp + 0.1 + k * 0.18, best = impact - Flight, bestAngle = double.MaxValue;
+                for (double fire = impact - 1.6; fire <= impact - 0.8; fire += 0.05)
                 {
                     double h = Heading(byF35, fire);
                     var to = PlaneAt(!byF35, fire) - PlaneAt(byF35, fire);
@@ -127,29 +152,6 @@ sealed class DuelRaid : IAttack
         breakAt = (passes.Count > 0 ? passes[^1] : 1.5) + 0.7;
         if (Environment.GetEnvironmentVariable("DK_DUEL_DEBUG") is "1") Console.WriteLine($"gruppen {groups.Count}, ueberfluege {string.Join(" ", passes.Select(p => p.ToString("0.0")))}");
         End = Math.Max(LastImpact + 0.4, breakAt + 3.2);
-    }
-
-    /// <summary>Zentripetale Catmull-Rom-Kurve durch die Wegpunkte: keine Schlaufen und Spitzen an dicht liegenden Punkten.</summary>
-    void Sample(List<Point> way, int steps)
-    {
-        for (int i = 0; i < way.Count - 1; i++)
-        {
-            Point p0 = way[Math.Max(i - 1, 0)], p1 = way[i], p2 = way[i + 1], p3 = way[Math.Min(i + 2, way.Count - 1)];
-            if (i == 0) p0 = p1 - (p2 - p1);
-            if (i + 2 > way.Count - 1) p3 = p2 + (p2 - p1);
-            double k0 = 0, k1 = k0 + Knot(p0, p1), k2 = k1 + Knot(p1, p2), k3 = k2 + Knot(p2, p3);
-            for (int s = 0; s < steps; s++)
-            {
-                double t = k1 + (k2 - k1) * s / steps;
-                var a1 = Mix(p0, p1, k0, k1, t); var a2 = Mix(p1, p2, k1, k2, t); var a3 = Mix(p2, p3, k2, k3, t);
-                var b1 = Mix(a1, a2, k0, k2, t); var b2 = Mix(a2, a3, k1, k3, t);
-                Add(Mix(b1, b2, k1, k2, t));
-            }
-        }
-        Add(way[^1]);
-        void Add(Point p) { cum.Add(line.Count == 0 ? 0 : cum[^1] + (p - line[^1]).Length); line.Add(p); }
-        static double Knot(Point a, Point b) => Math.Max(1e-3, Math.Sqrt((b - a).Length));
-        static Point Mix(Point a, Point b, double ka, double kb, double t) { double w = (t - ka) / (kb - ka); return a + (b - a) * w; }
     }
 
     Point OnLine(double d)
@@ -188,10 +190,13 @@ sealed class DuelRaid : IAttack
     {
         double sign = f35 ? 1 : -1, lead = Lead(t);
         double brk = Fly.Smooth((t - breakAt) / 1.6);
-        double d = (t - t0) * speed + sign * along * lead + brk * sign * speed * 0.3 * Math.Max(0, t - breakAt);
+        double theta = (1 - lead) / 2 * Math.PI;   // 0: F-35A vorn … π: Su-57 vorn; weich, ohne Ruck an den Enden
+        double d = (t - t0) * speed + sign * along * Math.Cos(theta) + brk * sign * speed * 0.3 * Math.Max(0, t - breakAt);
         var p = OnLine(d);
-        var (n, straight) = Across(d);
-        double lateral = sign * side * (1 - lead * lead) * straight + sign * brk * brk * speed * 0.9 * Math.Max(0, t - breakAt);
+        var (n, _) = Across(d);
+        // Überholen auf einem Halbkreis um den anderen: Längs- und Querversatz zusammen immer gleich lang, die Jets überlappen nie
+        // (19.11.2026: „ein Jet ist auf einmal unter dem anderen“).
+        double lateral = sign * side * Math.Sin(theta) + sign * brk * brk * speed * 0.9 * Math.Max(0, t - breakAt);
         return p + n * lateral;
     }
 
@@ -225,13 +230,44 @@ sealed class DuelRaid : IAttack
         double h = Heading(s.ByF35, s.Fire);
         var dir = new Vector(Math.Cos(h), Math.Sin(h));
         var p0 = PlaneAt(s.ByF35, s.Fire) + dir * (s.ByF35 ? spanF : spanS) * 0.55;
-        var p1 = p0 + dir * (speed * 0.5 + spanS * 1.2);
+        var p1 = p0 + dir * (speed * 0.9 + spanS * 1.5);
         var target = PlaneAt(!s.ByF35, s.Impact - 0.3);
         var p2 = target + (s.To - target) * 0.45;   // auf den Gegner zu, dann zu den Täuschkörpern über dem Symbol
         var p3 = s.To;
         double m = 1 - k;
         return new Point(m * m * m * p0.X + 3 * m * m * k * p1.X + 3 * m * k * k * p2.X + k * k * k * p3.X,
                          m * m * m * p0.Y + 3 * m * m * k * p1.Y + 3 * m * k * k * p2.Y + k * k * k * p3.Y);
+    }
+
+    /// <summary>Unruhe der Fluglage je Bild (60 Bilder/s): größte Drehrate (Grad/s), Anzahl Wechsel der Drehrichtung je Sekunde
+    /// (Zittern/Pendeln), größte Beschleunigung (Vielfaches der Fluggeschwindigkeit je Sekunde) und Fluggeschwindigkeit in Bildschirmbreiten je s.</summary>
+    internal (double TurnRate, double Wobble, double Accel, double ScreensPerSecond) Unrest(double width)
+    {
+        double maxTurn = 0, maxAcc = 0; int flips = 0; double seconds = Math.Max(0.1, breakAt - 0.5);
+        foreach (bool f in new[] { true, false })
+        {
+            double lastRate = 0; Vector lastV = new();
+            for (double t = 0.5; t < breakAt; t += 1 / 60.0)
+            {
+                double rate = Math.IEEERemainder(Heading(f, t + 1 / 60.0) - Heading(f, t), 2 * Math.PI) * 60 * 180 / Math.PI;
+                maxTurn = Math.Max(maxTurn, Math.Abs(rate));
+                if (Math.Abs(rate) > 400 && Environment.GetEnvironmentVariable("DK_DUEL_DEBUG") is "1") { double d0 = (t - t0) * speed; Console.WriteLine($"dreh t={t:0.000} {(f ? "F35" : "Su57")} {rate:0} grad/s lead={Lead(t):0.00} d={d0:0} straight={Across(d0).Straight:0.00} pos={PlaneAt(f, t).X:0},{PlaneAt(f, t).Y:0}"); }
+                if (Math.Abs(rate) > 8 && Math.Abs(lastRate) > 8 && Math.Sign(rate) != Math.Sign(lastRate)) flips++;
+                if (Math.Abs(rate) > 8) lastRate = rate;
+                var v = (PlaneAt(f, t + 1 / 60.0) - PlaneAt(f, t)) * 60;
+                if (t > 0.5) maxAcc = Math.Max(maxAcc, (v - lastV).Length * 60 / speed);
+                lastV = v;
+            }
+        }
+        return (maxTurn, flips / (2 * seconds), maxAcc, speed / width);
+    }
+
+    /// <summary>Kleinster Abstand der beiden Jets vor dem Auseinanderbrechen, in Spannweiten der Su-57.</summary>
+    internal double ClosestPass()
+    {
+        double min = double.MaxValue;
+        for (double t = 0.5; t < breakAt; t += 1 / 60.0) min = Math.Min(min, (PlaneAt(true, t) - PlaneAt(false, t)).Length / spanS);
+        return min;
     }
 
     /// <summary>Messwerte für die Prüfung: größte Geschwindigkeit eines Jets (Vielfaches der Fluggeschwindigkeit; Sprünge zeigen sich
