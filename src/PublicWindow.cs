@@ -31,7 +31,7 @@ sealed class PublicWindow : Window, IDeskWindow
     readonly Popup legendPopup = new();
     readonly Button save, restore, start;
     ToggleButton pickJericho = null!, pickNuke = null!, pickTu = null!;
-    static readonly string[] Weapons = ["jericho", "nuke", Attacks.Tu160, Attacks.Tu22, Attacks.Su34, Attacks.Ka52, Attacks.Tu95, Attacks.Il76, Attacks.Ac130];
+    static readonly string[] Weapons = ["jericho", "nuke", Attacks.Tu160, Attacks.Tu22, Attacks.Su34, Attacks.Ka52, Attacks.Tu95, Attacks.Il76, Attacks.Ac130, Attacks.Shahed, Attacks.A10, Attacks.Su25];
     readonly Dictionary<string, ToggleButton> weaponTiles = [];
     string Weapon() => weaponTiles.FirstOrDefault(w => w.Value.IsChecked == true).Key ?? "jericho";
     readonly List<ToggleButton> skinButtons = [];
@@ -226,13 +226,13 @@ sealed class PublicWindow : Window, IDeskWindow
         }
         p.Children.Add(SectionLabel(T("robot"), null));
         p.Children.Add(CardBox(skins, new Thickness(0)));
-        var helpers = new UniformGrid { Columns = Helpers.All.Length, Margin = new Thickness(16) };
+        var helpers = new UniformGrid { Columns = 3, Margin = new Thickness(16) };
         string helperKnown = Helpers.All.Contains(choice.Helper) ? choice.Helper : Helpers.Dume;
         foreach (var kind in Helpers.All)
         {
-            var chip = Tile(kind, T("h." + kind), kind == helperKnown, 4.0 / 3, helperPictures);
+            var chip = Tile(kind, T("h." + kind), kind == helperKnown, 16.0 / 9, helperPictures);
             chip.Tag = kind;
-            chip.Margin = new Thickness(0, 0, kind == Helpers.All[^1] ? 0 : 10, 0);
+            chip.Margin = new Thickness(0, 0, Array.IndexOf(Helpers.All, kind) % 3 == 2 ? 0 : 10, Array.IndexOf(Helpers.All, kind) < 3 ? 10 : 0);
             chip.Checked += (_, _) => { foreach (var o in helperButtons) if (o != chip) o.IsChecked = false; Remember(); };
             chip.Unchecked += (_, _) => { if (!helperButtons.Any(b => b.IsChecked == true)) chip.IsChecked = true; };
             helperButtons.Add(chip); helpers.Children.Add(chip);
@@ -381,7 +381,7 @@ sealed class PublicWindow : Window, IDeskWindow
         foreach (var (id, image) in helperPictures)
         {
             var (kind, img) = (id, image);
-            queue.Enqueue(() => { int w = (int)Math.Ceiling(Math.Max(img.ActualWidth, 90) * dpi); img.Source = Preview.HelperImage(kind, w, (int)Math.Round(w * 3.0 / 4)); });
+            queue.Enqueue(() => { int w = (int)Math.Ceiling(Math.Max(img.ActualWidth, 90) * dpi); img.Source = Preview.HelperImage(kind, w, (int)Math.Round(w * 9.0 / 16)); });
         }
         void Next()
         {

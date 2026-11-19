@@ -13,8 +13,8 @@ namespace DeskKeeper;
 /// </summary>
 static class Helpers
 {
-    public const string Dume = "dume", Forklift = "stapler", Crane = "kran", Drones = "drohnen";
-    public static readonly string[] All = [Dume, Forklift, Crane, Drones];
+    public const string Dume = "dume", Forklift = "stapler", Crane = "kran", Drones = "drohnen", Chinook = "chinook", Mi26 = "mi26";
+    public static readonly string[] All = [Dume, Forklift, Crane, Drones, Chinook, Mi26];
     /// <summary>Gewählter Helfer (Auswahl im Modul, gespeichert in auswahl.json).</summary>
     public static string Current = Dume;
 
@@ -24,6 +24,8 @@ static class Helpers
         Forklift => new ForkliftHelper(pickOf, home, fromCart, start, size, primary, order),
         Crane => new CraneHelper(pickOf, home, fromCart, start, size, primary, order),
         Drones => new DroneHelper(pickOf, home, fromCart, start, size, primary, order),
+        Chinook => new LiftHelper(LiftHelper.Type.Chinook, pickOf, home, fromCart, start, size, primary, order),
+        Mi26 => new LiftHelper(LiftHelper.Type.Mi26, pickOf, home, fromCart, start, size, primary, order),
         _ => new Robot(icons, pickOf, home, fromCart, start, size, screens, primary, order),
     };
 
@@ -38,6 +40,8 @@ static class Helpers
                 DroneHelper.DrawDrone(dc, at + new Vector(-size * 0.9, -size * 0.25), 0.3, size * 0.8, 1, 0.3, true);
                 DroneHelper.DrawDrone(dc, at + new Vector(size * 0.9, size * 0.35), -0.4, size * 0.8, 0.8, 0.9, false);
                 break;
+            case Chinook: LiftHelper.DrawChinook(dc, at, -0.5, size, 0.6, 0.4); break;
+            case Mi26: LiftHelper.DrawMi26(dc, at, -0.5, size, 0.6, 0.4); break;
         }
     }
 }

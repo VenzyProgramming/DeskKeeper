@@ -51,6 +51,12 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.2.7
+
+- **Three new scenes.** A **Shahed-136 swarm**: dozens of delta-wing loitering munitions come in slow and low from the edge of the screen, each one heading for an icon, and dive steeply onto it in the last stretch. **A-10C**: one low strafing run per group of icons along the row, the GAU-8 burst walks from icon to icon, larger groups take an AGM-65 Maverick first, and the jet pops flares as it pulls off. **Su-25**: alternates S-8 rocket salvos from the B-8M1 pods with 30 mm gun runs.
+- **Two new helpers: CH-47F Chinook and Mi-26.** They hover over the icons, pick them up in a cargo net on the hook (up to six or ten), and set each one down in its place. On short distances they sidestep in the hover, and the downwash kicks up dust.
+- All five new models are drawn from real top views. The Shahed-136 has elevons and a pusher prop. The A-10C has TF34 nacelles, twin tails, gear pods, slats, decelerons and its refuelling receptacle. The Su-25 has wingtip airbrake pods, B-8M1 pods, FAB-250s, R-60s and twin air-data booms. The Chinook has tandem three-blade rotors and T55s on the aft pylon. The Mi-26 has its eight-blade rotor, D-136 engines with dust protection, clamshell doors and a five-blade tail rotor.
+
 ## What's new in 1.2.6
 
 - **New scene: AC-130U gunship.** It circles each group of icons in a left-hand orbit, lets the group hold out for a few seconds with near misses, then takes the icons out one after another with the 105 mm howitzer, the 40 mm Bofors and the 25 mm GAU-12, and flies on to the next group. The guns turn towards their target, the howitzer recoils, and powder smoke drifts off the gun ports. Drawn from the real top view: four T56 engines with six-blade props, external tanks, sensor turrets, flare dispensers, LAIRCM turrets and navigation lights.

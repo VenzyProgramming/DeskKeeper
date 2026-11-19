@@ -24,8 +24,8 @@ interface IAttack
 
 static class Attacks
 {
-    public const string Tu160 = "tu160", Tu22 = "tu22m3", Su34 = "su34", Ka52 = "ka52", Tu95 = "tu95", Il76 = "il76", Ac130 = "ac130";
-    public static readonly string[] All = [Tu160, Tu22, Su34, Ka52, Tu95, Il76, Ac130];
+    public const string Tu160 = "tu160", Tu22 = "tu22m3", Su34 = "su34", Ka52 = "ka52", Tu95 = "tu95", Il76 = "il76", Ac130 = "ac130", Shahed = "shahed", A10 = "a10", Su25 = "su25";
+    public static readonly string[] All = [Tu160, Tu22, Su34, Ka52, Tu95, Il76, Ac130, Shahed, A10, Su25];
 
     /// <param name="clusters">dichteste Gruppen zuerst (für Marschflugkörper)</param>
     /// <param name="icons">Symbolmitten auf dem Hauptbildschirm (für Treffer je Symbol)</param>
@@ -48,6 +48,9 @@ static class Attacks
             Tu95 => new BearRaid(stage, aims12, iconSize) { Reach = radius12 + iconSize * 0.4 },
             Il76 => new AirborneRaid(stage, each, iconSize),
             Ac130 => new GunshipRaid(area, all.Count > 0 ? all : each, iconSize, screens),
+            Shahed => new ShahedRaid(area, all.Count > 0 ? all : each, iconSize),
+            A10 => new StrafeRaid(StrafeRaid.Kind.A10, area, all.Count > 0 ? all : each, iconSize),
+            Su25 => new StrafeRaid(StrafeRaid.Kind.Su25, area, all.Count > 0 ? all : each, iconSize),
             _ => null,
         };
     }

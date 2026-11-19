@@ -36,12 +36,18 @@ static class Preview
         var icons = Icons();
         var homes = icons.ToDictionary(i => i.Id, i => i.Center);
         var s = new Scene(icons, homes, 48, [Desk], Desk, true, 64, nuclear: scene == "nuke", attack: Attacks.All.Contains(scene) ? scene : null);
-        double t = scene switch { "nuke" => DeskKeeper.Scene.Impact + 1.3, "tu160" => 1.8, "tu22m3" => 2.2, "su34" => 1.3, "ka52" => 4.1, "tu95" => 3.4, "il76" => 3.2, "ac130" => 5.0, _ => DeskKeeper.Scene.Impact + 0.35 };
+        double t = scene switch { "nuke" => DeskKeeper.Scene.Impact + 1.3, "tu160" => 1.8, "tu22m3" => 2.2, "su34" => 1.3, "ka52" => 4.1, "tu95" => 3.4, "il76" => 3.2, "ac130" => 5.0, "shahed" => 4.6, "a10" => 3.0, "su25" => 3.0, _ => DeskKeeper.Scene.Impact + 0.35 };
         if (s.Attack is GunshipRaid gunship)
         {   // Kanonenboot ganz im Bild, kurz nach einem Schuss der Haubitze
             var inner = Desk; inner.Inflate(-90, -60);
             var shot = gunship.Shots.Where(x => x.Gun == GunshipRaid.Gun.G105 && inner.Contains(gunship.PlaneAt(x.Fire + 0.1))).OrderBy(x => x.Fire).Skip(1).FirstOrDefault();
             if (shot is not null) t = shot.Fire + 0.1;
+        }
+        if (s.Attack is StrafeRaid strafe)
+        {   // Tiefflieger ganz im Bild mitten im Feuerstoß
+            var inner = Desk; inner.Inflate(-90, -60);
+            var shot = strafe.Shots.Where(x => inner.Contains(strafe.PlaneAt(x.Fire))).Skip(4).FirstOrDefault();
+            if (shot is not null) t = shot.Fire;
         }
         double scale = width / Desk.Width;
         var visual = new DrawingVisual();
@@ -104,7 +110,7 @@ static class Preview
         using (var dc = visual.RenderOpen())
         {
             dc.DrawRectangle(Wall, null, new Rect(0, 0, width, height));
-            double size = kind == Helpers.Crane ? height * 0.2 : kind == Helpers.Drones ? height * 0.3 : height * 0.3;
+            double size = kind == Helpers.Crane ? height * 0.2 : kind == Helpers.Chinook ? height * 0.27 : kind == Helpers.Mi26 ? height * 0.16 : height * 0.3;
             var at = kind == Helpers.Crane ? new Point(width * 0.42, height * 0.6) : new Point(width * 0.5, height * 0.5);
             Helpers.DrawPortrait(dc, kind, at, size);
         }

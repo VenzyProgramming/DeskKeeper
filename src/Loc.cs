@@ -97,7 +97,9 @@ static class Loc
         ["h.dume"] = new("DUM-E", "DUM-E", "Дубина"),
         ["h.stapler"] = new("Gabelstapler", "Forklift", "Погрузчик"),
         ["h.kran"] = new("Kranwagen", "Crane truck", "Автокран"),
-        ["h.drohnen"] = new("Lieferdrohnen", "Delivery drones", "Дроны доставки"),   // 18.11.2026: deutsch/englisch DUM-E, russisch Дубина
+        ["h.drohnen"] = new("Lieferdrohnen", "Delivery drones", "Дроны доставки"),
+        ["h.chinook"] = new("Chinook", "Chinook", "Chinook"),
+        ["h.mi26"] = new("Mi-26", "Mi-26", "Ми-26"),   // 18.11.2026: deutsch/englisch DUM-E, russisch Дубина
         ["w.jericho"] = new("Jericho", "Jericho", "Иерихон"),
         ["w.nuke"] = new("Atombombe", "Nuke", "Ядерная"),
         ["w.tu160"] = new("Tu-160M", "Tu-160M", "Ту-160М"),
@@ -107,6 +109,9 @@ static class Loc
         ["w.tu95"] = new("Tu-95MS", "Tu-95MS", "Ту-95МС"),
         ["w.il76"] = new("Il-76", "Il-76", "Ил-76"),
         ["w.ac130"] = new("AC-130U", "AC-130U", "AC-130U"),
+        ["w.shahed"] = new("Shahed-136", "Shahed-136", "Герань-2"),
+        ["w.a10"] = new("A-10C", "A-10C", "A-10C"),
+        ["w.su25"] = new("Su-25", "Su-25", "Су-25"),
         // Werkzeuge
         ["t.windows"] = new("Fenster", "Windows", "Окна"),
         ["t.minimize"] = new("Alle Fenster minimieren", "Minimize all windows", "Свернуть все окна"),
