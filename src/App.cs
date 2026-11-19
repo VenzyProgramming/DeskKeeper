@@ -15,6 +15,7 @@ static class Program
     {
         Store.Migrate();
         var app = new Application { ShutdownMode = ShutdownMode.OnMainWindowClose };
+        if (args.Length >= 3 && args[0] == "--szene") return Check.SceneFrames(args[1], args[2], args.Skip(3).Select(x => double.Parse(x, System.Globalization.CultureInfo.InvariantCulture)).ToList());
         if (args.Length == 2 && args[0] == "--modelle") { Check.Models(args[1]); return 0; }   // Einzelbilder der Modelle (nur Lesen)
         if (args.Length == 2 && args[0] == "--check")
         {

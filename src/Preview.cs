@@ -46,6 +46,7 @@ static class Preview
         if (s.Attack is StealthRaid or SpiritRaid && s.Raid.Count > 0) t = s.Raid.Min(r => r.T) - 0.45;   // Flugzeug im Bild, Waffen unterwegs
         if (s.Attack is VacuumRaid && s.Raid.Count > 2) t = s.Raid.OrderBy(r => r.T).ElementAt(2).T - 0.15;
         if (s.Attack is GravityRaid) t = 2.9;
+        if (s.Attack is DuelRaid duel && duel.Shots.Count > 1) t = duel.Shots[1].Fire + 0.55;   // Raketen unterwegs, Täuschkörper, beide Jets im Bild
         if (s.Attack is StrafeRaid strafe)
         {   // Tiefflieger ganz im Bild mitten im Feuerstoß
             var inner = Desk; inner.Inflate(-90, -60);

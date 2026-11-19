@@ -57,13 +57,18 @@ And since it is open source, you can fix it yourself, mod it, or add your own sc
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.5.0
+
+- **New scene: Duel, F-35A vs Su-57.** The two jets fight a rolling-scissors dogfight across your whole screen, and the lead keeps changing. Whoever is behind fires air-to-air missiles and cannon bursts. The jet in front throws fans of flares, the missiles get decoyed and hit your icons. Long curling smoke trails, wingtip vortices and afterburner glow. At the end both jets break away in opposite directions on full afterburner. Nobody wins. 18 scenes in total.
+- `--szene <scene> <folder> [times…]` renders single frames of one scene for quick checks.
+
 ## What's new in 1.4.1
 
 - **F-35A, Su-57 and B-2 redrawn from real top views.** The F-35A follows a public-domain three-view: wing sweep, the intake cheeks, the tail booms behind the nozzle, the outward-canted fins and the serrated nozzle. The Su-57 outline comes from a vector three-view: LEVCONs, leading-edge flaps, flaperons, the tail booms beside the engines, separate nozzles and the IRST ball offset to the right. The B-2 follows a U.S. Air Force photo taken from directly above: the double-W trailing edge, the sawtooth intakes, the light exhaust troughs and the walkway markings.
 
 ## What's new in 1.4.0
 
-Five new scenes, seventeen in total:
+Five new scenes, seventeen at the time:
 
 - **F-35A:** fast passes over each group of icons. The internal weapon bay doors open, and one GBU-39 glide bomb goes on every icon.
 - **Su-57:** the same attack with guided missiles from the internal bays. It has the LEVCONs, widely spaced engines and splinter camouflage.
@@ -204,7 +209,7 @@ Switch *Restore style* to **With DUM-E** and a small top-down robot arm with a t
 
 <p align="center"><img src="docs/media/dum-e.gif" width="70%" alt="DUM-E carrying icons back"></p>
 
-And if you are having a really bad day, the **Scene** page lets you wipe your desktop first, seventeen ways so far: a Jericho strike, a mushroom cloud, Tu-160M and Tu-95MS cruise missiles, Tu-22M3 carpet bombing, Su-34 precision strikes, a Ka-52 attack, Il-76 paratroopers who simply carry your icons away, an AC-130U circling each group, a Shahed-136 drone swarm, A-10C or Su-25 gun runs, F-35A and Su-57 stealth strikes, a B-2 Spirit, a robot vacuum that sucks your icons up, or simply turning gravity off. Icons turn to ash. Then a helper of your choice rebuilds everything, exactly as it was: DUM-E, a forklift, a crane truck, delivery drones, a CH-47 Chinook or a Mi-26. Therapy, basically.
+And if you are having a really bad day, the **Scene** page lets you wipe your desktop first, eighteen ways so far: a Jericho strike, a mushroom cloud, Tu-160M and Tu-95MS cruise missiles, Tu-22M3 carpet bombing, Su-34 precision strikes, a Ka-52 attack, Il-76 paratroopers who simply carry your icons away, an AC-130U circling each group, a Shahed-136 drone swarm, A-10C or Su-25 gun runs, F-35A and Su-57 stealth strikes, an F-35A vs Su-57 dogfight, a B-2 Spirit, a robot vacuum that sucks your icons up, or simply turning gravity off. Icons turn to ash. Then a helper of your choice rebuilds everything, exactly as it was: DUM-E, a forklift, a crane truck, delivery drones, a CH-47 Chinook or a Mi-26. Therapy, basically.
 
 <p align="center"><img src="docs/media/scene.png" width="70%" alt="Scene page"></p>
 

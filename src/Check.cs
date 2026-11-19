@@ -16,6 +16,25 @@ namespace DeskKeeper;
 /// </summary>
 static class Check
 {
+    /// <summary>Schnelle Einzelbilder einer Szene auf der Prüffläche (--szene &lt;art&gt; &lt;ordner&gt; [zeiten…]), dazu Dauer und Treffer.</summary>
+    public static int SceneFrames(string attack, string output, IReadOnlyList<double> times)
+    {
+        Directory.CreateDirectory(output);
+        Rect primary = new(0, 0, 1920, 1080), second = new(1920, -360, 1280, 1440);
+        Rect[] screens = [primary, second];
+        double iconSize = 48;
+        var icons = new List<IconInfo>();
+        for (int i = 0; i < 14; i++) icons.Add(new IconInfo("i" + i, Names[i % Names.Length], new Point(52 + (i / 8) * 86, 52 + (i % 8) * 104)));
+        for (int i = 0; i < 6; i++) icons.Add(new IconInfo("s" + i, Names[(i + 3) % Names.Length], new Point(1980 + i * 90, -300)));
+        var homes = icons.ToDictionary(i => i.Id, i => i.Center);
+        var all = Rect.Union(primary, second);
+        var sc = new Scene(icons, homes, iconSize, screens, primary, true, 64, attack: attack);
+        Console.WriteLine($"{attack}: Dauer {sc.Duration:0.0} s, Einschläge {sc.Raid.Count}, Roboter ab {sc.RobotStart:0.0} s, " +
+            $"jedes Symbol getroffen {icons.All(i => sc.Raid.Any(b => (b.P - i.Center).Length <= iconSize * 2.2))}");
+        foreach (var t in times) Save(Frame(sc, all, icons, t, 0.5), Path.Combine(output, $"{attack}-{t:0.0}.png"));
+        return 0;
+    }
+
     public static Task<int> Run(string output)
     {
         Directory.CreateDirectory(output);
@@ -154,7 +173,7 @@ static class Check
             }
 
             // Neue Luftangriffe : je Angriff alle Symbole weg vor DUM-E, am Ende alle zuhause, Dauer begrenzt, Standbilder
-            foreach (var (attack, frames) in new (string, double[])[] { (Attacks.Tu22, [1.6, 2.6, 4.2]), (Attacks.Su34, [1.0, 1.9, 2.9]), (Attacks.Ka52, [1.6, 3.8, 6.0]), (Attacks.Tu95, [2.2, 3.8, 5.4]), (Attacks.Il76, [2.6, 4.2, 6.8]), (Attacks.Ac130, [2.4, 4.6, 7.4]), (Attacks.Shahed, [3.0, 4.4, 6.5]), (Attacks.A10, [2.0, 3.4, 5.5]), (Attacks.Su25, [2.0, 3.4, 5.5]), (Attacks.F35, [1.4, 2.2, 3.2]), (Attacks.Su57, [1.4, 2.2, 3.2]), (Attacks.B2, [2.0, 3.6, 5.2]), (Attacks.Vacuum, [2.0, 5.0, 9.0]), (Attacks.Gravity, [1.6, 2.8, 3.3]) })
+            foreach (var (attack, frames) in new (string, double[])[] { (Attacks.Tu22, [1.6, 2.6, 4.2]), (Attacks.Su34, [1.0, 1.9, 2.9]), (Attacks.Ka52, [1.6, 3.8, 6.0]), (Attacks.Tu95, [2.2, 3.8, 5.4]), (Attacks.Il76, [2.6, 4.2, 6.8]), (Attacks.Ac130, [2.4, 4.6, 7.4]), (Attacks.Shahed, [3.0, 4.4, 6.5]), (Attacks.A10, [2.0, 3.4, 5.5]), (Attacks.Su25, [2.0, 3.4, 5.5]), (Attacks.F35, [1.4, 2.2, 3.2]), (Attacks.Duel, [2.0, 3.2, 4.6]), (Attacks.Su57, [1.4, 2.2, 3.2]), (Attacks.B2, [2.0, 3.6, 5.2]), (Attacks.Vacuum, [2.0, 5.0, 9.0]), (Attacks.Gravity, [1.6, 2.8, 3.3]) })
             {
                 var sc = new Scene(icons, homes, iconSize, screens, primary, true, 64, attack: attack);
                 Pass(attack + "-einschlaege-vorhanden", sc.Raid.Count >= 1);

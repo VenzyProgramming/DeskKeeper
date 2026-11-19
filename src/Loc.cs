@@ -116,6 +116,7 @@ static class Loc
         ["w.su57"] = new("Su-57", "Su-57", "Су-57"),
         ["w.b2"] = new("B-2 Spirit", "B-2 Spirit", "B-2 Spirit"),
         ["w.vacuum"] = new("Saugroboter", "Robot vacuum", "Робот-пылесос"),
+        ["w.duel"] = new("Duell F-35 gegen Su-57", "Duel: F-35 vs Su-57", "Дуэль F-35 и Су-57"),
         ["w.gravity"] = new("Schwerkraft aus", "Gravity off", "Без гравитации"),
         // Werkzeuge
         ["t.windows"] = new("Fenster", "Windows", "Окна"),
