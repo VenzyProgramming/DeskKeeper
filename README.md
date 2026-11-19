@@ -51,6 +51,12 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.3.1
+
+- **Su-25:** the wingtips now reach the airbrake pods (there was a gap before), and the camouflage and slat lines stay inside the wing.
+- **Mi-26:** the tailplane runs right through the tail boom with a realistic chord.
+- **Su-34:** three well-spaced stations per wing: KAB-500L inboard, Kh-29L in the middle, R-73 outboard.
+
 ## What's new in 1.3.0
 
 - **Models checked against real top views.** Each outline was traced from a real top view and compared with the model one model unit at a time. The sources are a public-domain orthographic view for the Su-34 and three-view drawings from Wikimedia Commons for the others.

@@ -135,18 +135,18 @@ static partial class Planes
     // Höhenleitwerk −30…−43,5; zwei Staurohre an der Nase, B-8M1, FAB-250 und R-60 unter dem Flügel, Täuschkörperwerfer am Heck.
     static readonly Geometry RookBody = Fly.Both("M50,0 L47,1.2 L42,2.1 L39,2.6 L36,3.0 L33,3.3 L-25,3.3 L-28,2.4 L-44,2.0 L-47,1.5 L-50.5,1.0 L-50.5,0 Z");
     static readonly Geometry RookNacelles = Fly.Both("M12.5,3.3 C12.5,6 12.7,8.3 11.6,8.7 L0,8.7 L-18,8.4 L-22,8 L-25,7.4 L-25.4,3.3 Z");
-    static readonly Geometry RookWing = Fly.Both("M6.4,8.5 L-7.6,44 L-16.8,44 L-16.6,8.5 Z");
+    static readonly Geometry RookWing = Fly.Both("M6.4,8.5 L-8.3,45.8 L-16.8,45.8 L-16.6,8.5 Z");   // Spitze reicht bis an den Behälter
     static readonly Geometry RookPods = Fly.Both("M-3.6,47.2 C-3.6,46.2 -4.4,45.7 -5.4,45.7 L-19,45.7 L-19.6,47.2 L-19,48.7 L-5.4,48.7 C-4.4,48.7 -3.6,48.2 -3.6,47.2 Z");   // Spitzenbehälter mit geteilter Bremsklappe hinten
     static readonly Geometry RookTail = Fly.Both("M-30,2.2 L-37.6,15.8 L-42,15.8 L-43.6,2.1 Z");
     static readonly Geometry RookFin = Fly.G("M-26,0 C-31,-0.8 -40,-1.1 -46,-0.9 L-50,-0.45 L-50,0.45 L-46,0.9 C-40,1.1 -31,0.8 -26,0 Z");
     static readonly Geometry RookCanopy = Fly.G("M32.4,0 C32.1,-1.8 30.6,-2.6 28.4,-2.7 L21.4,-2.6 C20.8,-1.6 20.8,1.6 21.4,2.6 L28.4,2.7 C30.6,2.6 32.1,1.8 32.4,0 Z");
-    static readonly Geometry RookCamo = Fly.G("M6,-12 C2,-18 -6,-17 -9,-22 L-9,-30 L-1,-24 Z M6,12 C2,18 -6,17 -9,22 L-9,30 L-1,24 Z M-4,-34 L-9,-42 L-14,-42 L-12,-34 Z " +
-        "M-4,34 L-9,42 L-14,42 L-12,34 Z M18,-3.3 C10,-2 4,1.5 -6,3.3 L-6,-1 C2,-2.6 10,-3.2 18,-3.3 Z M-12,-8.6 C-16,-6 -20,-5.6 -24,-7.4 L-22,-8.3 Z M-12,8.6 C-16,6 -20,5.6 -24,7.4 L-22,8.3 Z");
+    static readonly Geometry RookCamo = Fly.G("M3,-12 C0,-18 -6,-17 -9,-22 L-10,-30 L-4,-24 Z M3,12 C0,18 -6,17 -9,22 L-10,30 L-4,24 Z M-6,-34 L-11,-42 L-15,-42 L-13,-34 Z " +
+        "M-6,34 L-11,42 L-15,42 L-13,34 Z M18,-3.3 C10,-2 4,1.5 -6,3.3 L-6,-1 C2,-2.6 10,-3.2 18,-3.3 Z M-12,-8.6 C-16,-6 -20,-5.6 -24,-7.4 L-22,-8.3 Z M-12,8.6 C-16,6 -20,5.6 -24,7.4 L-22,8.3 Z");
     // Klappen und Querruder, Vorflügel, Höhen- und Seitenruder, Haubenrahmen, Bremsklappenfuge, Spanten
-    static readonly Geometry RookSeams = Fly.G("M-14.6,-10 L-14.8,-43 M-14.6,10 L-14.8,43 M5.2,-11 L-6.4,-42 M5.2,11 L-6.4,42 M-14.6,-28 L-16.6,-28 M-14.6,28 L-16.6,28 " +
+    static readonly Geometry RookSeams = Fly.G("M-14.6,-10 L-14.8,-43 M-14.6,10 L-14.8,43 M4.2,-11 L-7.8,-42 M4.2,11 L-7.8,42 M-14.6,-28 L-16.6,-28 M-14.6,28 L-16.6,28 " +
         "M-40.4,-2.2 L-41,-15 M-40.4,2.2 L-41,15 M-42,-0.3 L-50,-0.3 M-14,-47.2 L-19.6,-47.2 M-14,47.2 L-19.6,47.2 M27,-2.7 L27,2.7 M14,-3.3 L14,3.3 M-8,-3.3 L-8,3.3 M-28,-2.4 L-28,2.4 " +
         "M2,-8.7 L2,-3.3 M2,8.7 L2,3.3 M-14,-8.5 L-14,-3.3 M-14,8.5 L-14,3.3");
-    static readonly Geometry RookDetail = Fly.G("M3,-24.4 L1.6,-24 M3,24.4 L1.6,24 M-3,-36 L-4.4,-35.6 M-3,36 L-4.4,35.6 M38,-2.4 C34,-2.4 26,-2.6 22,-3.3 M38,2.4 C34,2.4 26,2.6 22,3.3 " +
+    static readonly Geometry RookDetail = Fly.G("M-0.4,-24.6 L-1.8,-24.2 M-0.4,24.6 L-1.8,24.2 M-4.7,-36 L-6.1,-35.6 M-4.7,36 L-6.1,35.6 M38,-2.4 C34,-2.4 26,-2.6 22,-3.3 M38,2.4 C34,2.4 26,2.6 22,3.3 " +
         "M8,-0.4 L8,0.4 M-18,-0.4 L-18,0.4");
     static readonly Pen RookBoom = Fly.P("#2A2F31", 0.35);
     static readonly Brush RookTop = Fly.B("#7D8468"), RookShade = Fly.B("#717860"), RookDark = Fly.B("#252A2C"), RookPatch = Fly.B("#5A6550"), RookPod = Fly.B("#B4B8AE"), RookBomb = Fly.B("#4F5A44");

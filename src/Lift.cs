@@ -229,7 +229,7 @@ sealed class LiftHelper : PathHelper
     static readonly Geometry HaloSponsons = Fly.Both("M6.5,2 C6.5,2.6 6.1,2.75 5.5,2.75 L1.8,2.75 C1.2,2.75 0.8,2.5 0.8,2 Z");
     static readonly Geometry HaloEngines = Fly.Both("M10.4,0.2 C10.4,0.1 10.6,0.1 10.8,0.1 L10.8,2 C10.6,2.1 10.4,2 10.4,1.9 Z M10.6,0.2 L5.4,0.25 L4.8,0.8 L4.6,2.0 L5.4,2.1 L10.6,2.0 Z");
     static readonly Geometry HaloGearbox = Fly.G("M6.6,-1.1 C5.6,-1.4 2,-1.4 1,-0.9 L1,0.9 C2,1.4 5.6,1.4 6.6,1.1 Z");
-    static readonly Geometry HaloStab = Fly.Both("M-12.4,0.8 L-12.6,2.6 L-13.9,2.6 L-13.9,0.8 Z");
+    static readonly Geometry HaloStab = Fly.Both("M-12.9,0 L-12.95,2.25 C-12.95,2.45 -13.1,2.5 -13.3,2.5 L-13.75,2.5 C-13.95,2.5 -14,2.4 -14,2.25 L-14,0 Z");   // durchgehendes Höhenleitwerk am Träger (Riss: −13,7, halb 2,4)
     static readonly Geometry HaloGlass = Fly.G("M16.8,-0.6 L16.4,-1.7 L15.5,-1.9 L15.6,-0.6 Z M16.8,0.6 L16.4,1.7 L15.5,1.9 L15.6,0.6 Z M16.9,-0.5 L16.9,0.5 L15.7,0.5 L15.7,-0.5 Z");
     static readonly Geometry HaloCamo = Fly.G("M13,-2.1 C11,-1 9,-1.6 7,-2.1 Z M6,2.1 C4,1 1,1.4 -1,1.9 Z M-2,-1.8 C-3,-1 -4,-0.8 -5,-1.2 Z M12,0.6 C10,1.8 8,1.6 7,0.4 Z");
     static readonly Geometry HaloSeams = Fly.G("M12,-2.1 L12,2.1 M6,-2.1 L6,2.1 M-3,-1.7 L-3,1.7 M14.6,-1.8 L14.6,1.8");
@@ -247,6 +247,7 @@ sealed class LiftHelper : PathHelper
         dc.PushTransform(Fly.Frame(at, heading, k));
         dc.DrawGeometry(HaloShade, HeliEdge, HaloSponsons);
         dc.DrawGeometry(HaloShade, HeliEdge, HaloStab);
+        dc.DrawLine(HeliSeam, new Point(-13.65, -2.4), new Point(-13.65, 2.4));   // Höhenruder
         dc.DrawGeometry(HaloTop, HeliEdge, HaloBody);
         dc.DrawGeometry(HaloPatch, null, HaloCamo);
         dc.DrawGeometry(null, HeliSeam, HaloSeams);
@@ -269,11 +270,11 @@ sealed class LiftHelper : PathHelper
         Soft.Draw(dc, MiGreen, new Point(2.5, 2.75), 0.5, 0.5, 1);
         // Seitenleitwerk mit Heckrotor rechts: von oben die Kante der Rotorebene
         dc.DrawRoundedRectangle(HaloShade, HeliEdge, new Rect(-17.4, -0.35, 3.4, 0.7), 0.3, 0.3);
-        dc.DrawRectangle(HeliDisc, null, new Rect(-19.6, 0.75, 7.6, 0.35));
+        dc.DrawRectangle(HeliDisc, null, new Rect(-19.6, 0.45, 7.6, 0.3));
         for (int b = 0; b < 5; b++)
         {
             double a = spin * 3 + b * Math.Tau / 5;
-            dc.DrawLine(new Pen(HeliBlade, 0.22), new Point(-15.8, 0.92), new Point(-15.8 + 3.8 * Math.Cos(a), 0.92));
+            dc.DrawLine(new Pen(HeliBlade, 0.22), new Point(-15.8, 0.6), new Point(-15.8 + 3.8 * Math.Cos(a), 0.6));
         }
         Rotor(dc, new Point(5.0, 0), 16, 8, -spin, 0.8);
         dc.Pop();

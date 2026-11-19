@@ -292,12 +292,10 @@ static partial class Planes
         dc.PushTransform(Fly.Frame(at, heading, u));
         foreach (double s in new[] { -1.0, 1.0 })
         {   // R-73 bzw. R-77 an den Flügelstationen (ragen vor die Vorderkante), R-73 an den Spitzenschienen
-            foreach (var (y, front) in new[] { (18.0, -6.6), (23.6, -11.6) })
-            {
-                dc.DrawRoundedRectangle(Su34Store, Su34Edge, new Rect(front - 9.6, y * s - 0.6, 9.6, 1.2), 0.6, 0.6);
-                dc.DrawRectangle(Su34Store, null, new Rect(front - 2.6, y * s - 1.6, 0.9, 3.2));   // Steuerflächen vorn
-                dc.DrawRectangle(Su34Store, null, new Rect(front - 9.2, y * s - 1.8, 1.4, 3.6));   // Leitwerk hinten
-            }
+            // je Flügel drei Stationen mit Abstand: innen KAB-500L (3,0 m), Mitte Ch-29L (3,9 m), außen R-73 (2,9 m); Spitzen ragen vor die Vorderkante
+            Store(dc, -3.6, 15.6 * s, 15, 0.9, 2.0, Su34Bomb);
+            Store(dc, -8.4, 22.0 * s, 19.4, 0.95, 2.7, Su34Store);
+            Store(dc, -14.6, 28.4 * s, 14.4, 0.45, 1.6, Su34Store);
             dc.DrawRoundedRectangle(Su34Store, Su34Edge, new Rect(-31, 36.6 * s - 0.55, 11.4, 1.1), 0.55, 0.55);
             dc.DrawRectangle(Su34Store, null, new Rect(-21.6, 36.6 * s - 1.4, 0.8, 2.8));
             dc.DrawRectangle(Su34Store, null, new Rect(-30.6, 36.6 * s - 1.6, 1.2, 3.2));
@@ -329,7 +327,15 @@ static partial class Planes
         }
         dc.Pop();
     }
-    static readonly Brush Heat = Art.Glow("#C0FFB060");
+    static readonly Brush Heat = Art.Glow("#C0FFB060"), Su34Bomb = Fly.B("#556052");
+    /// <summary>Außenlast von oben: Körper ab der Spitze nach hinten, vorn Steuerflächen bzw. Zünder, hinten Leitwerk.</summary>
+    static void Store(DrawingContext dc, double front, double y, double length, double radius, double fins, Brush fill)
+    {
+        dc.DrawRoundedRectangle(fill, Su34Edge, new Rect(front - length, y - radius, length, radius * 2), radius, radius);
+        dc.DrawRectangle(fill, null, new Rect(front - length * 0.22, y - fins * 0.6, length * 0.06, fins * 1.2));
+        dc.DrawRectangle(fill, null, new Rect(front - length * 0.97, y - fins, length * 0.1, fins * 2));
+        dc.DrawEllipse(Seeker, null, new Point(front - radius * 0.6, y), radius * 0.6, radius * 0.6);
+    }
 
     // ---------------------------------------------------------------- Ка-52 (Rumpf 13,5 m, Rotor Ø 14,5 m, zwei gegenläufige Dreiblattrotoren)
     // Maße aus einer Dreiseitenansicht ausgemessen (19.11.2026: „sieht von oben nicht aus wie das Original“): schmaler Rumpf
