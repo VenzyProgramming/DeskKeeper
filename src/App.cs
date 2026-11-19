@@ -16,6 +16,16 @@ static class Program
         Store.Migrate();
         var app = new Application { ShutdownMode = ShutdownMode.OnMainWindowClose };
         if (args.Length >= 3 && args[0] == "--szene") return Check.SceneFrames(args[1], args[2], args.Skip(3).Select(x => double.Parse(x, System.Globalization.CultureInfo.InvariantCulture)).ToList());
+        if (args.Length == 2 && args[0] == "--vorschau")
+        {   // Vorschaubilder aller Szenen-Kacheln (nur Bilder)
+            System.IO.Directory.CreateDirectory(args[1]);
+            foreach (var id in new[] { "jericho", "nuke" }.Concat(Attacks.All))
+            {
+                var png = new System.Windows.Media.Imaging.PngBitmapEncoder(); png.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(Preview.SceneImage(id, 480)));
+                using var file = System.IO.File.Create(System.IO.Path.Combine(args[1], id + ".png")); png.Save(file);
+            }
+            return 0;
+        }
         if (args.Length == 2 && args[0] == "--modelle") { Check.Models(args[1]); return 0; }   // Einzelbilder der Modelle (nur Lesen)
         if (args.Length == 2 && args[0] == "--check")
         {

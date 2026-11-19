@@ -31,8 +31,71 @@ static class Preview
         return cache[id] = RenderScene(scene, width);
     }
 
+    /// <summary>Flugzeug bzw. Rakete der Szene groß im Bild (19.11.2026: „bei Szenen sollen die jeweiligen Flugzeuge oder Raketen als
+    /// Vorschaubild da sein“): Draufsicht schräg nach rechts oben, mit Schatten, über einem angedeuteten Desktop. Maßstab je Modell wie bei
+    /// <c>--modelle</c> (dort etwa 900 px Länge), Anteil an der Bildbreite je Art.</summary>
+    static readonly Dictionary<string, (double ModelU, double Share, Action<DrawingContext, Point, double, double> Draw)> Heroes = new()
+    {
+        ["jericho"] = (65, 0.24, (dc, c, h, u) => Art.Missile(dc, c, new Vector(Math.Cos(h), Math.Sin(h)), 1, true, 0.35, u, 0.3)),
+        [Attacks.Tu160] = (8.6, 0.6, (dc, c, h, u) => Art.Bomber(dc, c, h, 20, false, 0.5, u, 0.3)),
+        [Attacks.Tu22] = (8.2, 0.66, (dc, c, h, u) => Planes.Tu22(dc, c, h, u, 0.35, 20)),
+        [Attacks.Su34] = (7.5, 0.56, (dc, c, h, u) => Planes.Su34(dc, c, h, u, 0.35, 0.3)),
+        [Attacks.Ka52] = (9, 0.42, (dc, c, h, u) => Planes.Ka52(dc, c, h, u, 0.25, 0.3, true)),
+        [Attacks.Tu95] = (8.2, 0.52, (dc, c, h, u) => Planes.Tu95(dc, c, h, u, 0.35, 0.3)),
+        [Attacks.Il76] = (8.2, 0.52, (dc, c, h, u) => Planes.Il76(dc, c, h, u, 0.35, false)),
+        [Attacks.Ac130] = (6.6, 0.5, (dc, c, h, u) => Planes.AC130(dc, c, h, u, 0.35, 0.3)),
+        [Attacks.Shahed] = (9, 0.38, (dc, c, h, u) => Planes.Shahed(dc, c, h, u, 0.2, 0.3)),
+        [Attacks.A10] = (8.4, 0.56, (dc, c, h, u) => Planes.A10(dc, c, h, u, 0.3, 0.3)),
+        [Attacks.Su25] = (9, 0.52, (dc, c, h, u) => Planes.Su25(dc, c, h, u, 0.3, 0.3)),
+        [Attacks.F35] = (8.4, 0.52, (dc, c, h, u) => Planes.F35(dc, c, h, u, 0.35, 0.3, 0)),
+        [Attacks.Su57] = (8.4, 0.58, (dc, c, h, u) => Planes.Su57(dc, c, h, u, 0.35, 0.3, 0)),
+        [Attacks.B2] = (9, 0.36, (dc, c, h, u) => Planes.B2(dc, c, h, u, 0.4, 0.3)),
+    };
+
+    static BitmapSource RenderHero(string scene, int width)
+    {
+        int height = (int)Math.Round(width * 9.0 / 16);
+        double W = width, H = height, k = W / Desk.Width;
+        var visual = new DrawingVisual();
+        using (var dc = visual.RenderOpen())
+        {
+            dc.DrawRectangle(Wall, null, new Rect(0, 0, W, H));
+            // angedeuteter Desktop: Symbole links und rechts oben, gedämpft
+            dc.PushOpacity(0.55);
+            foreach (var icon in Icons())
+            {
+                var c = new Point(icon.Center.X * k, icon.Center.Y * k);
+                dc.DrawRoundedRectangle(Folder, null, new Rect(c.X - 24 * k, c.Y - 24 * k, 48 * k, 40 * k), 6 * k, 6 * k);
+                dc.DrawRoundedRectangle(Label, null, new Rect(c.X - 26 * k, c.Y + 22 * k, 52 * k, 8 * k), 4 * k, 4 * k);
+            }
+            dc.Pop();
+            const double heading = -0.55;   // schräg nach rechts oben
+            if (scene == Attacks.Duel)
+            {   // Su-57 hinten links jagt die F-35A vorn rechts, Rakete mit Rauchspur dazwischen
+                double uF = 8.4 * (W * 0.34 / 900), uS = 8.4 * (W * 0.40 / 900);
+                var f35 = new Point(W * 0.68, H * 0.36); var su57 = new Point(W * 0.34, H * 0.68);
+                var dir = new Vector(Math.Cos(heading), Math.Sin(heading));
+                var from = su57 + dir * W * 0.12; var to = f35 - dir * W * 0.16;
+                dc.DrawLine(Soft.FadePen(Trail, W * 0.012, 0.45), from, to);
+                dc.DrawLine(Soft.FadePen(Trail, W * 0.005, 0.8), from, to);
+                Planes.Maverick(dc, to, heading, uF * 0.8);
+                Planes.Su57(dc, su57, heading, uS, 0.35, 0.3, 0);
+                Planes.F35(dc, f35, heading, uF, 0.35, 0.3, 0);
+            }
+            else if (Heroes.TryGetValue(scene, out var hero))
+                hero.Draw(dc, new Point(W * 0.55, H * 0.47), heading, hero.ModelU * (W * hero.Share / 900));
+        }
+        var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(visual);
+        bitmap.Freeze();
+        return bitmap;
+    }
+
+    static readonly Brush Trail = Frozen(new SolidColorBrush(Color.FromRgb(0xEE, 0xF0, 0xF2)));
+
     static BitmapSource RenderScene(string scene, int width)
     {
+        if (scene == Attacks.Duel || Heroes.ContainsKey(scene)) return RenderHero(scene, width);
         var icons = Icons();
         var homes = icons.ToDictionary(i => i.Id, i => i.Center);
         var s = new Scene(icons, homes, 48, [Desk], Desk, true, 64, nuclear: scene == "nuke", attack: Attacks.All.Contains(scene) ? scene : null);

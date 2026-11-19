@@ -61,6 +61,7 @@ And since it is open source, you can fix it yourself, mod it, or add your own sc
 
 - **New scene: Duel, F-35A vs Su-57.** The two jets fight a rolling-scissors dogfight across your whole screen, and the lead keeps changing. Whoever is behind fires air-to-air missiles and cannon bursts. The jet in front throws fans of flares, the missiles get decoyed and hit your icons. Long curling smoke trails, wingtip vortices and afterburner glow. In the end the Su-57 gets behind the F-35: the first missile goes for the flares, the second one hits. The F-35 explodes, spins down trailing fire and smoke and crashes, and the Su-57 pulls away on full afterburner. 18 scenes in total.
 - `--szene <scene> <folder> [times…]` renders single frames of one scene for quick checks.
+- **Scene tiles show their aircraft or missile:** each tile on the Scene page now shows the aircraft, helicopter, drone or missile of that scene, large and with its shadow. `--vorschau <folder>` renders all tiles.
 
 ## What's new in 1.4.1
 
