@@ -51,6 +51,18 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.3.0
+
+- **Models checked against real top views.** Each outline was traced from a real top view and compared with the model one model unit at a time. The sources are a public-domain orthographic view for the Su-34 and three-view drawings from Wikimedia Commons for the others.
+- **Su-34 rebuilt from the traced outline:** slim nose with the long grey radome, canards, fins on the nacelles, nozzles behind the nacelles, the teal camouflage, and R-73s on the wingtip rails.
+- **Su-25 corrected:** the engine nacelles start much further back and end at the tail boom, the trailing edge, tailplane and wingtip pods have moved, the fuselage is slimmer, and it has twin nose booms.
+- **A-10C:** wing moved forward with the right chord, slimmer fuselage, shorter TF34 nacelles and twin fins.
+- **AC-130U:** pointed radome nose, trailing edge moved aft.
+- **Tu-95MS:** slimmer fuselage.
+- **Il-76:** finer nose.
+- **CH-47 Chinook:** the wide body with fuel pods runs almost the full length.
+- **Mi-26:** rotor head about a third of the way back from the nose.
+
 ## What's new in 1.2.9
 
 - **One true scale for every aircraft and helicopter.** The Tu-160M is the reference, and one desktop icon is the size of a 6 m container. Every model is drawn at its real size: the Tu-160M is 9 icons long, the Tu-95MS and Il-76 about 7.5, the Su-34 4, the A-10C 2.7, the Ka-52 2.3 and the Shahed-136 0.6. The Chinook and Mi-26 now carry icons like containers on the hook (up to four or eight).

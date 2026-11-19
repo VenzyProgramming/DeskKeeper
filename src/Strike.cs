@@ -51,19 +51,18 @@ static partial class Planes
     // ---------------------------------------------------------------- A-10C Thunderbolt II (Länge 16,26 m, Spannweite 17,53 m)
     // Gerader Tiefdecker mit breitem Mittelstück und leicht verjüngten Außenflügeln, hängende Randbögen, Fahrwerksgondeln vor der Vorderkante,
     // zwei TF34 in Gondeln hoch am Hinterrumpf, Höhenleitwerk mit Doppelseitenleitwerk an den Enden, Blasenhaube, GAU-8 in der Nase.
-    static readonly Geometry WarthogBody = Fly.G("M50.5,-1 L50.5,1 L47,2.3 L42,3.5 L34,4.4 L20,4.6 L0,4.5 L-12,4.2 L-30,3 L-40,2.2 L-46.5,1.2 L-46.5,-1.2 L-40,-2.2 L-30,-3 L-12,-4.2 L0,-4.5 L20,-4.6 L34,-4.4 L42,-3.5 L47,-2.3 Z");
-    static readonly Geometry WarthogWing = Fly.G(Full([(6, 0), (6, 17), (4.3, 51), (3.4, 53.2), (1.6, 53.9), (-4.6, 53.9), (-6.4, 52.4), (-6.8, 51), (-12.6, 17), (-12.6, 0)]));
-    static readonly Geometry WarthogPods = Fly.Both("M11,12 L-3,12 L-3,17 L11,17 C12.6,17 13.2,16 13.2,14.5 C13.2,13 12.6,12 11,12 Z");
-    static readonly Geometry WarthogTail = Fly.Both("M-34.6,0 L-35.2,17.6 L-45.6,17.6 L-45.6,0 Z");
-    static readonly Geometry WarthogFins = Fly.Both("M-30.5,17.6 C-31.5,16.6 -40,16.5 -47.8,16.9 L-47.8,18.3 C-40,18.7 -31.5,18.6 -30.5,17.6 Z");
-    static readonly Geometry WarthogPylons = Fly.Both("M-15,3.8 L-27,3.2 L-27,6.4 L-15,6.6 Z");
-    static readonly Geometry WarthogCanopy = Fly.G("M31,0 C30.6,-1.8 29,-2.5 26.5,-2.6 L20,-2.4 C19,-1.6 19,1.6 20,2.4 L26.5,2.6 C29,2.5 30.6,1.8 31,0 Z");
-    static readonly Geometry WarthogSeams = Fly.G("M-12.6,-17 L-6.8,-51 M-12.6,17 L-6.8,51 M-9.6,-17 L-4.2,-46 M-9.6,17 L-4.2,46 M-41,-1.8 L-41,-17.6 M-41,1.8 L-41,17.6 " +
-        "M30,-4.5 L30,4.5 M14,-4.6 L14,4.6 M-20,-3.8 L-20,3.8 M6,-17 L6,17");
+    static readonly Geometry WarthogBody = Fly.G("M50.5,-1 L50.5,1 L47,2.3 L42,3.5 L36,4.1 L20,4.1 L0,4.1 L-12,3.9 L-30,3 L-40,2.2 L-46.5,1.2 L-46.5,-1.2 L-40,-2.2 L-30,-3 L-12,-3.9 L0,-4.1 L20,-4.1 L36,-4.1 L42,-3.5 L47,-2.3 Z");
+    static readonly Geometry WarthogWing = Fly.G(Full([(9, 0), (9, 17), (6.2, 49), (5, 51.6), (3.4, 52.6), (-6.6, 52.6), (-7.8, 51.6), (-7.8, 17), (-7.8, 0)]));
+    static readonly Geometry WarthogPods = Fly.Both("M14,13.4 L0,13.4 L0,17.4 L14,17.4 C15.6,17.4 16.2,16.4 16.2,15.4 C16.2,14.4 15.6,13.4 14,13.4 Z");
+    static readonly Geometry WarthogTail = Fly.Both("M-34.4,0 L-34.8,18 L-43.6,18 L-43.6,0 Z");
+    static readonly Geometry WarthogFins = Fly.Both("M-30.5,17.6 C-31.5,16.6 -38,16.5 -45,16.9 L-45,18.3 C-38,18.7 -31.5,18.6 -30.5,17.6 Z");
+    static readonly Geometry WarthogPylons = Fly.Both("M-12,3.8 L-24,3.2 L-24,6.4 L-12,6.6 Z");
+    static readonly Geometry WarthogCanopy = Fly.G("M38,0 C37.6,-1.8 36,-2.5 33.5,-2.6 L23,-2.4 C22,-1.6 22,1.6 23,2.4 L33.5,2.6 C36,2.5 37.6,1.8 38,0 Z");
+    static readonly Geometry WarthogSeams = Fly.G("M-5,-17 L-5,-50 M-5,17 L-5,50 M-40,-1.8 L-40,-18 M-40,1.8 L-40,18 M-44,0 L-46,0 M30,-4.1 L30,4.1 M14,-4.1 L14,4.1 M-20,-3.6 L-20,3.6 M9,-4.1 L9,4.1");
     // Vorflügel innen am Außenflügel, geteilte Querruder (Decelerons), Klappenfugen, Trittflächen, Höhenruder-Trimmklappen, Wartungsdeckel
-    static readonly Geometry WarthogDetail = Fly.G("M5.2,-17.4 L4.8,-30 M5.2,17.4 L4.8,30 M-9.4,-38 L-6.9,-51 M-9.4,38 L-6.9,51 M-8.2,-38 L-10.6,-38 M-8.2,38 L-10.6,38 " +
-        "M4,-5 L4,-12 L-10,-12 L-10,-5 M4,5 L4,12 L-10,12 L-10,5 M-43,-6 L-45.4,-6 M-43,6 L-45.4,6 M-43,-12 L-45.4,-12 M-43,12 L-45.4,12 " +
-        "M44,-2 L44,2 M24,-4.5 L20,-4.5 M24,4.5 L20,4.5 M8,-1.4 L2,-1.4 L2,1.4 L8,1.4 Z M-6,-2 L-12,-2 L-12,2 L-6,2 Z");
+    static readonly Geometry WarthogDetail = Fly.G("M8.2,-17.4 L6.8,-30 M8.2,17.4 L6.8,30 M-5,-38 L-7.8,-38 M-5,38 L-7.8,38 M-5.6,-44 L-7.6,-51 M-5.6,44 L-7.6,51 " +
+        "M7,-5 L7,-12 L-6,-12 L-6,-5 M7,5 L7,12 L-6,12 L-6,5 M-41.5,-6 L-43.6,-6 M-41.5,6 L-43.6,6 M-41.5,-12 L-43.6,-12 M-41.5,12 L-43.6,12 " +
+        "M44,-2 L44,2 M24,-4.1 L20,-4.1 M24,4.1 L20,4.1 M8,-1.4 L2,-1.4 L2,1.4 L8,1.4 Z M-6,-2 L-12,-2 L-12,2 L-6,2 Z");
     static readonly Brush Formation = Fly.B("#90B8F0A8");
     static readonly Pen WarthogDarkPen = Fly.P("#272C31", 0.5);
     static readonly Brush WarthogTop = Fly.B("#6F787F"), WarthogShade = Fly.B("#626A71"), WarthogDark = Fly.B("#272C31"), WarthogEngine = Fly.B("#7A838A"),
@@ -96,24 +95,24 @@ static partial class Planes
         dc.DrawGeometry(WarthogShade, WarthogEdge, WarthogPylons);
         foreach (double s in new[] { -1.0, 1.0 })
         {
-            dc.DrawRoundedRectangle(WarthogEngine, WarthogEdge, new Rect(-34, 9.4 * s - 3.9, 24, 7.8), 3.9, 3.9);   // TF34-Gondel
-            dc.DrawEllipse(WarthogDark, null, new Point(-10.6, 9.4 * s), 0.9, 3.2);                              // Einlauf
-            dc.DrawRectangle(WarthogDark, null, new Rect(-34.4, 9.4 * s - 2.6, 1.2, 5.2));                        // Düse
-            dc.DrawLine(WarthogSeam, new Point(-16, 9.4 * s - 3.9), new Point(-16, 9.4 * s + 3.9));
+            dc.DrawRoundedRectangle(WarthogEngine, WarthogEdge, new Rect(-27, 9.4 * s - 3.9, 19, 7.8), 3.9, 3.9);   // TF34-Gondel
+            dc.DrawEllipse(WarthogDark, null, new Point(-8.6, 9.4 * s), 0.9, 3.2);                              // Einlauf
+            dc.DrawRectangle(WarthogDark, null, new Rect(-27.4, 9.4 * s - 2.6, 1.2, 5.2));                        // Düse
+            dc.DrawLine(WarthogSeam, new Point(-12, 9.4 * s - 3.9), new Point(-12, 9.4 * s + 3.9));
         }
         dc.DrawGeometry(WarthogShade, WarthogEdge, WarthogFins);
         dc.DrawGeometry(WarthogDark, WarthogEdge, WarthogCanopy);
-        dc.DrawLine(WarthogSeam, new Point(26, -2.5), new Point(26, 2.5));   // Bügel der Haube
+        dc.DrawLine(WarthogSeam, new Point(30, -2.5), new Point(30, 2.5));   // Bügel der Haube
         dc.DrawEllipse(WarthogDark, null, new Point(50.6, -0.6), 0.9, 0.9);    // GAU-8 Avenger (Mündungen, leicht links)
         dc.DrawLine(WarthogSeam, new Point(26, 0), new Point(-28, 0));          // Rumpfrücken
         Soft.Draw(dc, HogRed, new Point(1.8, -53.6), 1.3, 1.3, 1);
         Soft.Draw(dc, HogGreen, new Point(1.8, 53.6), 1.3, 1.3, 1);
         dc.DrawGeometry(null, WarthogSeam, WarthogDetail);
-        dc.DrawRoundedRectangle(WarthogDark, WarthogSeam, new Rect(38, -0.7, 4.4, 1.4), 0.5, 0.5);   // Luftbetankungsöffnung vor der Haube
-        dc.DrawRoundedRectangle(null, WarthogSeam, new Rect(37.4, -1.2, 5.6, 2.4), 0.8, 0.8);
+        dc.DrawRoundedRectangle(WarthogDark, WarthogSeam, new Rect(40.6, -0.7, 4.4, 1.4), 0.5, 0.5);   // Luftbetankungsöffnung vor der Haube
+        dc.DrawRoundedRectangle(null, WarthogSeam, new Rect(40, -1.2, 5.6, 2.4), 0.8, 0.8);
         foreach (double s in new[] { -1.0, 1.0 })
         {
-            dc.DrawEllipse(WarthogEngine, null, new Point(-10.2, 9.4 * s), 0.5, 1.6);   // Fan mit Spinner
+            dc.DrawEllipse(WarthogEngine, null, new Point(-8.2, 9.4 * s), 0.5, 1.6);   // Fan mit Spinner
             dc.DrawRectangle(Formation, null, new Rect(28, 4.0 * s - 0.2, 4, 0.4));        // Formationslichter
             dc.DrawRectangle(Formation, null, new Rect(-1, 50.6 * s - 0.2, 4, 0.4));
             dc.DrawRectangle(Formation, null, new Rect(-38, 17.6 * s - 0.2, 4, 0.4));
@@ -130,25 +129,25 @@ static partial class Planes
     static readonly Brush HogRed = Art.Glow("#C0FF3030"), HogGreen = Art.Glow("#C040FF80"), HogStrobe = Art.Glow("#E0FFFFFF");
 
     // ---------------------------------------------------------------- Су-25СМ3 (Länge 15,36 m, Spannweite 14,36 m)
-    // Spitze Nase mit Laserfenster, Triebwerksgondeln seitlich am Rumpf vom Einlauf hinter der Haube bis zu den Düsen, Schulterflügel mit
-    // etwa 20° Vorderkantenpfeilung und Spitzenbehältern mit geteilter Bremsklappe, gepfeiltes Höhenleitwerk, ein Seitenleitwerk,
-    // B-8M1-Raketenbehälter und FAB-250 unter dem Flügel, R-60 außen, Täuschkörperwerfer oben am Heck.
-    static readonly Geometry RookBody = Fly.G("M50,0 L46,-1.6 L40,-3 L32,-3.6 L22,-4 L-30,-4 L-40,-3 L-47,-1.8 L-50.5,-1.2 L-50.5,1.2 L-47,1.8 L-40,3 L-30,4 L22,4 L32,3.6 L40,3 L46,1.6 Z");
-    static readonly Geometry RookNacelles = Fly.Both("M20.5,4 C20.5,6 20.6,7.8 20,8.2 L0,8.5 L-28,7.9 L-35,6.7 L-38,6.2 L-38,4 Z");
-    static readonly Geometry RookWing = Fly.Both("M10,8.2 L-5.5,45.3 L-13.8,45.3 L-12.5,8.2 Z");
-    static readonly Geometry RookPods = Fly.Both("M2.2,45.4 C2.2,44.4 1.4,44 0.4,44 L-19,44 L-19.6,45.4 L-19,46.8 L0.4,46.8 C1.4,46.8 2.2,46.4 2.2,45.4 Z");   // Spitzenbehälter mit geteilter Bremsklappe hinten
-    static readonly Geometry RookTail = Fly.Both("M-31,3 L-41.5,15.1 L-46,15.1 L-44.5,3 Z");
-    static readonly Geometry RookFin = Fly.G("M-24,0 C-30,-0.9 -40,-1.2 -46,-1 L-50,-0.5 L-50,0.5 L-46,1 C-40,1.2 -30,0.9 -24,0 Z");
-    static readonly Geometry RookCanopy = Fly.G("M29.5,0 C29.2,-1.6 27.8,-2.2 25.6,-2.3 L21.6,-2.1 L21.6,2.1 L25.6,2.3 C27.8,2.2 29.2,1.6 29.5,0 Z");
-    static readonly Geometry RookCamo = Fly.G("M6,-12 C2,-18 -6,-17 -9,-22 L-8,-30 L-1,-26 Z M6,12 C2,18 -6,17 -9,22 L-8,30 L-1,26 Z M-2,-36 L-7,-44 L-11,-44 L-9,-35 Z " +
-        "M-2,36 L-7,44 L-11,44 L-9,35 Z M18,-3.6 C10,-2 4,1.5 -6,3.6 L-6,-1 C2,-2.6 10,-3.4 18,-3.6 Z M-18,-7.8 C-22,-5 -27,-4.6 -32,-6.8 L-30,-7.9 Z M-18,7.8 C-22,5 -27,4.6 -32,6.8 L-30,7.9 Z");
-    static readonly Geometry RookSeams = Fly.G("M-11.6,-10 L-13.2,-43 M-11.6,10 L-13.2,43 M8.8,-11 L-4.6,-42.6 M8.8,11 L-4.6,42.6 M-41,-3 L-44,-14.6 M-41,3 L-44,14.6 M-14,45.4 L-19.6,45.4 M-14,-45.4 L-19.6,-45.4 " +
-        "M30,-3.6 L30,3.6 M12,-4 L12,4 M-20,-4 L-20,4");
-    // Vorflügelstöße, Querruder, Klappenstöße, Höhen- und Seitenruder, Wartungsdeckel der Triebwerksgondeln, Panzerwanne um das Cockpit
-    static readonly Geometry RookDetail = Fly.G("M3,-24.4 L1.6,-24 M3,24.4 L1.6,24 M-3,-36 L-4.4,-35.6 M-3,36 L-4.4,35.6 M-13,-30 L-11,-30 M-13,30 L-11,30 " +
-        "M-12.4,-22 L-10.6,-22 M-12.4,22 L-10.6,22 M-44.2,-3 L-44.6,-15 M-44.2,3 L-44.6,15 M-46,-0.6 L-30,-0.6 " +
-        "M10,-8.4 L10,-4 M10,8.4 L10,4 M-6,-8.5 L-6,-4 M-6,8.5 L-6,4 M-24,-8.1 L-24,-4 M-24,8.1 L-24,4 M18,-4 L18,-8.2 M18,4 L18,8.2 " +
-        "M34,-3.3 L34,3.3 M38,-2.9 C36,-2.6 22,-2.6 20,-3.6 M38,2.9 C36,2.6 22,2.6 20,3.6");
+    // Draufsicht aus dem Dreiseitenriss „Suchoi Su-25.svg“ (Kaboldy, Wikimedia Commons, CC BY-SA 3.0; vorlage/su25-3view.png) abgetastet
+    // (19.11.2026: reale Draufsichten prüfen): schlanker Rumpf (halb 3,3), Triebwerksgondeln erst ab +12,5 und nur bis −25, dahinter der
+    // schmale Leitwerksträger; Flügel ab +9 mit 24° Vorderkante, Hinterkante gerade bei −16,6; Spitzenbehälter −4,5…−19,6;
+    // Höhenleitwerk −30…−43,5; zwei Staurohre an der Nase, B-8M1, FAB-250 und R-60 unter dem Flügel, Täuschkörperwerfer am Heck.
+    static readonly Geometry RookBody = Fly.Both("M50,0 L47,1.2 L42,2.1 L39,2.6 L36,3.0 L33,3.3 L-25,3.3 L-28,2.4 L-44,2.0 L-47,1.5 L-50.5,1.0 L-50.5,0 Z");
+    static readonly Geometry RookNacelles = Fly.Both("M12.5,3.3 C12.5,6 12.7,8.3 11.6,8.7 L0,8.7 L-18,8.4 L-22,8 L-25,7.4 L-25.4,3.3 Z");
+    static readonly Geometry RookWing = Fly.Both("M6.4,8.5 L-7.6,44 L-16.8,44 L-16.6,8.5 Z");
+    static readonly Geometry RookPods = Fly.Both("M-3.6,47.2 C-3.6,46.2 -4.4,45.7 -5.4,45.7 L-19,45.7 L-19.6,47.2 L-19,48.7 L-5.4,48.7 C-4.4,48.7 -3.6,48.2 -3.6,47.2 Z");   // Spitzenbehälter mit geteilter Bremsklappe hinten
+    static readonly Geometry RookTail = Fly.Both("M-30,2.2 L-37.6,15.8 L-42,15.8 L-43.6,2.1 Z");
+    static readonly Geometry RookFin = Fly.G("M-26,0 C-31,-0.8 -40,-1.1 -46,-0.9 L-50,-0.45 L-50,0.45 L-46,0.9 C-40,1.1 -31,0.8 -26,0 Z");
+    static readonly Geometry RookCanopy = Fly.G("M32.4,0 C32.1,-1.8 30.6,-2.6 28.4,-2.7 L21.4,-2.6 C20.8,-1.6 20.8,1.6 21.4,2.6 L28.4,2.7 C30.6,2.6 32.1,1.8 32.4,0 Z");
+    static readonly Geometry RookCamo = Fly.G("M6,-12 C2,-18 -6,-17 -9,-22 L-9,-30 L-1,-24 Z M6,12 C2,18 -6,17 -9,22 L-9,30 L-1,24 Z M-4,-34 L-9,-42 L-14,-42 L-12,-34 Z " +
+        "M-4,34 L-9,42 L-14,42 L-12,34 Z M18,-3.3 C10,-2 4,1.5 -6,3.3 L-6,-1 C2,-2.6 10,-3.2 18,-3.3 Z M-12,-8.6 C-16,-6 -20,-5.6 -24,-7.4 L-22,-8.3 Z M-12,8.6 C-16,6 -20,5.6 -24,7.4 L-22,8.3 Z");
+    // Klappen und Querruder, Vorflügel, Höhen- und Seitenruder, Haubenrahmen, Bremsklappenfuge, Spanten
+    static readonly Geometry RookSeams = Fly.G("M-14.6,-10 L-14.8,-43 M-14.6,10 L-14.8,43 M5.2,-11 L-6.4,-42 M5.2,11 L-6.4,42 M-14.6,-28 L-16.6,-28 M-14.6,28 L-16.6,28 " +
+        "M-40.4,-2.2 L-41,-15 M-40.4,2.2 L-41,15 M-42,-0.3 L-50,-0.3 M-14,-47.2 L-19.6,-47.2 M-14,47.2 L-19.6,47.2 M27,-2.7 L27,2.7 M14,-3.3 L14,3.3 M-8,-3.3 L-8,3.3 M-28,-2.4 L-28,2.4 " +
+        "M2,-8.7 L2,-3.3 M2,8.7 L2,3.3 M-14,-8.5 L-14,-3.3 M-14,8.5 L-14,3.3");
+    static readonly Geometry RookDetail = Fly.G("M3,-24.4 L1.6,-24 M3,24.4 L1.6,24 M-3,-36 L-4.4,-35.6 M-3,36 L-4.4,35.6 M38,-2.4 C34,-2.4 26,-2.6 22,-3.3 M38,2.4 C34,2.4 26,2.6 22,3.3 " +
+        "M8,-0.4 L8,0.4 M-18,-0.4 L-18,0.4");
     static readonly Pen RookBoom = Fly.P("#2A2F31", 0.35);
     static readonly Brush RookTop = Fly.B("#7D8468"), RookShade = Fly.B("#717860"), RookDark = Fly.B("#252A2C"), RookPatch = Fly.B("#5A6550"), RookPod = Fly.B("#B4B8AE"), RookBomb = Fly.B("#4F5A44");
     static readonly Pen RookEdge = Fly.P("#3C4234", 0.35), RookSeam = Fly.P("#5E6552", 0.25);
@@ -160,47 +159,46 @@ static partial class Planes
         dc.PushTransform(Fly.Frame(at, heading, u));
         foreach (double s in new[] { -1.0, 1.0 })
         {
-            foreach (double y in new[] { 13.5, 30.0 }) dc.DrawRoundedRectangle(RookBomb, RookEdge, new Rect(-6.5, y * s - 1.05, 14.3, 2.1), 1.05, 1.05);   // FAB-250
+            foreach (double y in new[] { 13.5, 30.0 }) dc.DrawRoundedRectangle(RookBomb, RookEdge, new Rect(-9.5, y * s - 1.05, 14.3, 2.1), 1.05, 1.05);   // FAB-250
             foreach (double y in new[] { 19.0, 24.5 })
             {
-                dc.DrawRoundedRectangle(RookPod, RookEdge, new Rect(-5, y * s - 1.7, 17.9, 3.4), 1.2, 1.2);   // B-8M1, 20 S-8 je Behälter
-                if (pods > 0.02) dc.DrawEllipse(RookDark, null, new Point(12.8, y * s), 0.5, 1.3 * Math.Clamp(pods, 0.3, 1));
+                dc.DrawRoundedRectangle(RookPod, RookEdge, new Rect(-8, y * s - 1.7, 17.9, 3.4), 1.2, 1.2);   // B-8M1, 20 S-8 je Behälter
+                if (pods > 0.02) dc.DrawEllipse(RookDark, null, new Point(9.8, y * s), 0.5, 1.3 * Math.Clamp(pods, 0.3, 1));
             }
-            dc.DrawRoundedRectangle(Ordnance, RookEdge, new Rect(-5.5, 37.5 * s - 0.4, 13.7, 0.8), 0.4, 0.4);   // R-60
+            dc.DrawRoundedRectangle(Ordnance, RookEdge, new Rect(-10, 37.5 * s - 0.4, 13.7, 0.8), 0.4, 0.4);   // R-60
         }
         dc.DrawGeometry(RookShade, RookEdge, RookWing);
         dc.DrawGeometry(RookShade, RookEdge, RookTail);
-        dc.DrawGeometry(RookTop, RookEdge, RookNacelles);
         dc.DrawGeometry(RookTop, RookEdge, RookBody);
+        dc.DrawGeometry(RookTop, RookEdge, RookNacelles);
         dc.DrawGeometry(RookPatch, null, RookCamo);
         dc.DrawGeometry(RookShade, RookEdge, RookPods);
         dc.DrawGeometry(null, RookSeam, RookSeams);
         foreach (double s in new[] { -1.0, 1.0 })
         {
-            dc.DrawRectangle(RookDark, null, new Rect(19.6, s > 0 ? 4.2 : -8.2, 0.9, 4));   // Lufteinlauf
-            dc.DrawRectangle(RookDark, null, new Rect(-38.6, s > 0 ? 4.3 : -6.3, 0.9, 2));   // Düse
-            Art.Star(dc, new Point(-7, 33 * s), 2.0, 0);
+            dc.DrawRectangle(RookDark, null, new Rect(11.8, s > 0 ? 3.6 : -8.4, 0.9, 4.8));   // Lufteinlauf
+            dc.DrawRectangle(RookDark, null, new Rect(-26, s > 0 ? 4.0 : -6.8, 0.9, 2.8));   // Düse
+            Art.Star(dc, new Point(-9, 32 * s), 2.0, 0);
         }
         dc.DrawGeometry(RookShade, RookEdge, RookFin);
-        dc.DrawRoundedRectangle(RookDark, null, new Rect(-36, -2.4, 6, 1.1), 0.4, 0.4);   // ASO-2V Täuschkörperwerfer
-        dc.DrawRoundedRectangle(RookDark, null, new Rect(-36, 1.3, 6, 1.1), 0.4, 0.4);
+        dc.DrawRoundedRectangle(RookDark, null, new Rect(-36, -1.9, 6, 0.9), 0.4, 0.4);   // ASO-2V Täuschkörperwerfer
+        dc.DrawRoundedRectangle(RookDark, null, new Rect(-36, 1.0, 6, 0.9), 0.4, 0.4);
         dc.DrawGeometry(RookDark, RookEdge, RookCanopy);
         dc.DrawEllipse(RookDark, null, new Point(49.2, 0), 0.8, 0.6);   // Klen-PS Laserfenster
         dc.DrawGeometry(null, RookSeam, RookDetail);
-        dc.DrawLine(RookBoom, new Point(40, -2.4), new Point(53, -2.4));   // Staurohr links (PVD-18) mit Sensoren
-        dc.DrawLine(RookBoom, new Point(40, 2.2), new Point(49, 2.2));     // zweites Staurohr rechts
-        dc.DrawLine(RookBoom, new Point(46, -2.9), new Point(46, -1.9));
-        dc.DrawLine(RookSeam, new Point(25.6, -2.3), new Point(25.6, 2.3));   // Haubenrahmen
-        dc.DrawEllipse(RookDark, null, new Point(-50.2, 0), 0.9, 0.9);        // Bremsschirmbehälter
+        dc.DrawLine(RookBoom, new Point(44, -1.5), new Point(53, -1.5));   // zwei Staurohre wie im Riss
+        dc.DrawLine(RookBoom, new Point(44, 1.5), new Point(53, 1.5));
+        dc.DrawLine(RookBoom, new Point(49, -2.1), new Point(49, -0.9));
+        dc.DrawLine(RookBoom, new Point(49, 0.9), new Point(49, 2.1));
+        dc.DrawLine(RookSeam, new Point(25, -2.6), new Point(25, 2.6));   // Haubenrahmen
+        dc.DrawEllipse(RookDark, null, new Point(-50.4, 0), 0.7, 0.7);        // Bremsschirmbehälter
         foreach (double s in new[] { -1.0, 1.0 })
         {
-            dc.DrawEllipse(RookPod, null, new Point(1.8, 45.4 * s), 0.7, 0.7);   // Landescheinwerfer im Spitzenbehälter
-            dc.DrawLine(RookBoom, new Point(20.4, 4.2 * s), new Point(20.4, 8.1 * s));   // Grenzschichtplatte am Einlauf
+            dc.DrawEllipse(RookPod, null, new Point(-4.6, 47.2 * s), 0.6, 0.6);   // Landescheinwerfer im Spitzenbehälter
+            dc.DrawLine(RookBoom, new Point(12.6, 3.6 * s), new Point(12.6, 8.4 * s));   // Grenzschichtplatte am Einlauf
         }
-        dc.DrawLine(RookBoom, new Point(8, -0.6), new Point(8, 0.6));     // Antennen auf dem Rücken
-        dc.DrawLine(RookBoom, new Point(-14, -0.6), new Point(-14, 0.6));
-        Soft.Draw(dc, HogRed, new Point(-4, -46.6), 1.2, 1.2, 1);
-        Soft.Draw(dc, HogGreen, new Point(-4, 46.6), 1.2, 1.2, 1);
+        Soft.Draw(dc, HogRed, new Point(-6, -48.6), 1.2, 1.2, 1);
+        Soft.Draw(dc, HogGreen, new Point(-6, 48.6), 1.2, 1.2, 1);
         dc.Pop();
     }
 
@@ -508,7 +506,7 @@ sealed class StrafeRaid : IAttack
         {
             Weapon.Gun => kind == Kind.A10 ? new Vector(51, -0.6) : new Vector(36, -3.2),
             Weapon.Missile => new Vector(12, -35),
-            _ => new Vector(13, (index % 2 == 0 ? 19 : 24.5) * (index % 4 < 2 ? -1 : 1)),
+            _ => new Vector(10, (index % 2 == 0 ? 19 : 24.5) * (index % 4 < 2 ? -1 : 1)),
         };
         return at + Fly.Rot(offset * u, h);
     }

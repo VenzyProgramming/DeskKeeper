@@ -647,6 +647,37 @@ static class Check
         return bitmap;
     }
 
+    /// <summary>Jedes Modell einzeln, Nase oben, auf Weiß und groß (Vergleich mit echten Draufsichten). Nur Bilder, keine Desktop-Änderung.</summary>
+    internal static void Models(string output)
+    {
+        Directory.CreateDirectory(output);
+        double up = -Math.PI / 2;
+        // Pixel je Modelleinheit so, dass die Länge (ohne Rotoren) etwa 900 px ergibt
+        var all = new (string Name, double Span, Action<DrawingContext, Point> Draw)[]
+        {
+            ("tu160", 1000, (dc, c) => Art.Bomber(dc, c, up, 20, false, 0, 8.6, 0.3)),
+            ("tu160-65", 1000, (dc, c) => Art.Bomber(dc, c, up, 65, false, 0, 8.6, 0.3)),
+            ("tu22m3", 1000, (dc, c) => Planes.Tu22(dc, c, up, 8.2, 0, 20)),
+            ("su34", 1000, (dc, c) => Planes.Su34(dc, c, up, 7.5, 0, 0.3)),
+            ("ka52", 1000, (dc, c) => Planes.Ka52(dc, c, up, 9, 0, 0.3, false)),
+            ("tu95", 1000, (dc, c) => Planes.Tu95(dc, c, up, 8.2, 0, 0.3)),
+            ("il76", 1000, (dc, c) => Planes.Il76(dc, c, up, 8.2, 0, false)),
+            ("ac130", 1000, (dc, c) => Planes.AC130(dc, c, up, 6.6, 0, 0.3)),
+            ("a10", 1000, (dc, c) => Planes.A10(dc, c, up, 8.4, 0, 0.3)),
+            ("su25", 1000, (dc, c) => Planes.Su25(dc, c, up, 9, 0, 0.3)),
+            ("shahed", 1000, (dc, c) => Planes.Shahed(dc, c, up, 9, 0, 0.3)),
+            ("chinook", 1000, (dc, c) => LiftHelper.DrawChinook(dc, c, up, 44, 0, 0.3)),
+            ("mi26", 1000, (dc, c) => LiftHelper.DrawMi26(dc, c, up, 26, 0, 0.3)),
+        };
+        foreach (var (name, size, draw) in all)
+        {
+            var v = new DrawingVisual();
+            using (var dc = v.RenderOpen()) { dc.DrawRectangle(Brushes.White, null, new Rect(0, 0, size, 1200)); draw(dc, new Point(size / 2, 600)); }
+            var bmp = new RenderTargetBitmap((int)size, 1200, 96, 96, PixelFormats.Pbgra32); bmp.Render(v);
+            Save(bmp, Path.Combine(output, name + ".png"));
+        }
+    }
+
     static void Save(BitmapSource image, string path)
     {
         var png = new PngBitmapEncoder();

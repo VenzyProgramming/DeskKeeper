@@ -15,6 +15,7 @@ static class Program
     {
         Store.Migrate();
         var app = new Application { ShutdownMode = ShutdownMode.OnMainWindowClose };
+        if (args.Length == 2 && args[0] == "--modelle") { Check.Models(args[1]); return 0; }   // Einzelbilder der Modelle (nur Lesen)
         if (args.Length == 2 && args[0] == "--check")
         {
             int code = 1;

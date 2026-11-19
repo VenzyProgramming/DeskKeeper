@@ -31,7 +31,7 @@ sealed class LiftHelper : PathHelper
         pm = Scale.PerMeter(iconSize);
         int capacity = type == Type.Chinook ? 4 : 8;   // wie Container am Haken: Chinook bis vier, Mi-26 bis acht
         // Lastnetz hängt an langen Seilen hinter dem Rumpf (von oben sichtbar)
-        net = type == Type.Chinook ? new Vector(-pm * 15, 0) : new Vector(-pm * 22, 0);
+        net = type == Type.Chinook ? new Vector(-pm * 15, 0) : new Vector(-pm * 12, 0);
         slots = Enumerable.Range(0, capacity).Select(i => new Vector(-(i / 2) * iconSize * 1.05, (i % 2 == 0 ? -1 : 1) * iconSize * 0.55)).ToArray();
         var lz = new Point(primary.Left + r * 2.2, primary.Bottom - r * 1.8);
         var p = new Point(primary.Left - r * 5, primary.Top + r * 2); double h = 0, t = start;
@@ -169,12 +169,14 @@ sealed class LiftHelper : PathHelper
     }
 
     // ---------------------------------------------------------------- CH-47F (Rumpf 15,9 m, zwei Dreiblattrotoren 18,29 m, Nabenabstand 11,9 m)
-    static readonly Geometry ChinookBody = Fly.G("M7.95,0 C7.95,-0.9 7.7,-1.3 7.1,-1.45 L6.2,-1.5 L-7.4,-1.5 L-7.95,-1.2 L-7.95,1.2 L-7.4,1.5 L6.2,1.5 L7.1,1.45 C7.7,1.3 7.95,0.9 7.95,0 Z");
-    static readonly Geometry ChinookSponsons = Fly.Both("M2.8,1.45 C2.8,1.9 2.4,2 2,2 L-3.6,2 C-4.2,2 -4.4,1.8 -4.4,1.45 Z");
+    // nach dem Riss „Boeing CH-47 Chinook 3-view line drawing.svg“ (Jetijones, CC BY 3.0): Cockpit 2,7 m breit, ab 3,8 m hinter der Nase
+    // mit den Tankgondeln 4,0 m breit bis 13,7 m, Heck mit Rampe 2,8 m breit
+    static readonly Geometry ChinookBody = Fly.Both("M7.95,0 C7.95,0.9 7.7,1.25 7.1,1.32 L4.4,1.35 C4.1,1.35 4,1.6 3.9,2.0 L-5.4,2.0 C-5.6,1.6 -5.8,1.42 -6.1,1.4 L-7.4,1.4 C-7.8,1.3 -7.95,0.9 -7.95,0 Z");
+    static readonly Geometry ChinookSponsons = Fly.Both("M3.9,1.5 L3.9,2.0 L-5.4,2.0 L-5.4,1.5 Z");
     static readonly Geometry ChinookGlass = Fly.G("M7.85,-0.5 L7.6,-1.25 L7.05,-1.35 L7.15,-0.5 Z M7.85,0.5 L7.6,1.25 L7.05,1.35 L7.15,0.5 Z M7.9,-0.4 L7.9,0.4 L7.2,0.4 L7.2,-0.4 Z");
     static readonly Geometry ChinookSpine = Fly.G("M5,-0.35 L-3.6,-0.35 L-3.6,0.35 L5,0.35 Z");
     static readonly Geometry ChinookPylon = Fly.G("M-3.6,-0.8 C-4.4,-1.05 -7.2,-1.05 -7.9,-0.6 L-7.9,0.6 C-7.2,1.05 -4.4,1.05 -3.6,0.8 Z");
-    static readonly Geometry ChinookSeams = Fly.G("M4,-1.5 L4,1.5 M1,-1.5 L1,1.5 M-2,-1.5 L-2,1.5 M-6.3,-1.5 L-6.3,1.5 M6.2,-1.5 L6.2,1.5");
+    static readonly Geometry ChinookSeams = Fly.G("M3.9,-2 L3.9,2 M1,-2 L1,2 M-2,-2 L-2,2 M-6.3,-1.4 L-6.3,1.4 M6.2,-1.35 L6.2,1.35");
     // Rumpfstöße, Laderampe, Seitentür vorn rechts, Wartungsklappen am Tunnel, Tankstutzen der Sponsons
     static readonly Geometry ChinookDetail = Fly.G("M-6.3,-1.3 L-7.8,-1.1 M-6.3,1.3 L-7.8,1.1 M5.6,1.5 L5.6,1.1 L4.4,1.1 L4.4,1.5 M3,-0.35 L3,0.35 M0,-0.35 L0,0.35 M-2.6,-0.35 L-2.6,0.35 " +
         "M1.6,-1.95 L1.6,-1.5 M1.6,1.95 L1.6,1.5 M-2.4,-1.95 L-2.4,-1.5 M-2.4,1.95 L-2.4,1.5 M7.1,-1.45 L7.1,1.45");
@@ -189,15 +191,15 @@ sealed class LiftHelper : PathHelper
     {
         ShadowOf(dc, at, heading, k, alt, ChinookBody, ChinookSponsons);
         dc.PushTransform(Fly.Frame(at, heading, k));
-        dc.DrawGeometry(OliveDark, HeliEdge, ChinookSponsons);
         dc.DrawGeometry(Olive, HeliEdge, ChinookBody);
+        dc.DrawGeometry(OliveDark, HeliEdge, ChinookSponsons);
         dc.DrawGeometry(null, HeliSeam, ChinookSeams);
         dc.DrawGeometry(OliveLight, HeliEdge, ChinookSpine);
         foreach (double s in new[] { -1.0, 1.0 })
         {   // T55-Triebwerke außen am hinteren Pylon
-            dc.DrawRoundedRectangle(OliveLight, HeliEdge, new Rect(-7.2, 1.55 * s - 0.45, 3.8, 0.9), 0.45, 0.45);
-            dc.DrawEllipse(EngineDark, null, new Point(-3.45, 1.55 * s), 0.12, 0.38);
-            dc.DrawRectangle(EngineDark, null, new Rect(-7.3, 1.55 * s - 0.3, 0.2, 0.6));
+            dc.DrawRoundedRectangle(OliveLight, HeliEdge, new Rect(-7.2, 1.75 * s - 0.45, 3.8, 0.9), 0.45, 0.45);
+            dc.DrawEllipse(EngineDark, null, new Point(-3.45, 1.75 * s), 0.12, 0.38);
+            dc.DrawRectangle(EngineDark, null, new Rect(-7.3, 1.75 * s - 0.3, 0.2, 0.6));
         }
         dc.DrawGeometry(OliveLight, HeliEdge, ChinookPylon);
         dc.DrawGeometry(HeliGlass, HeliEdge, ChinookGlass);
@@ -206,7 +208,7 @@ sealed class LiftHelper : PathHelper
         dc.DrawGeometry(null, HeliSeam, ChinookDetail);
         foreach (double s in new[] { -1.0, 1.0 })
         {
-            dc.DrawEllipse(Screen, HeliEdge, new Point(-3.35, 1.55 * s), 0.16, 0.42);   // Einlauf mit Partikelabscheider
+            dc.DrawEllipse(Screen, HeliEdge, new Point(-3.35, 1.75 * s), 0.16, 0.42);   // Einlauf mit Partikelabscheider
             dc.DrawRectangle(Fly.B("#90D84040"), null, new Rect(5.2, 1.5 * s - 0.08, 0.5, 0.16));   // Rettungswinde rechts / Positionslicht
         }
         dc.DrawEllipse(EngineDark, null, new Point(-7.1, 0.45), 0.18, 0.18);   // APU-Abgas
@@ -221,18 +223,20 @@ sealed class LiftHelper : PathHelper
     }
 
     // ---------------------------------------------------------------- Ми-26 (Rumpf 33,7 m, Achtblattrotor 32 m, Fünfblatt-Heckrotor 7,6 m)
-    static readonly Geometry HaloBody = Fly.G("M16.9,0 C16.9,-1.4 16.4,-2 15.4,-2.1 L12,-2.1 L-3,-2.1 L-5,-1.6 L-14,-0.9 L-16.6,-0.7 L-16.6,0.7 L-14,0.9 L-5,1.6 L-3,2.1 L12,2.1 L15.4,2.1 C16.4,2 16.9,1.4 16.9,0 Z");
-    static readonly Geometry HaloSponsons = Fly.Both("M7,2 C7,2.6 6.6,2.75 6,2.75 L-1.2,2.75 C-1.8,2.75 -2.2,2.5 -2.2,2 Z");
-    static readonly Geometry HaloEngines = Fly.Both("M9.6,0.2 C9.6,0.1 9.8,0.1 10,0.1 L10,2 C9.8,2.1 9.6,2 9.6,1.9 Z M9.8,0.2 L2.6,0.25 L1.8,0.8 L1.6,2.2 L2.6,2.3 L9.8,2.1 Z");
-    static readonly Geometry HaloGearbox = Fly.G("M2,-1.1 C1,-1.4 -2.6,-1.4 -3.6,-0.9 L-3.6,0.9 C-2.6,1.4 1,1.4 2,1.1 Z");
+    // nach dem Riss „Mil Mi-26 Line Drawing.svg“ (Jetijones, CC BY 3.0): Rotorkopf etwa ein Drittel hinter der Nase, Kabine 4,3 m breit
+    // von +12,7 bis +2,3, dann schlank in den Leitwerksträger, Höhenleitwerk bei −13,7
+    static readonly Geometry HaloBody = Fly.Both("M16.9,0 C16.9,0.7 16.4,1.2 15.5,1.4 L12.7,2.15 L2.3,2.15 L-6,1.1 L-8.9,0.5 L-16.6,0.4 L-16.6,0 Z");
+    static readonly Geometry HaloSponsons = Fly.Both("M6.5,2 C6.5,2.6 6.1,2.75 5.5,2.75 L1.8,2.75 C1.2,2.75 0.8,2.5 0.8,2 Z");
+    static readonly Geometry HaloEngines = Fly.Both("M10.4,0.2 C10.4,0.1 10.6,0.1 10.8,0.1 L10.8,2 C10.6,2.1 10.4,2 10.4,1.9 Z M10.6,0.2 L5.4,0.25 L4.8,0.8 L4.6,2.0 L5.4,2.1 L10.6,2.0 Z");
+    static readonly Geometry HaloGearbox = Fly.G("M6.6,-1.1 C5.6,-1.4 2,-1.4 1,-0.9 L1,0.9 C2,1.4 5.6,1.4 6.6,1.1 Z");
     static readonly Geometry HaloStab = Fly.Both("M-12.4,0.8 L-12.6,2.6 L-13.9,2.6 L-13.9,0.8 Z");
     static readonly Geometry HaloGlass = Fly.G("M16.8,-0.6 L16.4,-1.7 L15.5,-1.9 L15.6,-0.6 Z M16.8,0.6 L16.4,1.7 L15.5,1.9 L15.6,0.6 Z M16.9,-0.5 L16.9,0.5 L15.7,0.5 L15.7,-0.5 Z");
-    static readonly Geometry HaloCamo = Fly.G("M13,-2.1 C11,-1 9,-1.6 7,-2.1 Z M6,2.1 C4,1 1,1.4 -1,2.1 Z M-6,-1.5 C-8,-0.6 -10,-0.4 -12,-1 Z M12,0.6 C10,1.8 8,1.6 7,0.4 Z");
-    static readonly Geometry HaloSeams = Fly.G("M12,-2.1 L12,2.1 M6,-2.1 L6,2.1 M-3,-2.1 L-3,2.1 M14.6,-2.1 L14.6,2.1");
+    static readonly Geometry HaloCamo = Fly.G("M13,-2.1 C11,-1 9,-1.6 7,-2.1 Z M6,2.1 C4,1 1,1.4 -1,1.9 Z M-2,-1.8 C-3,-1 -4,-0.8 -5,-1.2 Z M12,0.6 C10,1.8 8,1.6 7,0.4 Z");
+    static readonly Geometry HaloSeams = Fly.G("M12,-2.1 L12,2.1 M6,-2.1 L6,2.1 M-3,-1.7 L-3,1.7 M14.6,-1.8 L14.6,1.8");
     // Muscheltüren und Laderampe am Kabinenende, Stöße am Leitwerksträger, Höhenruder, Tankstutzen
-    static readonly Geometry HaloDetail = Fly.G("M-3,-2.1 C-3.8,-1.2 -4.4,-0.6 -5,0 C-4.4,0.6 -3.8,1.2 -3,2.1 M-7,-1.4 L-7,1.4 M-10,-1.1 L-10,1.1 M-13.2,-2.4 L-13.2,-0.9 M-13.2,2.4 L-13.2,0.9 " +
-        "M4,-2.75 L4,-2.1 M4,2.75 L4,2.1 M8,-2.1 L8,2.1 M10,-0.15 L1.8,-0.15 M10,0.15 L1.8,0.15");
-    static readonly Geometry HaloExhaustR = Fly.G("M2.4,1.2 L1.2,1.9 L1.5,2.4 L2.7,1.8 Z"), HaloExhaustL = Fly.G("M2.4,-1.2 L1.2,-1.9 L1.5,-2.4 L2.7,-1.8 Z");
+    static readonly Geometry HaloDetail = Fly.G("M-1,-1.95 C-2,-1.1 -3,-0.5 -4,0 C-3,0.5 -2,1.1 -1,1.95 M-7,-0.85 L-7,0.85 M-10,-0.45 L-10,0.45 M-13.2,-2.4 L-13.2,-0.45 M-13.2,2.4 L-13.2,0.45 " +
+        "M4,-2.75 L4,-2.1 M4,2.75 L4,2.1 M8,-2.1 L8,2.1 M10.6,-0.15 L5,-0.15 M10.6,0.15 L5,0.15");
+    static readonly Geometry HaloExhaustR = Fly.G("M5.2,1.2 L4.0,1.9 L4.3,2.4 L5.5,1.8 Z"), HaloExhaustL = Fly.G("M5.2,-1.2 L4.0,-1.9 L4.3,-2.4 L5.5,-1.8 Z");
     static readonly Brush MiRed = Art.Glow("#C0FF3030"), MiGreen = Art.Glow("#C040FF80");
     static readonly Brush HaloTop = Fly.B("#6C7254"), HaloShade = Fly.B("#5E6449"), HaloPatch = Fly.B("#8A8160");
 
@@ -247,17 +251,17 @@ sealed class LiftHelper : PathHelper
         dc.DrawGeometry(HaloPatch, null, HaloCamo);
         dc.DrawGeometry(null, HeliSeam, HaloSeams);
         dc.DrawGeometry(HaloShade, HeliEdge, HaloEngines);   // D-136 mit Staubfiltern vorn, Abgas schräg nach außen
-        foreach (double s in new[] { -1.0, 1.0 }) dc.DrawEllipse(EngineDark, null, new Point(1.9, 1.5 * s), 0.35, 0.55);
+        foreach (double s in new[] { -1.0, 1.0 }) dc.DrawEllipse(EngineDark, null, new Point(4.7, 1.5 * s), 0.35, 0.55);
         dc.DrawGeometry(HaloTop, HeliEdge, HaloGearbox);
         dc.DrawGeometry(HeliGlass, HeliEdge, HaloGlass);
         dc.DrawGeometry(null, HeliSeam, HaloDetail);
         foreach (double s in new[] { -1.0, 1.0 })
         {
-            dc.DrawEllipse(Screen, HeliEdge, new Point(9.9, 1.05 * s), 0.25, 0.85);   // Staubschutz vor dem Einlauf
+            dc.DrawEllipse(Screen, HeliEdge, new Point(10.7, 1.05 * s), 0.25, 0.85);   // Staubschutz vor dem Einlauf
             dc.DrawGeometry(EngineDark, null, s > 0 ? HaloExhaustR : HaloExhaustL);  // Abgasrohr schräg nach außen
         }
-        dc.DrawRectangle(EngineDark, null, new Rect(-3.4, -0.6, 1.2, 1.2));       // Ölkühlereinlauf hinter dem Getriebe
-        for (double y = -0.5; y < 0.6; y += 0.25) dc.DrawLine(HeliSeam, new Point(-3.4, y), new Point(-2.2, y));
+        dc.DrawRectangle(EngineDark, null, new Rect(1.2, -0.6, 1.2, 1.2));       // Ölkühlereinlauf hinter dem Getriebe
+        for (double y = -0.5; y < 0.6; y += 0.25) dc.DrawLine(HeliSeam, new Point(1.2, y), new Point(2.4, y));
         dc.DrawRoundedRectangle(null, HeliSeam, new Rect(13.2, -0.5, 1.0, 1.0), 0.2, 0.2);   // Notausstieg im Cockpitdach
         dc.DrawLine(HeliAntenna, new Point(-7, -0.2), new Point(-7, 0.2));
         dc.DrawLine(HeliAntenna, new Point(-10.5, -0.2), new Point(-10.5, 0.2));
@@ -271,7 +275,7 @@ sealed class LiftHelper : PathHelper
             double a = spin * 3 + b * Math.Tau / 5;
             dc.DrawLine(new Pen(HeliBlade, 0.22), new Point(-15.8, 0.92), new Point(-15.8 + 3.8 * Math.Cos(a), 0.92));
         }
-        Rotor(dc, new Point(-0.6, 0), 16, 8, -spin, 0.8);
+        Rotor(dc, new Point(5.0, 0), 16, 8, -spin, 0.8);
         dc.Pop();
     }
 

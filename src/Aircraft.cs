@@ -258,68 +258,77 @@ static partial class Planes
         dc.Pop();
     }
 
-    // ---------------------------------------------------------------- Су-34 (Länge 23,3 m, Spannweite 14,7 m)
-    // Maße ausgemessen : schmale Nase mit großem Radom, Nebeneinander-Cockpit, lange Vorderkantenwurzel, Canards
-    // an der Wurzel (+9,5…−5), Flügel 43° mit Startschienen an den Spitzen, schräg stehende Seitenleitwerke, Höhenleitwerk 45°, Heckstachel.
-    // „Entenschnabel“: flache, breite Nase mit scharfen Kanten vom Radom bis zum Cockpit, nebeneinander sitzende Besatzung (2,5 m breit)
-    static readonly Geometry Su34Body = Fly.G("M50,0 C50,-1.2 49.5,-2.1 48.2,-2.6 C46.5,-3.2 44.5,-3.6 42,-4.2 C39,-4.9 36,-5.5 32,-5.9 L28,-6.2 C25,-6.3 22,-6.4 20,-6.6 C14,-7.4 9,-8.4 4,-9.7 L-2,-10.6 L-30,-10.8 L-46,-10.6 L-49.6,-9.4 L-50.2,-3 " +
-        "L-50.2,3 L-49.6,9.4 L-46,10.6 L-30,10.8 L-2,10.6 L4,9.7 C9,8.4 14,7.4 20,6.6 C22,6.4 25,6.3 28,6.2 L32,5.9 C36,5.5 39,4.9 42,4.2 C44.5,3.6 46.5,3.2 48.2,2.6 C49.5,2.1 50,1.2 50,0 Z");
-    static readonly Geometry Su34Wing = Fly.Both("M1,9.6 L-25.9,35.2 L-26.8,35.7 L-35.4,35.6 L-34,30 L-28.8,10 Z");
-    static readonly Geometry Su34Rail = Fly.Both("M-20,35.5 L-35.8,35.5 L-35.8,36.4 L-20,36.4 Z");
-    static readonly Geometry Su34Canard = Fly.Both("M9.5,8.4 L-0.2,16.3 L-2.6,16.4 L-5.2,8.6 Z");
-    static readonly Geometry Su34Tail = Fly.Both("M-33.6,10.4 L-46.4,23.6 L-47.8,24 L-50.2,23.4 L-50.6,10.4 Z");
-    static readonly Geometry Su34Fins = Fly.Both("M-30.5,10.8 L-40.5,13.4 L-48.2,13.6 L-48.6,11.2 L-46,10.8 Z");
-    static readonly Geometry Su34Sting = Fly.G("M-49.5,-2.4 L-63,-2.2 L-66.2,-1.2 L-66.2,1.2 L-63,2.2 L-49.5,2.4 Z");
-    static readonly Geometry Su34Canopy = Fly.G("M38,0 C37.6,-3.2 35.6,-4.6 32.6,-4.8 L26.4,-4.7 C25.8,-3 25.8,3 26.4,4.7 L32.6,4.8 C35.6,4.6 37.6,3.2 38,0 Z");
-    static readonly Geometry Su34Chines = Fly.G("M43.6,-3.9 C39,-4.8 34,-5.6 28,-6.0 M43.6,3.9 C39,4.8 34,5.6 28,6.0 M38,0 L26.4,0 M35.4,-4.2 L35.4,4.2 M30,-4.8 L30,4.8 M24.4,-6 L24.4,6");
-    static readonly Geometry Su34Radome = Fly.G("M50,0 C50,-1.2 49.4,-2.2 48,-2.6 C46.6,-2.9 45.2,-3.1 44,-3.2 L44,3.2 C45.2,3.1 46.6,2.9 48,2.6 C49.4,2.2 50,1.2 50,0 Z");
-    static readonly Geometry Su34Patches = Fly.Both("M-6,14.6 L-16.5,24.8 L-24,24 L-21.5,15.4 Z M-38,12 L-44,19.6 L-48.4,19.2 L-47.6,12 Z");
-    static readonly Brush Su34Light = Fly.B("#93A3B1"), Su34Shade = Fly.B("#7E8F9E"), Su34Camo = Fly.B("#6F8191"), Su34Nose = Fly.B("#C9CED2");
-    static readonly Pen Su34Edge = Fly.P("#4B5660", 0.35);
-    static readonly Brush Su34Store = Fly.B("#5B6560");
+    // ---------------------------------------------------------------- Су-34 (Länge 23,3 m ohne Staurohr, Spannweite 14,7 m)
+    // Kontur aus der exakten Draufsicht des US Naval Aviation Warfighting Development Center abgetastet (DVIDS 9081728, gemeinfrei;
+    // vorlage/su34-top-dvids.jpg, Werkzeug: Randverfolgung der Fläche, 19.11.2026: „das SVG nochmal in die Hand und reale Bilder von oben“).
+    // Radomspitze +50, Staurohr bis +54, Heckstachel −66,2; schlanke Nase (halb 4,4 am Cockpit), langes graues Radom bis +35,6,
+    // Haube +35,6…+20,4 fast über die ganze Rumpfbreite, Canards +7,8…−2,8, Flügel 42° mit R-73 an den Spitzenschienen,
+    // Seitenleitwerke als schmale Flossen auf den Gondeln, Düsen ragen hinter den Gondeln heraus, Höhenleitwerk bis ±24.
+    static readonly Geometry Su34Body = Fly.Both("M50,0 L48.3,1.7 L46.4,2.5 L43.1,3.5 L39.7,4.1 L34.9,4.4 L25,4.9 L11.3,7.7 L9,9.2 L7.8,9.7 L0,9.6 L-5,10.8 L-29.3,11.1 L-35.3,10.9 L-50.7,10.5 " +
+        "L-50.4,7.8 L-50.4,3.8 L-46.1,2.9 L-57.2,1.8 L-62.1,1.7 L-65.2,0.7 L-66.2,0 Z");
+    static readonly Geometry Su34Wing = Fly.Both("M0,9.4 L-5.3,11.9 L-24,33 L-26.7,36 L-36.5,36 L-36.5,35.2 L-31,15.6 L-29.8,11.4 L-29.3,9.4 Z");
+    static readonly Geometry Su34Canard = Fly.Both("M7.8,9.3 L-0.6,15.8 L-1.9,15.9 L-2.8,15.6 L0.3,9.4 Z");
+    static readonly Geometry Su34Tail = Fly.Both("M-34.2,10.4 L-47.4,24.1 L-51.7,21.9 L-51.8,20.7 L-50.7,10.4 Z");
+    static readonly Geometry Su34Fins = Fly.Both("M-27,11 C-30,10.5 -40,10.4 -49.6,10.6 L-49.6,11.8 C-40,12 -30,11.8 -27,11 Z");
+    static readonly Geometry Su34Radome = Fly.G("M50,0 L48.3,-1.7 L46.4,-2.5 L43.1,-3.5 L39.7,-4.1 L35.6,-4.4 L35.6,4.4 L39.7,4.1 L43.1,3.5 L46.4,2.5 L48.3,1.7 Z");
+    static readonly Geometry Su34Canopy = Fly.G("M35.4,0 C35.2,-2.2 34.2,-3.4 32.4,-3.6 L21.4,-3.7 C20.8,-2.6 20.8,2.6 21.4,3.7 L32.4,3.6 C34.2,3.4 35.2,2.2 35.4,0 Z");
+    static readonly Geometry Su34Frames = Fly.G("M35.4,0 L21,0 M32,-3.6 L32,3.6 M27,-3.7 L27,3.7 M22.6,-3.7 L22.6,3.7");
+    // Tarnung wie in der Vorlage: helles Türkis mit dunklen und hellen Flecken
+    static readonly Geometry Su34Dark = Fly.G("M20,-1 C14,-4 8,-2 4,-6 L0,-9.4 L-6,-10.8 C-4,-5 -10,-2 -14,2 C-18,6 -24,4 -28,8 L-29,11 L-20,11 C-16,8 -12,10 -8,6 C-4,2 2,4 6,1 C10,-2 16,2 20,-1 Z " +
+        "M-8,13 L-14,20 C-10,22 -6,18 -4,13 Z M-8,-13 L-14,-20 C-10,-22 -6,-18 -4,-13 Z M-20,26 C-24,30 -28,28 -30,32 L-34,35 L-30,22 Z M-20,-26 C-24,-30 -28,-28 -30,-32 L-34,-35 L-30,-22 Z " +
+        "M-36,13 L-42,18 C-44,16 -46,18 -48,20 L-50,11 Z M-36,-13 L-42,-18 C-44,-16 -46,-18 -48,-20 L-50,-11 Z M-34,-2 C-38,2 -42,-1 -46,2 L-50,1 L-50,-3 C-44,-4 -40,-6 -34,-2 Z");
+    static readonly Geometry Su34Pale = Fly.G("M-14,22 C-18,25 -22,24 -24,28 L-27,31 L-22,22 Z M-14,-22 C-18,-25 -22,-24 -24,-28 L-27,-31 L-22,-22 Z M12,4 C9,6 6,5 4,7 L8,7.6 C10,6 12,6 12,4 Z M12,-4 C9,-6 6,-5 4,-7 L8,-7.6 C10,-6 12,-6 12,-4 Z");
+    // Klappen und Querruder, Vorflügel, Wurzellinien, Rumpfrücken, Triebwerkstunnel, Höhenruderachse, Wartungsdeckel, Antennen
+    static readonly Geometry Su34Detail = Fly.G("M-28.6,-12 L-34,-30 M-28.6,12 L-34,30 M-30.6,-21 L-27.6,-21.6 M-30.6,21 L-27.6,21.6 M-5.8,-12.6 L-22.4,-31.4 M-5.8,12.6 L-22.4,31.4 " +
+        "M-5,-10.8 L-29.3,-11.1 M-5,10.8 L-29.3,11.1 M18,-0.5 L-44,-0.5 M18,0.5 L-44,0.5 M-8,-4.6 C-22,-4.2 -38,-3.4 -46,-2.9 M-8,4.6 C-22,4.2 -38,3.4 -46,2.9 " +
+        "M-38,-11 L-48,-20 M-38,11 L-48,20 M14,-4 L14,4 M2,-9.6 L2,9.6 M-12,-11 L-12,11 M-24,-11.1 L-24,11.1 M-40,-10.8 L-40,10.8 M-14,-7 L-20,-7 L-20,-9.6 L-14,-9.6 Z M-14,7 L-20,7 L-20,9.6 L-14,9.6 Z");
+    static readonly Brush Su34Light = Fly.B("#5E9C94"), Su34Shade = Fly.B("#558F88"), Su34Camo = Fly.B("#3E7570"), Su34PaleFill = Fly.B("#7FB0A6"), Su34Nose = Fly.B("#8A8F90"),
+        Su34Store = Fly.B("#D8DCDC"), Su34Spot = Fly.B("#2E3436");
+    static readonly Pen Su34Edge = Fly.P("#2F5652", 0.35);
 
     public static void Su34(DrawingContext dc, Point at, double heading, double u, double altitude, double t)
     {
-        Fly.ShadowOf(dc, at, heading, u, altitude, Su34Wing, Su34Tail, Su34Canard, Su34Body, Su34Sting);
+        Fly.ShadowOf(dc, at, heading, u, altitude, Su34Wing, Su34Tail, Su34Canard, Su34Body);
         dc.PushTransform(Fly.Frame(at, heading, u));
         foreach (double s in new[] { -1.0, 1.0 })
-        {   // Außenlasten: KAB-500L innen, Ch-29 in der Mitte, R-73 außen; von oben sieht man, was vor der Vorderkante hervorschaut
-            dc.DrawRoundedRectangle(Su34Store, Su34Edge, new Rect(-16, 15 * s - 0.9, 15, 1.8), 0.9, 0.9);
-            dc.DrawEllipse(Seeker, null, new Point(-1.4, 15 * s), 0.7, 0.7);
-            dc.DrawRoundedRectangle(Su34Store, Su34Edge, new Rect(-23.6, 21 * s - 0.95, 19.4, 1.9), 0.95, 0.95);
-            dc.DrawRectangle(Su34Store, null, new Rect(-9, 21 * s - 2.7, 2.4, 5.4));
-            dc.DrawRoundedRectangle(RocketBody, Su34Edge, new Rect(-27.2, 28 * s - 0.45, 14.4, 0.9), 0.45, 0.45);
+        {   // R-73 bzw. R-77 an den Flügelstationen (ragen vor die Vorderkante), R-73 an den Spitzenschienen
+            foreach (var (y, front) in new[] { (18.0, -6.6), (23.6, -11.6) })
+            {
+                dc.DrawRoundedRectangle(Su34Store, Su34Edge, new Rect(front - 9.6, y * s - 0.6, 9.6, 1.2), 0.6, 0.6);
+                dc.DrawRectangle(Su34Store, null, new Rect(front - 2.6, y * s - 1.6, 0.9, 3.2));   // Steuerflächen vorn
+                dc.DrawRectangle(Su34Store, null, new Rect(front - 9.2, y * s - 1.8, 1.4, 3.6));   // Leitwerk hinten
+            }
+            dc.DrawRoundedRectangle(Su34Store, Su34Edge, new Rect(-31, 36.6 * s - 0.55, 11.4, 1.1), 0.55, 0.55);
+            dc.DrawRectangle(Su34Store, null, new Rect(-21.6, 36.6 * s - 1.4, 0.8, 2.8));
+            dc.DrawRectangle(Su34Store, null, new Rect(-30.6, 36.6 * s - 1.6, 1.2, 3.2));
+            dc.DrawRoundedRectangle(Nozzle, Su34Edge, new Rect(-56.2, 6.1 * s - 2.7, 6, 5.4), 0.8, 0.8);   // AL-31F-Düsen hinter den Gondeln
+            dc.DrawLine(Seam, new Point(-53.4, 6.1 * s - 2.7), new Point(-53.4, 6.1 * s + 2.7));
+            Soft.Draw(dc, Heat, new Point(-58.6, 6.1 * s), 3.6 + 0.4 * Math.Sin(t * 47 + s), 1.6, 0.7);
         }
         dc.DrawGeometry(Su34Shade, Su34Edge, Su34Wing);
-        dc.DrawGeometry(Nozzle, null, Su34Rail);                               // Startschienen an den Flügelspitzen
         dc.DrawGeometry(Su34Shade, Su34Edge, Su34Tail);
         dc.DrawGeometry(Su34Light, Su34Edge, Su34Body);
-        dc.DrawGeometry(Su34Camo, null, Su34Patches);                          // Tarnflecken
         dc.DrawGeometry(Su34Light, Su34Edge, Su34Canard);
+        dc.DrawGeometry(Su34Camo, null, Su34Dark);
+        dc.DrawGeometry(Su34PaleFill, null, Su34Pale);
+        dc.DrawGeometry(null, Seam, Su34Detail);
         dc.DrawGeometry(Su34Shade, Su34Edge, Su34Fins);
-        dc.DrawGeometry(Su34Shade, Su34Edge, Su34Sting);
         dc.DrawGeometry(Su34Nose, Su34Edge, Su34Radome);
+        dc.DrawLine(Pitot, new Point(50, 0), new Point(54, 0));                // Staurohr
         dc.DrawGeometry(Glass, Su34Edge, Su34Canopy);
-        dc.DrawGeometry(null, Seam, Su34Chines);   // Nasenkanten, Haubenrahmen
+        dc.DrawGeometry(null, Seam, Su34Frames);
+        dc.DrawEllipse(Su34Spot, null, new Point(16.4, -0.2), 0.5, 0.5);       // Antennen und Leuchten auf dem Rücken wie in der Vorlage
+        dc.DrawEllipse(Su34Camo, null, new Point(14.2, -0.2), 0.45, 0.45);
+        dc.DrawEllipse(Su34Camo, null, new Point(9.4, -0.2), 1.2, 1.2);
+        dc.DrawRoundedRectangle(Su34Spot, null, new Rect(5, 2.6, 6.6, 1.2), 0.3, 0.3);   // dunkle Wartungsfelder rechts am Rücken
+        dc.DrawLine(Probe, new Point(31, -4.4), new Point(34.6, -4.2));          // eingefahrener Tankstutzen links vor der Haube
         foreach (double s in new[] { -1.0, 1.0 })
         {
-            dc.DrawRoundedRectangle(Nozzle, Su34Edge, new Rect(-50, 6 * s - 2.8, 6.2, 5.6), 1.2, 1.2);
-            Soft.Draw(dc, Heat, new Point(-54, 6 * s), 3.6 + 0.4 * Math.Sin(t * 47 + s), 1.6, 0.7);
-            dc.DrawLine(Seam, new Point(-27.2, 12 * s), new Point(-30.8, 33 * s));   // Flaperon
-            dc.DrawLine(Seam, new Point(-10.5, 17 * s), new Point(-23.5, 33 * s));   // Vorflügel
-            Art.Star(dc, new Point(-25, 24 * s), 1.6, 0);
-            Soft.Draw(dc, s < 0 ? NavRedSoft : NavGreenSoft, new Point(-27, 35.9 * s), 1.2, 1.2, 1);
-            dc.DrawRoundedRectangle(Su34Shade, Su34Edge, new Rect(-36.4, 36 * s - 1.1, 14, 2.2), 1.1, 1.1);   // Chibiny-Störbehälter an den Spitzen
+            Art.Star(dc, new Point(-25.6, 25.8 * s), 1.8, 0);
+            Soft.Draw(dc, s < 0 ? NavRedSoft : NavGreenSoft, new Point(-27, 36 * s), 1.1, 1.1, 1);
         }
-        dc.DrawGeometry(null, Seam, Su34Detail);
-        dc.DrawLine(Probe, new Point(40, -4.6), new Point(43.4, -4.0));     // Tankstutzen links vor der Haube (eingefahren)
-        dc.DrawRoundedRectangle(null, Seam, new Rect(-26, -2.6, 8, 5.2), 1, 1);   // Luftbremse auf dem Rücken
-        dc.DrawEllipse(Nozzle, null, new Point(-66, 0), 0.6, 0.9);            // Heckradar im Stachel
         dc.Pop();
     }
-    // Vorderkantenwurzel, Rumpfrücken, Canard-Achse, Höhen- und Seitenruder, Wartungsdeckel, Antennen
-    static readonly Geometry Su34Detail = Fly.G("M26,-4.6 L4,-9.6 M26,4.6 L4,9.6 M22,-0.6 L-40,-0.6 M22,0.6 L-40,0.6 M2,-8.6 L2,8.6 M-12,-10.7 L-12,10.7 M-30,-10.8 L-30,10.8 " +
-        "M-42,-14 L-49,-21 M-42,14 L-49,21 M-41,-11.6 L-47.6,-12.4 M-41,11.6 L-47.6,12.4 M14,-0.4 L14,0.4 M-4,-0.4 L-4,0.4 M8,-3 L5,-3 L5,3 L8,3 Z M-4,-4.6 C-20,-4.2 -40,-3.6 -48.6,-3.2 M-4,4.6 C-20,4.2 -40,3.6 -48.6,3.2 M-6,-10.6 L-6,-4.6 M-6,10.6 L-6,4.6 M-40,-10.7 L-40,-3.6 M-40,10.7 L-40,3.6");
     static readonly Brush Heat = Art.Glow("#C0FFB060");
 
     // ---------------------------------------------------------------- Ка-52 (Rumpf 13,5 m, Rotor Ø 14,5 m, zwei gegenläufige Dreiblattrotoren)
@@ -432,8 +441,8 @@ static partial class Planes
     // Maße aus einer Dreiseitenansicht ausgemessen : Flügel weit vorn (Wurzelvorderkante bei +24), Vorderkante 33°,
     // Hinterkante 25° gepfeilt; Triebwerke bei 26 % und 50 % der Halbspannweite, Propeller weit vor der Vorderkante; innen lange
     // Fahrwerksgondeln, die weit hinter die Hinterkante reichen; schmales, stark gepfeiltes Höhenleitwerk; Heckstand mit Zwillingskanone.
-    static readonly Geometry Tu95Body = Fly.G("M50.2,0 C50.2,-1.4 49.2,-2.4 47.6,-2.8 C45.5,-3.25 43,-3.45 40,-3.45 L-18,-3.45 C-26,-3.3 -38,-2.4 -46,-1.7 L-51.6,-1.25 " +
-        "C-52.4,-1.2 -52.8,-0.7 -52.8,0 C-52.8,0.7 -52.4,1.2 -51.6,1.25 L-46,1.7 C-38,2.4 -26,3.3 -18,3.45 L40,3.45 C43,3.45 45.5,3.25 47.6,2.8 C49.2,2.4 50.2,1.4 50.2,0 Z");
+    static readonly Geometry Tu95Body = Fly.G("M50.2,0.00 C50.2,-1.29 49.2,-2.21 47.6,-2.58 C45.5,-2.99 43,-3.17 40,-3.17 L-18,-3.17 C-26,-3.04 -38,-2.21 -46,-1.56 L-51.6,-1.15 " +
+        "C-52.4,-1.10 -52.8,-0.64 -52.8,0.00 C-52.8,0.64 -52.4,1.10 -51.6,1.15 L-46,1.56 C-38,2.21 -26,3.04 -18,3.17 L40,3.17 C43,3.17 45.5,2.99 47.6,2.58 C49.2,2.21 50.2,1.29 50.2,0.00 Z");
     static readonly Geometry Tu95Wing = Fly.Both("M23.6,2.6 L-9.3,53 C-10.4,55 -12.3,56.1 -14.1,56 C-15.4,55.9 -16,55 -15.9,53.2 L7.3,2.6 Z");
     static readonly Geometry Tu95Tail = Fly.Both("M-36.4,2 L-48.6,16 C-49.4,16.7 -51.2,16.9 -52.3,16.2 L-52.9,14.6 L-46.4,2 Z");
     static readonly Geometry Tu95Fin = Fly.G("M-24,0 C-30,-0.9 -40,-1.2 -50,-1 L-53,-0.4 L-53,0.4 L-50,1 C-40,1.2 -30,0.9 -24,0 Z");
@@ -515,8 +524,8 @@ static partial class Planes
     // ---------------------------------------------------------------- Ил-76МД (Länge 46,6 m, Spannweite 50,5 m)
     // Maße ausgemessen : Rumpf halb 5,2, Schulterflügel über dem Rumpf (Wurzelvorderkante +19, 27° gepfeilt), Triebwerke
     // bei 13,6 und 23,2 weit vor der Vorderkante, seitliche Fahrwerksgondeln, T-Leitwerk 17,4 m breit, verglaste Navigatornase.
-    static readonly Geometry Il76Body = Fly.G("M50,0 C50,-1.4 49.2,-2.5 47.6,-3.1 C45.6,-3.7 43,-4.2 40,-4.6 C37,-5 35,-5.2 32,-5.2 L-22,-5.2 C-28,-4.6 -34,-3.6 -40,-2.8 L-50,-1.6 C-51.4,-1.3 -52,-0.8 -52,0 " +
-        "C-52,0.8 -51.4,1.3 -50,1.6 L-40,2.8 C-34,3.6 -28,4.6 -22,5.2 L32,5.2 C35,5.2 37,5 40,4.6 C43,4.2 45.6,3.7 47.6,3.1 C49.2,2.5 50,1.4 50,0 Z");
+    static readonly Geometry Il76Body = Fly.G("M50,0 C50,-0.9 49.4,-1.6 48,-1.9 C46.6,-2.5 45,-3 43,-3.6 C41,-4.2 39,-4.7 36,-5 C35,-5.1 34,-5.2 32,-5.2 L-22,-5.2 C-28,-4.6 -34,-3.6 -40,-2.8 L-50,-1.6 C-51.4,-1.3 -52,-0.8 -52,0 " +
+        "C-52,0.8 -51.4,1.3 -50,1.6 L-40,2.8 C-34,3.6 -28,4.6 -22,5.2 L32,5.2 C34,5.2 35,5.1 36,5 C39,4.7 41,4.2 43,3.6 C45,3 46.6,2.5 48,1.9 C49.4,1.6 50,0.9 50,0 Z");
     static readonly Geometry Il76Wing = Fly.G("M19,0 L19,5.2 L11.6,20 L-4.6,52 L-5.8,54 L-6.6,55.4 L-7.6,56.3 L-13.4,56.3 L-12.9,54 L-12.3,52 L-3.9,20 L-2.7,10 L-2.7,0 L-2.7,-10 L-3.9,-20 L-12.3,-52 L-12.9,-54 L-13.4,-56.3 L-7.6,-56.3 L-6.6,-55.4 L-5.8,-54 L-4.6,-52 L11.6,-20 L19,-5.2 Z");
     static readonly Geometry Il76Tail = Fly.Both("M-36.2,1 L-46.9,18.2 C-47.4,18.9 -48.6,19.2 -49.6,19 L-51.2,18.4 L-46,1 Z");
     static readonly Geometry Il76Fin = Fly.G("M-24.9,0 L-36,-1.2 L-46.7,-1 L-48.2,0 L-46.7,1 L-36,1.2 Z");
@@ -1255,21 +1264,21 @@ static partial class Planes
     // Maße aus einer Dreiseitenansicht ausgemessen (19.11.2026: „1:1 wie in der Realität“): Schulterflügel mit gerader Vorderkante bei +12,
     // Triebwerke bei 17,4 und 35,1, Außentanks bei 26,5, Höhenleitwerk 16 m. Bewaffnung wie beim Original auf der linken Rumpfseite:
     // 25-mm-GAU-12/U (fünf Läufe) vorn, 40-mm-Bofors L/60 und 105-mm-Haubitze M102 hinter dem Flügel; Sensortürme links an der Nase.
-    static readonly Geometry HercBody = Fly.G("M50,0 C50,-0.9 49.6,-1.6 49,-1.9 L48,-2.4 L46,-3.3 L44,-4.4 L40,-6.1 L35,-7.3 L30,-7.5 L-22,-7.5 L-25,-7.3 L-30,-6.4 L-35,-5.6 L-40,-4.4 L-45,-2.8 L-48,-1.6 L-50,-0.7 L-50,0.7 " +
-        "L-48,1.6 L-45,2.8 L-40,4.4 L-35,5.6 L-30,6.4 L-25,7.3 L-22,7.5 L30,7.5 L35,7.3 L40,6.1 L44,4.4 L46,3.3 L48,2.4 L49,1.9 C49.6,1.6 50,0.9 50,0 Z");
-    static readonly Geometry HercWing = Fly.G(Full([(12, 0), (12, 7.5), (11.7, 22), (11.2, 38), (10.9, 54), (10.6, 62), (10.5, 66), (9.7, 68.2), (6.9, 68.7), (3, 67.8), (1.9, 65), (1.3, 62),
-        (0.4, 54), (-0.6, 46), (-1.6, 38), (-2.5, 30), (-3.5, 22), (-3.8, 7.5), (-3.8, 0)]));
+    static readonly Geometry HercBody = Fly.G("M50,0 C50,-0.9 49.4,-1.7 48,-2.0 L45,-2.9 L42,-4.2 L39,-5.7 L36,-6.5 L33,-7.0 L30,-7.3 L-22,-7.4 L-25,-7.3 L-30,-6.4 L-35,-5.6 L-40,-4.4 L-45,-2.8 L-48,-1.6 L-50,-0.7 L-50,0.7 " +
+        "L-48,1.6 L-45,2.8 L-40,4.4 L-35,5.6 L-30,6.4 L-25,7.3 L-22,7.4 L30,7.3 L33,7.0 L36,6.5 L39,5.7 L42,4.2 L45,2.9 L48,2.0 C49.4,1.7 50,0.9 50,0 Z");
+    static readonly Geometry HercWing = Fly.G(Full([(11.2, 0), (11.2, 7.5), (11, 22), (10.6, 38), (10.3, 54), (10.1, 62), (10, 66), (9.3, 68.2), (6.5, 68.7), (0.6, 67.8), (-0.6, 65), (-1.2, 62),
+        (-2, 54), (-3, 46), (-4, 38), (-5, 30), (-6, 22), (-6.4, 7.5), (-6.4, 0)]));
     static readonly Geometry HercTail = Fly.Both("M-30,0 L-31.5,7 L-36.5,26.4 C-36.8,27.2 -37.6,27.4 -38.4,27.4 L-41.2,27.4 C-42,27.4 -42.6,27 -42.6,26.2 L-44.4,7 L-45,0 Z");
     static readonly Geometry HercSponsons = Fly.Both("M6,7.3 C4,8.7 -9,8.9 -14,7.3 Z");   // Fahrwerksgondeln seitlich am Unterrumpf
     static readonly Geometry HercFin = Fly.G("M-18,0 C-26,-0.8 -36,-1.3 -42,-1.2 L-49,-0.6 L-49,0.6 L-42,1.2 C-36,1.3 -26,0.8 -18,0 Z");
     static readonly Geometry HercGlass = Fly.G("M46.9,-0.3 L46.6,-2.2 L45.6,-2.4 L45.8,-0.3 Z M46.9,0.3 L46.6,2.2 L45.6,2.4 L45.8,0.3 Z " +   // Frontscheiben
         "M45.4,-2.6 L44.2,-3.9 L43.2,-3.9 L44.6,-2.6 Z M45.4,2.6 L44.2,3.9 L43.2,3.9 L44.6,2.6 Z " +                                           // Seitenfenster
         "M44.8,-1.9 L43.4,-1.9 L43.4,-0.5 L44.8,-0.5 Z M44.8,1.9 L43.4,1.9 L43.4,0.5 L44.8,0.5 Z");                                         // Dachfenster
-    static readonly Geometry HercRadome = Fly.G("M50,0 C50,-0.9 49.6,-1.6 49,-1.9 L48,-2.4 L47.4,-2.7 L47.4,2.7 L48,2.4 L49,1.9 C49.6,1.6 50,0.9 50,0 Z");
+    static readonly Geometry HercRadome = Fly.G("M50,0 C50,-0.9 49.4,-1.7 48,-2.0 L46.6,-2.4 L46.6,2.4 L48,2.0 C49.4,1.7 50,0.9 50,0 Z");
     static readonly Geometry HercFrames = Fly.G("M40,-6.1 L40,6.1 M30,-7.5 L30,7.5 M20,-7.5 L20,7.5 M-12,-7.5 L-12,7.5 M-22,-7.5 L-22,7.5 M-30,-6.4 L-30,6.4 " +
-        "M12,-7.5 L-3.8,-7.5 M12,7.5 L-3.8,7.5 M-26,-6.6 L-46,-2.4 M-26,6.6 L-46,2.4");   // Spanten, Flügelwurzel, Laderampe
+        "M11.2,-7.4 L-6.4,-7.4 M11.2,7.4 L-6.4,7.4 M-26,-6.6 L-46,-2.4 M-26,6.6 L-46,2.4");   // Spanten, Flügelwurzel, Laderampe
     static readonly Geometry HercHatches = Fly.G("M38,-1.6 L35,-1.6 L35,1.6 L38,1.6 Z M16,-1.4 L13.4,-1.4 L13.4,1.4 L16,1.4 Z M-8,-1.4 L-10.6,-1.4 L-10.6,1.4 L-8,1.4 Z");
-    static readonly Geometry HercControls = Fly.G("M-1.6,9 L1.3,60 M-1.6,-9 L1.3,-60 M-38.6,6 L-40.2,26 M-38.6,-6 L-40.2,-26 M-44,0 L-49,0");   // Klappen/Querruder, Höhenruder, Seitenruder
+    static readonly Geometry HercControls = Fly.G("M-4.2,9 L-1.4,60 M-4.2,-9 L-1.4,-60 M-38.6,6 L-40.2,26 M-38.6,-6 L-40.2,-26 M-44,0 L-49,0");   // Klappen/Querruder, Höhenruder, Seitenruder
     static readonly Brush NavRed = Art.Glow("#E0FF3030"), NavGreen = Art.Glow("#E040FF80"), Beacon = Art.Glow("#D0FF3020"), Exhaust = Fly.B("#24282C");
     static readonly Pen HfWire = Fly.P("#40262A2E", 0.2), Antenna = Fly.P("#262A2E", 0.6);
     static readonly Brush GunLight = Fly.B("#646C74"), GunShade = Fly.B("#565E66"), GunDark = Fly.B("#2E3338"), GunMetal = Fly.B("#1E2226");
@@ -1340,7 +1349,7 @@ static partial class Planes
         foreach (double s in new[] { -1.0, 1.0 })
         {
             foreach (double y in HercEngines) dc.DrawRoundedRectangle(GunLight, GunEdge, new Rect(-5, y * s - 1.3, 17, 2.6), 1.3, 1.3);   // Gondel über dem Flügel
-            dc.DrawLine(GunSeam, new Point(-2.4, 9 * s), new Point(1.3, 60 * s));   // Klappen und Querruder
+            dc.DrawLine(GunSeam, new Point(-5, 9 * s), new Point(-1.6, 60 * s));   // Klappen und Querruder
         }
         dc.DrawGeometry(GunShade, GunEdge, HercFin);
         dc.DrawGeometry(GunLight, GunEdge, HercRadome);
