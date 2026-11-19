@@ -43,6 +43,9 @@ static class Preview
             var shot = gunship.Shots.Where(x => x.Gun == GunshipRaid.Gun.G105 && inner.Contains(gunship.PlaneAt(x.Fire + 0.1))).OrderBy(x => x.Fire).Skip(1).FirstOrDefault();
             if (shot is not null) t = shot.Fire + 0.1;
         }
+        if (s.Attack is StealthRaid or SpiritRaid && s.Raid.Count > 0) t = s.Raid.Min(r => r.T) - 0.45;   // Flugzeug im Bild, Waffen unterwegs
+        if (s.Attack is VacuumRaid && s.Raid.Count > 2) t = s.Raid.OrderBy(r => r.T).ElementAt(2).T - 0.15;
+        if (s.Attack is GravityRaid) t = 2.9;
         if (s.Attack is StrafeRaid strafe)
         {   // Tiefflieger ganz im Bild mitten im Feuerstoß
             var inner = Desk; inner.Inflate(-90, -60);

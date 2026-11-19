@@ -19,13 +19,16 @@ interface IAttack
     double Reach => double.PositiveInfinity;
     /// <summary>Größe je Einschlag (1 = normal), null: alle gleich.</summary>
     IReadOnlyList<double>? BlastSizes => null;
+    /// <summary>Eigene Bewegung eines Symbols vor dem Verschwinden (Saugroboter, Schwerkraft); null: bleibt an seinem Platz.</summary>
+    Point? Move(Point start, double t) => null;
     void Draw(DrawingContext dc, double t);
 }
 
 static class Attacks
 {
-    public const string Tu160 = "tu160", Tu22 = "tu22m3", Su34 = "su34", Ka52 = "ka52", Tu95 = "tu95", Il76 = "il76", Ac130 = "ac130", Shahed = "shahed", A10 = "a10", Su25 = "su25";
-    public static readonly string[] All = [Tu160, Tu22, Su34, Ka52, Tu95, Il76, Ac130, Shahed, A10, Su25];
+    public const string Tu160 = "tu160", Tu22 = "tu22m3", Su34 = "su34", Ka52 = "ka52", Tu95 = "tu95", Il76 = "il76", Ac130 = "ac130", Shahed = "shahed", A10 = "a10", Su25 = "su25",
+        F35 = "f35", Su57 = "su57", B2 = "b2", Vacuum = "vacuum", Gravity = "gravity";
+    public static readonly string[] All = [Tu160, Tu22, Su34, Ka52, Tu95, Il76, Ac130, Shahed, A10, Su25, F35, Su57, B2, Vacuum, Gravity];
 
     /// <param name="clusters">dichteste Gruppen zuerst (für Marschflugkörper)</param>
     /// <param name="icons">Symbolmitten auf dem Hauptbildschirm (für Treffer je Symbol)</param>
@@ -51,6 +54,11 @@ static class Attacks
             Shahed => new ShahedRaid(area, all.Count > 0 ? all : each, iconSize),
             A10 => new StrafeRaid(StrafeRaid.Kind.A10, area, all.Count > 0 ? all : each, iconSize),
             Su25 => new StrafeRaid(StrafeRaid.Kind.Su25, area, all.Count > 0 ? all : each, iconSize),
+            F35 => new StealthRaid(StealthRaid.Kind.F35, area, all.Count > 0 ? all : each, iconSize),
+            Su57 => new StealthRaid(StealthRaid.Kind.Su57, area, all.Count > 0 ? all : each, iconSize),
+            B2 => new SpiritRaid(area, all.Count > 0 ? all : each, iconSize),
+            Vacuum => new VacuumRaid(stage, all.Count > 0 ? all : each, iconSize),
+            Gravity => new GravityRaid(area, all.Count > 0 ? all : each, iconSize, screens),
             _ => null,
         };
     }

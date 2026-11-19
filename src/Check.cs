@@ -154,7 +154,7 @@ static class Check
             }
 
             // Neue Luftangriffe : je Angriff alle Symbole weg vor DUM-E, am Ende alle zuhause, Dauer begrenzt, Standbilder
-            foreach (var (attack, frames) in new (string, double[])[] { (Attacks.Tu22, [1.6, 2.6, 4.2]), (Attacks.Su34, [1.0, 1.9, 2.9]), (Attacks.Ka52, [1.6, 3.8, 6.0]), (Attacks.Tu95, [2.2, 3.8, 5.4]), (Attacks.Il76, [2.6, 4.2, 6.8]), (Attacks.Ac130, [2.4, 4.6, 7.4]), (Attacks.Shahed, [3.0, 4.4, 6.5]), (Attacks.A10, [2.0, 3.4, 5.5]), (Attacks.Su25, [2.0, 3.4, 5.5]) })
+            foreach (var (attack, frames) in new (string, double[])[] { (Attacks.Tu22, [1.6, 2.6, 4.2]), (Attacks.Su34, [1.0, 1.9, 2.9]), (Attacks.Ka52, [1.6, 3.8, 6.0]), (Attacks.Tu95, [2.2, 3.8, 5.4]), (Attacks.Il76, [2.6, 4.2, 6.8]), (Attacks.Ac130, [2.4, 4.6, 7.4]), (Attacks.Shahed, [3.0, 4.4, 6.5]), (Attacks.A10, [2.0, 3.4, 5.5]), (Attacks.Su25, [2.0, 3.4, 5.5]), (Attacks.F35, [1.4, 2.2, 3.2]), (Attacks.Su57, [1.4, 2.2, 3.2]), (Attacks.B2, [2.0, 3.6, 5.2]), (Attacks.Vacuum, [2.0, 5.0, 9.0]), (Attacks.Gravity, [1.6, 2.8, 3.3]) })
             {
                 var sc = new Scene(icons, homes, iconSize, screens, primary, true, 64, attack: attack);
                 Pass(attack + "-einschlaege-vorhanden", sc.Raid.Count >= 1);
@@ -163,7 +163,7 @@ static class Check
                 if (attack != Attacks.Il76) Pass(attack + "-kein-einschlag-ins-leere", sc.Raid.All(b => icons.Any(i => (b.P - i.Center).Length <= iconSize * 1.2)));
                 Pass(attack + "-alle-symbole-weg-vor-dume", sc.IconCenters(sc.RobotStart - 0.05).Values.All(v => v is null));
                 Pass(attack + "-am-ende-alle-zuhause", sc.IconCenters(sc.Duration).All(e => e.Value is { } v && (v - homes[e.Key]).Length < 0.5));
-                double limit = attack == Attacks.Ka52 ? 110 : attack == Attacks.Ac130 ? 140 : attack is Attacks.A10 or Attacks.Su25 ? 130 : 100;   // AC-130: Show je Gruppe    // Ka-52 greift jedes Symbol einzeln an : dauert mit der Symbolzahl länger
+                double limit = attack == Attacks.Ka52 ? 110 : attack == Attacks.Ac130 ? 140 : attack is Attacks.A10 or Attacks.Su25 or Attacks.Vacuum ? 130 : 100;   // AC-130: Show je Gruppe    // Ka-52 greift jedes Symbol einzeln an : dauert mit der Symbolzahl länger
                 Pass($"{attack}-dauer-unter-{limit:0}-s", sc.Duration < limit);
                 results[attack + "-dauer-s"] = Math.Round(sc.Duration, 1);
                 var (mean, p95) = DrawCost(sc, sc.RobotStart);
@@ -668,6 +668,9 @@ static class Check
             ("shahed", 1000, (dc, c) => Planes.Shahed(dc, c, up, 9, 0, 0.3)),
             ("chinook", 1000, (dc, c) => LiftHelper.DrawChinook(dc, c, up, 44, 0, 0.3)),
             ("mi26", 1000, (dc, c) => LiftHelper.DrawMi26(dc, c, up, 26, 0, 0.3)),
+            ("f35", 1000, (dc, c) => Planes.F35(dc, c, up, 8.4, 0, 0.3, 1)),
+            ("su57", 1000, (dc, c) => Planes.Su57(dc, c, up, 8.4, 0, 0.3, 0)),
+            ("b2", 1000, (dc, c) => Planes.B2(dc, c, up, 9, 0, 0.3)),
             ("kran", 1000, (dc, c) => CraneHelper.DrawTruck(dc, c + new Vector(0, 150), up, 210, 1, 0.75, 210 * 2.6, 0.4)),
         };
         foreach (var (name, size, draw) in all)

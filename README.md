@@ -57,6 +57,16 @@ And since it is open source, you can fix it yourself, mod it, or add your own sc
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.4.0
+
+Five new scenes, seventeen in total:
+
+- **F-35A:** fast passes over each group of icons. The internal weapon bay doors open, and one GBU-39 glide bomb goes on every icon.
+- **Su-57:** the same attack with guided missiles from the internal bays. It has the LEVCONs, widely spaced engines and splinter camouflage.
+- **B-2 Spirit:** a flying wing at high altitude, so you mostly see its huge shadow. Long passes over your icon rows, with a 2,000 lb JDAM on every icon.
+- **Robot vacuum:** leaves its dock, drives to one icon after another, sucks each one in, and goes back to charge.
+- **Gravity off:** every icon floats up, weightless. Then gravity slams back and everything falls off the bottom of the screen.
+
 ## What's new in 1.3.3
 
 - **Helicopters carry a real sling load:** the cargo net hangs directly under the hook on four slings and swings back a little in flight.
@@ -190,7 +200,7 @@ Switch *Restore style* to **With DUM-E** and a small top-down robot arm with a t
 
 <p align="center"><img src="docs/media/dum-e.gif" width="70%" alt="DUM-E carrying icons back"></p>
 
-And if you are having a really bad day, the **Scene** page lets you wipe your desktop first, twelve ways so far: a Jericho strike, a mushroom cloud, Tu-160M and Tu-95MS cruise missiles, Tu-22M3 carpet bombing, Su-34 precision strikes, a Ka-52 attack, Il-76 paratroopers who simply carry your icons away, an AC-130U circling each group, a Shahed-136 drone swarm, and A-10C or Su-25 gun runs. Icons turn to ash. Then a helper of your choice rebuilds everything, exactly as it was: DUM-E, a forklift, a crane truck, delivery drones, a CH-47 Chinook or a Mi-26. Therapy, basically.
+And if you are having a really bad day, the **Scene** page lets you wipe your desktop first, seventeen ways so far: a Jericho strike, a mushroom cloud, Tu-160M and Tu-95MS cruise missiles, Tu-22M3 carpet bombing, Su-34 precision strikes, a Ka-52 attack, Il-76 paratroopers who simply carry your icons away, an AC-130U circling each group, a Shahed-136 drone swarm, A-10C or Su-25 gun runs, F-35A and Su-57 stealth strikes, a B-2 Spirit, a robot vacuum that sucks your icons up, or simply turning gravity off. Icons turn to ash. Then a helper of your choice rebuilds everything, exactly as it was: DUM-E, a forklift, a crane truck, delivery drones, a CH-47 Chinook or a Mi-26. Therapy, basically.
 
 <p align="center"><img src="docs/media/scene.png" width="70%" alt="Scene page"></p>
 

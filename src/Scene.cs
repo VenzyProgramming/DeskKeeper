@@ -176,6 +176,7 @@ sealed class Scene
     {
         Point? current = start[id];
         if (jericho && burnAt.TryGetValue(id, out var burn) && t >= burn + HideAfter) current = null;
+        else if (current is { } here && bomber?.Move(here, t) is { } moved) current = moved;   // Saugroboter, Schwerkraft: Symbol bewegt sich sichtbar
         var (handled, at) = robot.IconAt(id, t);
         return handled ? at : current;
     }

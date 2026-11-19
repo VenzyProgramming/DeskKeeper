@@ -112,6 +112,11 @@ static class Loc
         ["w.shahed"] = new("Shahed-136", "Shahed-136", "Герань-2"),
         ["w.a10"] = new("A-10C", "A-10C", "A-10C"),
         ["w.su25"] = new("Su-25", "Su-25", "Су-25"),
+        ["w.f35"] = new("F-35A", "F-35A", "F-35A"),
+        ["w.su57"] = new("Su-57", "Su-57", "Су-57"),
+        ["w.b2"] = new("B-2 Spirit", "B-2 Spirit", "B-2 Spirit"),
+        ["w.vacuum"] = new("Saugroboter", "Robot vacuum", "Робот-пылесос"),
+        ["w.gravity"] = new("Schwerkraft aus", "Gravity off", "Без гравитации"),
         // Werkzeuge
         ["t.windows"] = new("Fenster", "Windows", "Окна"),
         ["t.minimize"] = new("Alle Fenster minimieren", "Minimize all windows", "Свернуть все окна"),
