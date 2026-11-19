@@ -38,8 +38,8 @@ static class Check
             Pass("rumpf-3-symbolbreiten", Math.Abs(scene.BodyLength - 3 * iconSize) < 0.5);
             Pass("19-blitze-auf-sichtbaren-flaechen", centers.Length == 19 && centers.All(c => screens.Any(s => s.Contains(c))));
             Pass("blitze-auf-beiden-bildschirmen", centers.Any(primary.Contains) && centers.Any(second.Contains));
-            // Verteilung über die Fläche: jedes Viertel des Hauptbildschirms bekommt Blitze.
-            Pass("blitze-ueber-den-ganzen-bildschirm", new[] { (0.0, 0.0), (0.5, 0.0), (0.0, 0.5), (0.5, 0.5) }.All(q => centers.Any(c => new Rect(q.Item1 * 1920, q.Item2 * 1080, 960, 540).Contains(c))));
+            // 19.11.2026: Blitze auf Symbole, nicht in leere Viertel des Bildschirms
+            Pass("blitze-auf-symbolen", centers.Skip(1).All(c => icons.Any(i => (i.Center - c).Length <= iconSize * 1.5)));
             Pass("dubina-so-gross-wie-der-saugroboter", Math.Abs(scene.RobotSize - 64) < 0.01);
             Pass("jedes-symbol-einzeln-gestellt", scene.CarriedCount == icons.Count);
             var burnt = scene.IconCenters(scene.RobotStart - 0.05);
@@ -132,7 +132,7 @@ static class Check
             var raid = new Scene(icons, homes, iconSize, screens, primary, true, 64, tu160: true);
             { var (mean, p95) = DrawCost(raid, raid.RobotStart); results["tu160-bild-ms"] = mean; results["tu160-bild-ms-p95"] = p95; }
             var raidTimes = raid.Raid.Select(b => b.T).OrderBy(x => x).ToList();
-            Pass("tu160-einschlaege-nacheinander", raid.Raid.Count == 14 && raidTimes[^1] - raidTimes[0] > 1.0 && raidTimes.Distinct().Count() == 14);
+            Pass("tu160-einschlaege-nacheinander", raid.Raid.Count is >= 1 and <= 14 && raidTimes[^1] - raidTimes[0] > 0.5 && raidTimes.Distinct().Count() == raid.Raid.Count);
             Pass("tu160-alle-symbole-verbrannt", raid.IconCenters(raid.RobotStart - 0.05).Values.All(v => v is null));
             Pass("tu160-am-ende-alle-zuhause", raid.IconCenters(raid.Duration).All(e => e.Value is { } v && (v - homes[e.Key]).Length < 0.5));
             results["tu160-dauer-s"] = Math.Round(raid.Duration, 1);
@@ -157,7 +157,10 @@ static class Check
             foreach (var (attack, frames) in new (string, double[])[] { (Attacks.Tu22, [1.6, 2.6, 4.2]), (Attacks.Su34, [1.0, 1.9, 2.9]), (Attacks.Ka52, [1.6, 3.8, 6.0]), (Attacks.Tu95, [2.2, 3.8, 5.4]), (Attacks.Il76, [2.6, 4.2, 6.8]) })
             {
                 var sc = new Scene(icons, homes, iconSize, screens, primary, true, 64, attack: attack);
-                Pass(attack + "-einschlaege-vorhanden", sc.Raid.Count >= 12);
+                Pass(attack + "-einschlaege-vorhanden", sc.Raid.Count >= 1);
+                // jedes Symbol: ein Einschlag höchstens 2,2 Symbolgrößen entfernt (keine Treffer ins Leere), Il-76 trägt nur weg
+                if (attack != Attacks.Il76) Pass(attack + "-jedes-symbol-getroffen", icons.All(i => sc.Raid.Any(b => (b.P - i.Center).Length <= iconSize * 2.2)));
+                if (attack != Attacks.Il76) Pass(attack + "-kein-einschlag-ins-leere", sc.Raid.All(b => icons.Any(i => (b.P - i.Center).Length <= iconSize * 1.2)));
                 Pass(attack + "-alle-symbole-weg-vor-dume", sc.IconCenters(sc.RobotStart - 0.05).Values.All(v => v is null));
                 Pass(attack + "-am-ende-alle-zuhause", sc.IconCenters(sc.Duration).All(e => e.Value is { } v && (v - homes[e.Key]).Length < 0.5));
                 double limit = attack == Attacks.Ka52 ? 110 : 100;   // Ka-52 greift jedes Symbol einzeln an : dauert mit der Symbolzahl länger

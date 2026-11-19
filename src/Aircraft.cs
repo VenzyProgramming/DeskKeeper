@@ -34,16 +34,44 @@ static class Attacks
     public static IAttack? Create(string? kind, Rect stage, IReadOnlyList<Point> clusters, IReadOnlyList<Point> icons, double iconSize, IReadOnlyList<Rect>? screens = null, IReadOnlyList<Point>? everywhere = null)
     {
         var each = icons.Count > 0 ? icons : clusters.Take(12).ToList();
+        // Marschflugkörper auf Symbolgruppen aller Bildschirme statt auf ein Raster (19.11.2026: „Bomben landen auf leeren Flächen“)
+        var all = everywhere is { Count: > 0 } ? everywhere : icons;
+        var area = screens is { Count: > 0 } ? screens.Aggregate(Rect.Union) : stage;   // Flugbahnen über alle Bildschirme
+        var (aims14, radius14) = all.Count > 0 ? Groups(all, iconSize, 14) : (clusters.Take(14).ToList(), double.PositiveInfinity);
+        var (aims12, radius12) = all.Count > 0 ? Groups(all, iconSize, 12) : (clusters.Take(12).ToList(), double.PositiveInfinity);
         return kind switch
         {
-            Tu160 => new Bomber(stage, clusters.Take(14).ToList(), iconSize),
-            Tu22 => new RowRaid(RowRaid.Kind.Carpet, stage, each, iconSize),
-            Su34 => new RowRaid(RowRaid.Kind.Strike, stage, each, iconSize),
+            Tu160 => new Bomber(stage, aims14, iconSize) { Reach = radius14 + iconSize * 0.4 },
+            Tu22 => new RowRaid(RowRaid.Kind.Carpet, area, all.Count > 0 ? all : each, iconSize) { Reach = iconSize * 1.3 },
+            Su34 => new RowRaid(RowRaid.Kind.Strike, area, all.Count > 0 ? all : each, iconSize) { Reach = iconSize * 1.3 },
             Ka52 => new HelicopterRaid(stage, everywhere is { Count: > 0 } ? everywhere : each, iconSize, screens),
-            Tu95 => new BearRaid(stage, clusters.Take(12).ToList(), iconSize),
+            Tu95 => new BearRaid(stage, aims12, iconSize) { Reach = radius12 + iconSize * 0.4 },
             Il76 => new AirborneRaid(stage, each, iconSize),
             _ => null,
         };
+    }
+    /// <summary>
+    /// Einschlagpunkte für Marschflugkörper: benachbarte Symbole (Radius 1,6 Symbolgrößen) bilden eine Gruppe, jede Gruppe bekommt einen
+    /// Einschlag genau auf das Symbol nächst ihrer Mitte. Gibt es mehr Gruppen als Flugkörper, wächst der Radius. Geht vom tatsächlichen
+    /// Desktop jedes Nutzers aus, nicht von einem festen Raster.
+    /// </summary>
+    internal static (List<Point> Aims, double Radius) Groups(IReadOnlyList<Point> icons, double iconSize, int max)
+    {
+        double r = iconSize * 1.6;
+        while (true)
+        {
+            var open = icons.ToList(); var aims = new List<Point>();
+            while (open.Count > 0)
+            {
+                var seed = open.OrderByDescending(c => open.Count(o => (o - c).Length <= r)).First();
+                var group = open.Where(o => (o - seed).Length <= r).ToList();
+                var mid = new Point(group.Average(c => c.X), group.Average(c => c.Y));
+                aims.Add(group.OrderBy(c => (c - mid).LengthSquared).First());
+                open.RemoveAll(group.Contains);
+            }
+            if (aims.Count <= max || r > iconSize * 14) return (aims, r);
+            r *= 1.25;
+        }
     }
 }
 
@@ -583,6 +611,7 @@ static class Planes
 /// <summary>Zwei Flugzeuge im Verband, je eine Reihe: Tu-22M3 legt einen Bombenteppich, Su-34 wirft gelenkte Gleitbomben genau auf jedes Symbol.</summary>
 sealed class RowRaid : IAttack
 {
+    public double Reach { get; init; } = double.PositiveInfinity;
     public enum Kind { Carpet, Strike }
     readonly Kind kind;
     readonly Rect stage;
@@ -608,7 +637,15 @@ sealed class RowRaid : IAttack
         fall = carpet ? 1.25 : 0.9;
         gap = carpet ? 0.45 : 0.7;
         startX = stage.Left - span;
-        rows = carpet ? [stage.Top + stage.Height * 0.3, stage.Top + stage.Height * 0.68] : [stage.Top + stage.Height * 0.24, stage.Top + stage.Height * 0.62];
+        // Zwei Bahnen dort, wo die Symbole liegen (obere und untere Hälfte nach Höhe), nicht auf festen Höhen des Hauptbildschirms
+        var heights = targets.Select(p => p.Y).OrderBy(y => y).ToList();
+        if (heights.Count >= 2)
+        {
+            double upper = heights.Take(heights.Count / 2).Average(), lower = heights.Skip(heights.Count / 2).Average();
+            if (lower - upper < iconSize * 2.5) { double mid = (upper + lower) / 2; upper = mid - iconSize * 1.25; lower = mid + iconSize * 1.25; }
+            rows = [upper - iconSize * 0.6, lower - iconSize * 0.6];
+        }
+        else rows = carpet ? [stage.Top + stage.Height * 0.3, stage.Top + stage.Height * 0.68] : [stage.Top + stage.Height * 0.24, stage.Top + stage.Height * 0.62];
         var random = new Random(carpet ? 2203 : 3400);
         var byRow = new[] { new List<Point>(), new List<Point>() };
         foreach (var p in targets) byRow[Math.Abs(p.Y - rows[0]) <= Math.Abs(p.Y - rows[1]) ? 0 : 1].Add(p);
@@ -620,11 +657,8 @@ sealed class RowRaid : IAttack
             for (int i = 0; i < list.Count; i++)
             {
                 aims.Add(list[i]);
-                if (!carpet || i + 1 >= list.Count) continue;
-                var d = list[i + 1] - list[i];   // Teppich: zwischen weit auseinanderliegenden Symbolen weitere Bomben
-                int extra = Math.Min(3, (int)(d.Length / (iconSize * 2.2)));
-                for (int e = 1; e <= extra; e++)
-                    aims.Add(list[i] + d * (e / (extra + 1.0)) + new Vector((random.NextDouble() - 0.5) * iconSize, (random.NextDouble() - 0.5) * iconSize));
+                // Teppich: eine zweite Bombe dicht am selben Symbol statt Bomben in die leeren Lücken 
+                if (carpet) aims.Add(list[i] + new Vector((random.NextDouble() - 0.5) * iconSize * 0.7, (random.NextDouble() - 0.5) * iconSize * 0.7));
             }
             foreach (var p in aims.OrderBy(p => p.X))
             {
@@ -942,6 +976,7 @@ sealed class HelicopterRaid : IAttack
 /// <summary>Tu-95MS: hoch und langsam, startet Marschflugkörper Ch-101 von den Flügelstationen; gegenläufige Propeller drehen sich.</summary>
 sealed class BearRaid : IAttack
 {
+    public double Reach { get; init; } = double.PositiveInfinity;
     readonly Rect stage;
     readonly double span, speed, startX;
     readonly double enter = 0.3;

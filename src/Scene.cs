@@ -117,8 +117,9 @@ sealed class Scene
             double reach = strike.Reach;
             foreach (var icon in icons)
             {
-                // gezielter Angriff (Ka-52): ein Symbol brennt erst, wenn es selbst getroffen ist; nicht getroffene (anderer Bildschirm) wie bisher
-                var direct = double.IsFinite(reach) ? raid.Where(b => (b.P - icon.Center).Length <= reach).ToList() : [];
+                // Ein Symbol brennt erst, wenn ein Einschlag in Reichweite liegt (Ka-52 genau auf dem Symbol, Marschflugkörper auf seiner Gruppe),
+                // kurz verzögert nach Abstand; nur was kein Einschlag erreicht (anderer Bildschirm beim Bombenteppich), zündet wie bisher die Welle
+                var direct = double.IsFinite(reach) ? raid.Where(b => (b.P - icon.Center).Length <= reach).Select(b => (b.P, T: b.T + (b.P - icon.Center).Length / (iconSize * 14))).ToList() : [];
                 burnAt[icon.Id] = raid.Count == 0 ? Impact
                     : !strike.Explodes ? raid.OrderBy(b => (b.P - icon.Center).LengthSquared).First().T + 0.02
                     : direct.Count > 0 ? direct.Min(b => b.T) + 0.03 * random.NextDouble()
@@ -515,6 +516,13 @@ sealed class Scene
             var at = new Point(group.Average(c => c.X), group.Average(c => c.Y));
             chosen.Add(at);
             open.RemoveAll(o => (o - at).Length <= MiniBlastRadius * 1.05 || (o - seed).Length <= MiniBlastRadius);
+        }
+        // übrige Raketen noch einmal auf Symbole (19.11.2026: keine Einschläge auf leeren Flächen), erst ohne Symbole auf freie Flächen
+        var targets = icons.Select(i => i.Center).OrderBy(c => (c - main).LengthSquared).ToList();
+        for (int n = 0; chosen.Count < 19 && targets.Count > 0 && n < 400; n++)
+        {
+            var c = targets[n % targets.Count];
+            chosen.Add(c + new Vector((random.NextDouble() - 0.5) * iconSize * 0.5, (random.NextDouble() - 0.5) * iconSize * 0.5));
         }
         while (chosen.Count < 19 && candidates.Count > 0)
         {

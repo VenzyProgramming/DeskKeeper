@@ -51,6 +51,11 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.2.5
+
+- **Bombs hit icons, not empty desktop.** Every attack now aims at your actual icons, wherever they sit on your screens. Cruise missiles (Tu-160M, Tu-95MS) target groups of neighbouring icons, with each impact on an icon. The Tu-22M3 and Su-34 fly their rows where your icons are, across all displays, and the carpet drops a second bomb next to each icon instead of into the gaps. Jericho's extra rockets hit icons too.
+- An icon only catches fire when an impact is within reach, no longer from a far-away shock wave.
+
 ## What's new in 1.2.4
 
 Tested on a real laptop + ultrawide setup in every Win+P mode (PC screen only, Duplicate, Extend with either main display, Second screen only):

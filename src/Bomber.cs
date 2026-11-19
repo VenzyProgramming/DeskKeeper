@@ -14,6 +14,7 @@ namespace DeskKeeper;
 /// </summary>
 sealed class Bomber : IAttack
 {
+    public double Reach { get; init; } = double.PositiveInfinity;
     public bool Explodes => true;
     readonly Rect stage;
     readonly double span;                 // Länge des Bombers in Pixeln
