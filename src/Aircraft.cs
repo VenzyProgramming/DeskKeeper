@@ -191,6 +191,10 @@ static partial class Planes
     static readonly Brush Tu22Light = Fly.B("#C9CDD1"), Tu22Shade = Fly.B("#B5BBC0");
     static readonly Pen Tu22Edge = Fly.P("#6C737A", 0.35), Seam = Fly.P("#8A9197", 0.22), Pitot = Fly.P("#5E656C", 0.5);
     static readonly Brush Glass = Fly.B("#2C3846"), Nozzle = Fly.B("#3A3E43"), Radome = Fly.B("#E2E4E6");
+    // Rumpfrücken, Spanten, Höhenruder, Seitenruder, Haubenrahmen, Antennen, Tankklappen
+    static readonly Geometry Tu22Detail = Fly.G("M26,-0.6 L-18,-0.6 M26,0.6 L-18,0.6 M38,-2.8 L38,2.8 M18,-3.5 L18,3.5 M0,-3.5 L0,3.5 M-20,-3.5 L-20,3.5 M-34,-3.5 L-34,3.5 " +
+        "M-44.8,-6 L-54,-12.6 M-44.8,6 L-54,12.6 M-42,-0.3 L-52,-0.3 M32,-2.4 L32,2.4 M10,-0.3 L10,0.3 M-8,-0.3 L-8,0.3 M24,-1.2 L21,-1.2 L21,1.2 L24,1.2 Z");
+    static readonly Brush NavRedSoft = Art.Glow("#D0FF3030"), NavGreenSoft = Art.Glow("#D040FF80");
     static readonly Brush Tu22Halo = Art.Glow("#70FF7A2A"), Tu22Flame = Art.Glow("#F0FFE8B0");
 
     /// <param name="sweep">Pfeilung der äußeren Flügel in Grad (20 Start/Landung, 30 Reiseflug, 65 Hochgeschwindigkeit)</param>
@@ -230,6 +234,17 @@ static partial class Planes
             dc.DrawLine(Seam, new Point(-26.6, 6.6 * s), new Point(-46, 5.2 * s));   // Triebwerkstunnel
         }
         Art.Star(dc, new Point(-44, 0), 1.0, 0);
+        dc.DrawGeometry(null, Seam, Tu22Detail);
+        foreach (double s in new[] { -1.0, 1.0 })
+        {
+            Soft.Draw(dc, s < 0 ? NavRedSoft : NavGreenSoft, Tu22Blend(Tu22Wing20[3], Tu22Wing65[3], k, s), 1.4, 1.4, 1);   // Positionslichter
+            dc.DrawRoundedRectangle(null, Seam, new Rect(9, 6.9 * s - 0.5, 3.2, 1.0), 0.3, 0.3);   // Zusatzeinlassklappen
+            dc.DrawRoundedRectangle(null, Seam, new Rect(4.6, 6.9 * s - 0.5, 3.2, 1.0), 0.3, 0.3);
+        }
+        dc.DrawLine(Pitot, new Point(-53, -0.35), new Point(-56.4, -0.35));   // Heckstand UK-9A-802 mit GSh-23
+        dc.DrawLine(Pitot, new Point(-53, 0.35), new Point(-56.4, 0.35));
+        dc.DrawEllipse(Nozzle, null, new Point(-52.6, 0), 0.8, 0.6);
+        dc.DrawRoundedRectangle(Nozzle, null, new Rect(-50.4, -0.5, 2.4, 1.0), 0.4, 0.4);   // Feuerleitradar am Seitenleitwerk
         dc.Pop();
     }
 
@@ -272,9 +287,19 @@ static partial class Planes
             dc.DrawLine(Seam, new Point(-27.2, 12 * s), new Point(-30.8, 33 * s));   // Flaperon
             dc.DrawLine(Seam, new Point(-10.5, 17 * s), new Point(-23.5, 33 * s));   // Vorflügel
             Art.Star(dc, new Point(-25, 24 * s), 1.6, 0);
+            Soft.Draw(dc, s < 0 ? NavRedSoft : NavGreenSoft, new Point(-27, 35.9 * s), 1.2, 1.2, 1);
+            dc.DrawRoundedRectangle(Su34Shade, Su34Edge, new Rect(-36.4, 36 * s - 1.1, 14, 2.2), 1.1, 1.1);   // Chibiny-Störbehälter an den Spitzen
         }
+        dc.DrawGeometry(null, Seam, Su34Detail);
+        dc.DrawLine(Probe, new Point(42, -3.2), new Point(44.6, -3.2));     // Tankstutzen links vor der Haube (eingefahren)
+        dc.DrawRoundedRectangle(null, Seam, new Rect(-26, -2.6, 8, 5.2), 1, 1);   // Luftbremse auf dem Rücken
+        dc.DrawEllipse(Nozzle, null, new Point(-66, 0), 0.6, 0.9);            // Heckradar im Stachel
+        dc.DrawLine(Seam, new Point(33.6, -3.4), new Point(33.6, 3.4));        // Haubenrahmen
         dc.Pop();
     }
+    // Vorderkantenwurzel, Rumpfrücken, Canard-Achse, Höhen- und Seitenruder, Wartungsdeckel, Antennen
+    static readonly Geometry Su34Detail = Fly.G("M26,-4.6 L4,-9.6 M26,4.6 L4,9.6 M22,-0.6 L-40,-0.6 M22,0.6 L-40,0.6 M2,-8.6 L2,8.6 M-12,-10.7 L-12,10.7 M-30,-10.8 L-30,10.8 " +
+        "M-42,-14 L-49,-21 M-42,14 L-49,21 M-41,-11.6 L-47.6,-12.4 M-41,11.6 L-47.6,12.4 M14,-0.4 L14,0.4 M-4,-0.4 L-4,0.4 M8,-3 L5,-3 L5,3 L8,3 Z");
     static readonly Brush Heat = Art.Glow("#C0FFB060");
 
     // ---------------------------------------------------------------- Ка-52 (Rumpf 13,5 m, Rotor Ø 14,5 m, zwei gegenläufige Dreiblattrotoren)
@@ -298,6 +323,9 @@ static partial class Planes
     static readonly Geometry KaBladeShape = Fly.G("M2.6,-1.55 L48.6,-1.7 L52.5,-0.35 L52.5,1.15 L2.6,1.65 Z");
     static readonly Brush KaLight = Fly.B("#58614F"), KaShade = Fly.B("#49513F"), KaDark = Fly.B("#3C4334"), KaBlade = Fly.B("#262923"), KaDisc = Fly.B("#1E202620"), Pod = Fly.B("#3A3F37"),
         Soot = Fly.B("#2B2D2A"), KaDust = Fly.B("#6B705E");
+    // Haubenrahmen zwischen den Sitzen, Wartungsklappen der Triebwerke, Stöße am Heckausleger, Seiten- und Höhenruder, Endscheibenruder
+    static readonly Geometry Ka52Detail = Fly.G("M41.4,0 L26.2,0 M34,-0.45 L34,-4.9 M34,0.45 L34,4.9 M16,-5.4 L16,-9.6 M16,5.4 L16,9.6 M8,-5.6 L8,-9.8 M8,5.6 L8,9.8 " +
+        "M-12,-5 L-12,5 M-24,-3.9 L-24,3.9 M-40,-0.9 L-46.4,-0.5 M-32,-4 L-33.6,-10.6 M-32,4 L-33.6,10.6 M-32,-11.3 L-36.2,-11.3 M-32,11.3 L-36.2,11.3");
     static readonly Pen KaEdge = Fly.P("#2A2F25", 0.4), KaSeam = Fly.P("#22261F", 0.3), Barrel = Fly.P("#202320", 0.9);
     /// <summary>Bewegungsunschärfe der Blätter: vorab gemischte Farben statt PushOpacity (jede Deckkraftgruppe kostete eine eigene Zwischenfläche).</summary>
     static readonly Brush[][] KaTrail = [Trails(0.55), Trails(1.0)];
@@ -349,6 +377,14 @@ static partial class Planes
         }
         dc.DrawEllipse(KaShade, KaEdge, KaHub, 3.6, 3.6);
         dc.DrawEllipse(KaBlade, null, KaHub, 1.7, 1.7);
+        dc.DrawGeometry(null, KaSeam, Ka52Detail);
+        foreach (double s in new[] { -1.0, 1.0 })
+        {
+            dc.DrawEllipse(KaDark, KaEdge, new Point(40, 3.4 * s), 0.9, 0.9);     // L370 Witebsk: Raketenwarner an der Nase
+            dc.DrawEllipse(KaDark, KaEdge, new Point(-30, 2.2 * s), 0.8, 0.8);    // … und am Heckausleger
+            dc.DrawRoundedRectangle(KaDark, null, new Rect(-6, 5.8 * s - 0.6, 5, 1.2), 0.4, 0.4);   // UV-26 Täuschkörperwerfer
+            Soft.Draw(dc, s < 0 ? NavRedSoft : NavGreenSoft, new Point(8.4, 27.3 * s), 1.1, 1.1, 1);
+        }
         dc.Pop();
     }
 
@@ -385,6 +421,10 @@ static partial class Planes
     static readonly Geometry Tu95Inner = Fly.Both("M26,12.7 L26,16.1 C22,16.4 14,16.4 11,16.1 C9.6,15.9 9.2,15.1 9.2,14.4 C9.2,13.7 9.6,12.9 11,12.7 C14,12.4 22,12.4 26,12.7 Z");
     static readonly Geometry Tu95Outer = Fly.Both("M18.2,26.2 L18.2,29.2 C15,29.4 8,29.4 5.5,29.1 C4,28.9 3.4,28.3 3.4,27.7 C3.4,27.1 4,26.5 5.5,26.3 C8,26 15,26 18.2,26.2 Z");
     static readonly Geometry Tu95Glass = Fly.G("M46.6,0 C46.4,-1.5 45.6,-2.3 44.2,-2.5 L41.6,-2.6 L41.2,0 L41.6,2.6 L44.2,2.5 C45.6,2.3 46.4,1.5 46.6,0 Z");
+    // Grenzschichtzäune (drei je Flügel), Rumpfrücken, Spanten, Höhen- und Seitenruder, Ausstiegsluken, Antennen
+    static readonly Geometry Tu95Detail = Fly.G("M17.8,-11.4 L4.6,-11.6 M17.8,11.4 L4.6,11.6 M10.6,-22.6 L-0.4,-22.6 M10.6,22.6 L-0.4,22.6 M2.4,-35 L-5.8,-35 M2.4,35 L-5.8,35 " +
+        "M36,-0.6 L-30,-0.6 M36,0.6 L-30,0.6 M30,-3.4 L30,3.4 M-10,-3.4 L-10,3.4 M-30,-3.2 L-30,3.2 M-44,-4.8 L-51,-13.8 M-44,4.8 L-51,13.8 M-42,-0.3 L-52,-0.3 " +
+        "M40,-1.4 L37.6,-1.4 L37.6,1.4 L40,1.4 Z M-14,-1.2 L-16.4,-1.2 L-16.4,1.2 L-14,1.2 Z M20,-0.4 L20,0.4 M0,-0.4 L0,0.4 M-22,-0.4 L-22,0.4");
     static readonly Brush BearLight = Fly.B("#C4C9CD"), BearShade = Fly.B("#B1B7BC"), Blade = Fly.B("#2E3135"), Spinner = Fly.B("#9AA1A8"), PropDisc = Fly.B("#24303030");
     static readonly Pen BearEdge = Fly.P("#727A82", 0.35), BladePen = Fly.P("#2E3135", 1.3), Probe = Fly.P("#5E656C", 0.8), Guns = Fly.P("#4A5056", 0.45);
     /// <summary>Triebwerke: Lage quer zur Flugrichtung, vordere Propellerebene, Spinnerspitze.</summary>
@@ -425,6 +465,9 @@ static partial class Planes
             }
         dc.DrawGeometry(Spinner, BearEdge, Tu95Spinners);
         Art.Star(dc, new Point(-46, 0), 1.0, 0);
+        dc.DrawGeometry(null, Seam, Tu95Detail);
+        dc.DrawGeometry(Glass, BearEdge, Fly.G("M-50.4,-0.9 L-52.4,-0.6 L-52.4,0.6 L-50.4,0.9 Z"));   // Heckstand verglast
+        foreach (double s in new[] { -1.0, 1.0 }) Soft.Draw(dc, s < 0 ? NavRedSoft : NavGreenSoft, new Point(-13.2, 55.6 * s), 1.4, 1.4, 1);
         dc.Pop();
     }
 
@@ -460,6 +503,10 @@ static partial class Planes
     static readonly Geometry Il76Gear = Fly.Both("M1,5 C-1,6.4 -4,6.8 -6,6.8 C-9,6.8 -11.5,6.2 -13,5 Z");
     static readonly Geometry Il76Fairing = Fly.G("M-2.7,-3.4 C-6,-3.4 -9.4,-2.8 -11,-1.2 L-11,1.2 C-9.4,2.8 -6,3.4 -2.7,3.4 Z");
     static readonly Geometry Il76Cockpit = Fly.G("M45.6,0 C45.6,-1.9 45,-2.7 43.6,-2.9 L42.6,-2.9 L42.6,2.9 L43.6,2.9 C45,2.7 45.6,1.9 45.6,0 Z");
+    // Vorflügel, dreiteilige Klappen, Spoiler, Querruder, Rumpfrücken, Spanten, Höhen- und Seitenruder, Notausstiege, Antennen
+    static readonly Geometry Il76Detail = Fly.G("M16.6,-6 L-2,-50 M16.6,6 L-2,50 M-2.5,-20 L-0.6,-20 M-2.5,20 L-0.6,20 M-3.4,-34 L-1.6,-34 M-3.4,34 L-1.6,34 " +
+        "M1.6,-12 L-0.2,-30 M1.6,12 L-0.2,30 M-7.8,-40 L-10.4,-40 M-7.8,40 L-10.4,40 M30,-0.6 L-30,-0.6 M30,0.6 L-30,0.6 M36,-5 L36,5 M24,-5.2 L24,5.2 " +
+        "M-16,-5.2 L-16,5.2 M-30,-4 L-30,4 M-44,-5 L-49.6,-15.6 M-44,5 L-49.6,15.6 M-37,-0.4 L-46.6,-0.4 M40,-1.4 L37.6,-1.4 L37.6,1.4 L40,1.4 Z M10,-0.4 L10,0.4 M-8,-0.4 L-8,0.4");
     static readonly Brush IlLight = Fly.B("#CBD0D4"), IlShade = Fly.B("#BAC0C5"), Intake = Fly.B("#4A4F55");
     static readonly Pen IlEdge = Fly.P("#77808A", 0.35);
     /// <summary>Triebwerke: Lage quer zur Flugrichtung, Einlauf vorn, Ende hinten, halbe Breite.</summary>
@@ -489,6 +536,10 @@ static partial class Planes
         dc.DrawGeometry(IlShade, IlEdge, Il76Tail);          // T-Leitwerk ganz oben
         dc.DrawGeometry(Glass, IlEdge, Il76Cockpit);
         dc.DrawEllipse(Glass, IlEdge, new Point(48.3, 0), 1.3, 1.2);   // verglaste Navigatorkanzel
+        dc.DrawGeometry(null, Seam, Il76Detail);
+        dc.DrawGeometry(Glass, IlEdge, Fly.G("M-50,-1.4 L-51.4,-1 L-51.4,1 L-50,1.4 Z"));   // Heckstand mit GSh-23
+        dc.DrawLine(Guns, new Point(-51.6, -0.4), new Point(-54, -0.4)); dc.DrawLine(Guns, new Point(-51.6, 0.4), new Point(-54, 0.4));
+        foreach (double s in new[] { -1.0, 1.0 }) Soft.Draw(dc, s < 0 ? NavRedSoft : NavGreenSoft, new Point(-10, 56 * s), 1.4, 1.4, 1);
         dc.Pop();
     }
 

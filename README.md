@@ -51,6 +51,16 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.2.8
+
+- **More detail on the existing models.**
+  - Tu-160M: wing fences, the all-moving tailplane and upper fin, crew escape hatches, antennas and the tail cone.
+  - Tu-22M3: auxiliary intake doors, the tail turret with GSh-23 and its fire-control radar, elevators and navigation lights.
+  - Su-34: Khibiny wingtip pods, the dorsal airbrake, the refuelling probe, the tail radar and panel lines.
+  - Ka-52: Vitebsk missile-warning sensors, UV-26 flare dispensers, rudders and navigation lights.
+  - Tu-95MS: three wing fences per side and the glazed tail turret.
+  - Il-76MD: slats, three-part flaps, spoilers and the tail turret.
+
 ## What's new in 1.2.7
 
 - **Three new scenes.** A **Shahed-136 swarm**: dozens of delta-wing loitering munitions come in slow and low from the edge of the screen, each one heading for an icon, and dive steeply onto it in the last stretch. **A-10C**: one low strafing run per group of icons along the row, the GAU-8 burst walks from icon to icon, larger groups take an AGM-65 Maverick first, and the jet pops flares as it pulls off. **Su-25**: alternates S-8 rocket salvos from the B-8M1 pods with 30 mm gun runs.

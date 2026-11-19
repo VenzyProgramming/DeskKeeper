@@ -711,6 +711,12 @@ static class Art
     static readonly Geometry GloveLines = G("M 26,-2.2 L -14,-2.2 M 26,2.2 L -14,2.2 M -13.1,0 L -31.6,0.7 M 12,-4.6 L -6,-4.6 M 12,4.6 L -6,4.6 M -3,-9.5 L -10.5,-9.8 M -3,9.5 L -10.5,9.8");
     static readonly Geometry Fin = G("M -31.5,0 L -35.2,-0.45 L -43.6,-0.35 L -46.8,-0.3 L -49.9,0 L -46.8,0.3 L -43.6,0.35 L -35.2,0.45 Z");
     static readonly Geometry Cockpit = G("M 41.6,-1.1 L 40,-1.5 L 40,-0.2 L 41.6,-0.2 Z M 41.6,0.2 L 40,0.2 L 40,1.5 L 41.6,1.1 Z M 39.6,-1.55 L 37.8,-1.75 L 37.8,-0.2 L 39.6,-0.2 Z M 39.6,0.2 L 37.8,0.2 L 37.8,1.75 L 39.6,1.55 Z");
+    // Rumpfrücken, Wartungsdeckel, Grenzschichtzäune am Handschuh, ganz bewegliches Höhenleitwerk und oberes Seitenleitwerk, Tankklappen
+    static readonly Geometry SwanDetail = G("M 30,-0.5 L -30,-0.5 M 30,0.5 L -30,0.5 M 6,-6 L 6,-9.5 M 6,6 L 6,9.5 M -2,-7 L -2,-13 M -2,7 L -2,13 " +
+        "M -36.6,-4 L -44,-10.8 M -36.6,4 L -44,10.8 M -40,-0.4 L -40,0.4 M 20,-1.2 L 17,-1.2 L 17,1.2 L 20,1.2 Z M -18,-1.4 L -22,-1.4 L -22,1.4 L -18,1.4 Z " +
+        "M 2.1,-16.4 L 6,-14.4 M 2.1,16.4 L 6,14.4");
+    static readonly Geometry SwanAntennas = G("M 24,-0.4 L 24,0.4 M 8,-0.4 L 8,0.4 M -8,-0.4 L -8,0.4 M -27,-0.3 L -27,0.3");
+    static readonly Pen SwanDark = P("#4A5058", 0.45);
     static readonly Brush NavRedTip = Glow("#E0FF3030"), NavGreenTip = Glow("#E040FF80"), BeaconRed = Glow("#F0FF2020");
     static readonly Brush StarRed = S("#D81E1E");
     static readonly Brush NozzleMetal = V(("#C7CBD1", 0), ("#8C9199", 0.35), ("#5A5F67", 0.7), ("#3A3E44", 1));
@@ -837,6 +843,11 @@ static class Art
         _ = bayOpen;   // Schacht liegt unten, von oben nicht sichtbar
         Soft.Draw(dc, BeaconRed, new Point(14, 0), (t % 1.2) < 0.15 ? 3.2 : 1.4, (t % 1.2) < 0.15 ? 3.2 : 1.4, 1);
         Soft.Draw(dc, NavWhiteSoft, new Point(-50, 0), 1.4, 1.4, (t % 1) < 0.15 ? 1 : 0.4);
+        dc.DrawGeometry(null, SwanSeam, SwanDetail);
+        dc.DrawGeometry(null, SwanDark, SwanAntennas);
+        dc.DrawEllipse(Radome, null, new Point(-49.4, 0), 0.5, 0.35);   // Heckkonus mit Störsender und Täuschkörpern
+        foreach (double x in new[] { 36.8, 35.2 }) foreach (double y in new[] { -0.9, 0.9 })
+            dc.DrawRectangle(null, SwanSeam, new Rect(x - 0.6, y - 0.5, 1.2, 1.0));   // Ausstiegsluken der vier Schleudersitze
         dc.Pop();
     }
     static readonly Brush NavWhiteSoft = Glow("#E0FFFFFF");
