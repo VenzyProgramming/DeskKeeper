@@ -36,6 +36,12 @@ sealed class Keeper
     /// <summary>Beim Start zurückstellen (Einstellung: beim Windows-Start bzw. beim Programmstart).</summary>
     public bool RestoreOnStart = true;
     public double SettleSeconds = 4, StartSeconds = 8;
+    /// <summary>Nach dem Zurückstellen so lange aufpassen: mischt Windows die Symbole danach noch einmal (Monitor wacht langsam auf,
+    /// Taskleiste kommt nach), wird wieder zurückgestellt statt die Unordnung zu speichern .</summary>
+    public double GuardSeconds = 20;
+    Dictionary<string, int[]>? guard;
+    double guardUntil;
+    int guardRepeats;
     string? key;
     double changedAt = double.NegativeInfinity;
     bool restorePending;
@@ -51,10 +57,10 @@ sealed class Keeper
     /// <summary>Eine Abfrage (etwa alle 3 s). now in Sekunden.</summary>
     public void Tick(double now)
     {
-        if (world.Blocked) { candidate = null; return; }
+        if (world.Blocked) { candidate = null; if (guard is not null) guardUntil = Math.Max(guardUntil, now + GuardSeconds); return; }
         string k = world.Key();
         if (key is null) { key = k; restorePending = RestoreOnStart; changedAt = now - SettleSeconds + StartSeconds; }
-        if (k != key) { key = k; DisplayChanged(now); return; }
+        if (k != key) { key = k; guard = null; DisplayChanged(now); return; }
         if (now - changedAt < SettleSeconds) return;
 
         if (restorePending)
@@ -64,11 +70,28 @@ sealed class Keeper
             restorePending = false; candidate = null;
             var target = AutoRestore ? world.Target(k, current) : null;
             // Zurückstellen nur bei echten Verschiebungen (≥ 40 px), nicht bei Rasterversatz von wenigen Pixeln
-            if (target is not null && Misplaced(target, current)) { world.Apply(target); Report("restored"); return; }
+            if (target is not null && Misplaced(target, current))
+            {
+                world.Apply(target); Report("restored");
+                guard = target; guardUntil = now + GuardSeconds; guardRepeats = 0;
+                return;
+            }
             if (AutoSave && world.Saved(k) is null) { world.Save(k, current); Report("first"); }
             return;
         }
 
+        if (guard is not null && now > guardUntil) guard = null;
+        if (guard is not null)
+        {
+            var look = world.Read();
+            if (look is null || world.Key() != k) return;
+            if (Misplaced(guard, look))
+            {
+                candidate = null;
+                if (guardRepeats++ < 2) { world.Apply(guard); Report("restored"); return; }
+                guard = null;   // bleibt trotzdem so: gewollt, ab jetzt normal speichern
+            }
+        }
         if (!AutoSave) return;
         var now1 = world.Read();
         if (now1 is null || world.Key() != k) return;   // Wechsel mitten in der Abfrage
@@ -95,6 +118,10 @@ sealed class Keeper
             if (current.TryGetValue(id, out var q) && (Math.Abs(p[0] - q[0]) >= tolerance || Math.Abs(p[1] - q[1]) >= tolerance)) return true;
         return false;
     }
+
+    /// <summary>Wie viele Symbole beider Stände liegen wirklich woanders (≥ tolerance px)?</summary>
+    internal static int MovedCount(Dictionary<string, int[]> a, Dictionary<string, int[]> b, int tolerance = 40)
+        => a.Count(e => b.TryGetValue(e.Key, out var q) && (Math.Abs(e.Value[0] - q[0]) >= tolerance || Math.Abs(e.Value[1] - q[1]) >= tolerance));
 
     /// <summary>Unterschied in Lage (mehr als 2 px) oder Menge der Symbole.</summary>
     internal static bool Differs(Dictionary<string, int[]> a, Dictionary<string, int[]> b)
@@ -148,7 +175,14 @@ sealed class Keeper
 /// <summary>Echte Welt: Explorer-Schreibtisch, Profile unter %LOCALAPPDATA%\DeskKeeper, Rückstellung durch Дубина.</summary>
 sealed class RealWorld : IKeeperWorld
 {
-    public string Key() => Store.ScreenKey();
+    string? checkedKey;
+    public string Key()
+    {
+        string key = Store.ScreenKey();
+        // Einmal je Anordnung: Doppelgänger aus der Zeit der DPI-Virtualisierung beiseitelegen (4300×1800 statt 3440×1440)
+        if (key != checkedKey) { checkedKey = key; int n = Store.QuarantineTwins(key); if (n > 0) Fault.Note($"{n} Anordnung(en) mit falscher Skalierung nach profile\\quarantaene-dpi verschoben"); }
+        return key;
+    }
     public Dictionary<string, int[]>? Read() { try { using var d = new ShellDesktop(); return d.Snapshot(); } catch { return null; } }
     public Dictionary<string, int[]>? Saved(string key) => Store.LoadAuto(key);
     public bool Blocked => Runner.Busy || Store.HasPending || DesktopLock.RobotActive;
@@ -187,6 +221,26 @@ sealed class RealWorld : IKeeperWorld
         try { using var d = new ShellDesktop(); d.RestoreSnapshot(layout); } catch { }
     }
 
+    /// <summary>Schnappschuss einer anderen Bildschirmanordnung auf die jetzige übertragen: je Symbol über das Gerät, auf dem es lag
+    /// (gleiche Auflösung pixelgenau, sonst anteilig). Liegt das Gerät nicht mehr an, kommt das Symbol anteilig auf den Hauptbildschirm.</summary>
+    public static Dictionary<string, int[]> Translate(string fromKey, Dictionary<string, int[]> layout)
+    {
+        if (fromKey == Store.ScreenKey()) return layout;
+        using var d = new ShellDesktop();
+        var old = Store.ScreensOf(fromKey);
+        var now = Monitors.Current();
+        if (old.Count == 0 || now.Count == 0) return layout;
+        var shift = (Vector)old.Select(m => m.Bounds).Aggregate(Rect.Union).TopLeft - (Vector)d.Origin;   // Explorer zählt ab der linken oberen Ecke aller Bildschirme
+        var main = now.FirstOrDefault(m => m.Primary) ?? now[0];
+        var places = new Dictionary<string, Placement>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (id, item) in layout)
+            if (Monitors.Place(d.CenterOf(item) + shift, old) is { } p)
+                places[id] = now.Any(m => m.Id == p.Monitor) ? p : p with { Monitor = main.Id, W = -1, H = -1 };
+        var centers = d.Snapshot().ToDictionary(e => e.Key, e => d.CenterOf(e.Value), StringComparer.OrdinalIgnoreCase);
+        var plan = Keeper.Plan(centers, null, [places], now, d.Spacing, out _);
+        return plan.ToDictionary(e => e.Key, e => d.ItemOf(e.Value), StringComparer.OrdinalIgnoreCase);
+    }
+
     static int MovedCount(Dictionary<string, int[]> layout)
     {
         try
@@ -202,6 +256,8 @@ sealed class RealWorld : IKeeperWorld
     {
         try
         {
+            // Viele Symbole anders als der gemerkte Stand: den alten Stand vorher als Schnappschuss ablegen, damit er zurückholbar bleibt
+            if (Store.LoadAuto(key) is { } before && Keeper.MovedCount(before, layout) >= 3) Store.AutoSnapshot(key, before);
             Store.SaveAuto(key, layout);
             using var d = new ShellDesktop();
             var monitors = Monitors.Current();

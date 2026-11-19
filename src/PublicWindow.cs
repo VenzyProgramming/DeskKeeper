@@ -313,7 +313,7 @@ sealed class PublicWindow : Window, IDeskWindow
         var snaps = Store.Snapshots(selectedKey);
         snapshotsCount.Text = snaps.Count.ToString();
         snapshotsList.Children.Clear();
-        foreach (var (file, time, count) in snaps) snapshotsList.Children.Add(SnapshotRow(file, time, count, selectedKey == key));
+        foreach (var (file, time, count) in snaps) snapshotsList.Children.Add(SnapshotRow(file, time, count, selectedKey ?? key));
         if (snaps.Count == 0) snapshotsList.Children.Add(EmptyRow(T("noSnaps")));
     }
 
@@ -601,7 +601,7 @@ sealed class PublicWindow : Window, IDeskWindow
         return card;
     }
 
-    Border SnapshotRow(string file, DateTime time, int count, bool here)
+    Border SnapshotRow(string file, DateTime time, int count, string from)
     {
         var g = new Grid { Height = 58 };
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -616,11 +616,12 @@ sealed class PublicWindow : Window, IDeskWindow
         Grid.SetColumn(texts, 1); g.Children.Add(texts);
         var back = WinButton(T("restore"), false, async () =>
         {
-            if (Store.LoadSnapshot(file) is not { } layout) return;
+            if (Store.LoadSnapshot(file) is not { } saved) return;
+            var layout = RealWorld.Translate(from, saved);
             if (Store.LoadOptions().RestoreMode == "robot") await Play(false, layout);
             else { RealWorld.Restore(layout); status.Text = T("m.restored"); Refresh(); }
         });
-        back.MinWidth = 0; back.IsEnabled = here && !Runner.Busy;
+        back.MinWidth = 0; back.IsEnabled = !Runner.Busy;
         Grid.SetColumn(back, 2); g.Children.Add(back);
         var remove = IconButton("", T("remove"), () => { Store.RemoveSnapshot(file); Refresh(); });
         remove.Margin = new Thickness(6, 0, 12, 0);

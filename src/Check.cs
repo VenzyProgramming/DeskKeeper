@@ -130,6 +130,7 @@ static class Check
             foreach (var (name, ok) in KeeperChecks()) Pass(name, ok);
             // Ту-160М: Abwurf nacheinander, alle Symbole verbrennen, Bomber verlässt das Bild, Дубина stellt alle zurück
             var raid = new Scene(icons, homes, iconSize, screens, primary, true, 64, tu160: true);
+            { var (mean, p95) = DrawCost(raid, raid.RobotStart); results["tu160-bild-ms"] = mean; results["tu160-bild-ms-p95"] = p95; }
             var raidTimes = raid.Raid.Select(b => b.T).OrderBy(x => x).ToList();
             Pass("tu160-einschlaege-nacheinander", raid.Raid.Count == 14 && raidTimes[^1] - raidTimes[0] > 1.0 && raidTimes.Distinct().Count() == 14);
             Pass("tu160-alle-symbole-verbrannt", raid.IconCenters(raid.RobotStart - 0.05).Values.All(v => v is null));
@@ -162,6 +163,12 @@ static class Check
                 double limit = attack == Attacks.Ka52 ? 110 : 100;   // Ka-52 greift jedes Symbol einzeln an : dauert mit der Symbolzahl länger
                 Pass($"{attack}-dauer-unter-{limit:0}-s", sc.Duration < limit);
                 results[attack + "-dauer-s"] = Math.Round(sc.Duration, 1);
+                var (mean, p95) = DrawCost(sc, sc.RobotStart);
+                results[attack + "-bild-ms"] = mean; results[attack + "-bild-ms-p95"] = p95;
+                var (soft, softMax) = RenderCost(sc, sc.RobotStart);
+                results[attack + "-render-ms"] = soft; results[attack + "-render-ms-max"] = softMax;
+                // Deckkraftebenen je brennendem Symbol und je Funkenregen kosteten 60 % bzw. 30 % der Bildzeit (Tu-22M3 149 ms → 17 ms)
+                Pass($"{attack}-rendern-unter-60-ms", soft < 60);
                 for (int f = 0; f < frames.Length; f++) Save(Frame(sc, all, icons, frames[f], 0.5), Path.Combine(output, $"{attack}-{f + 1}.png"));
                 if (sc.Attack is HelicopterRaid heli)
                 {   // Ka-52 : jedes Symbol einzeln, Waffe nach Entfernung
@@ -194,11 +201,12 @@ static class Check
                 var v = new DrawingVisual();
                 using (var dc = v.RenderOpen())
                 {
-                    dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x2B, 0x3A, 0x4E)), null, new Rect(0, 0, 1800, 980));
+                    dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x2B, 0x3A, 0x4E)), null, new Rect(0, 0, 1800, 1300));
                     Planes.Tu22(dc, new Point(230, 220), 0, 3.6, 0.6);
                     Planes.Su34(dc, new Point(640, 220), 0, 3.6, 0.4, 0.2);
                     Planes.Ka52(dc, new Point(1070, 230), 0, 3.0, 0.3, 0.05);
                     Planes.Ka52(dc, new Point(1520, 230), -Math.PI / 2, 3.0, 0.3, 0.19);
+                    Planes.Ka52(dc, new Point(1450, 1130), 0, 3.0, 0.3, 0, rotors: false);   // Rumpf ohne Rotoren zum Vergleich mit der Vorlage
                     Planes.Tu95(dc, new Point(330, 700), 0, 3.6, 0.6, 0.03);
                     Planes.Il76(dc, new Point(860, 700), 0, 3.6, 0.6, true);
                     Planes.Bomb(dc, new Point(1250, 600), 0, 6, 1);
@@ -207,7 +215,7 @@ static class Check
                     Planes.Parachute(dc, new Point(1300, 860), 70, 1, 0, 0.2);
                     Planes.Carrier(dc, new Point(1520, 860), 0, 70, 1.2, 1);
                 }
-                var bmp = new RenderTargetBitmap(1800, 980, 96, 96, PixelFormats.Pbgra32); bmp.Render(v);
+                var bmp = new RenderTargetBitmap(1800, 1300, 96, 96, PixelFormats.Pbgra32); bmp.Render(v);
                 Save(bmp, Path.Combine(output, "0-flugzeuge.png"));
             }
 
@@ -363,6 +371,75 @@ static class Check
         // genau diese Anordnung gemerkt: hat Vorrang vor abgeleiteten Plätzen
         var plan5 = Keeper.Plan(cur, new Dictionary<string, Point> { ["a"] = new(777, 333) }, history, onlyWide, 100, out _);
         yield return ("plan-gemerkte-anordnung-hat-vorrang", plan5["a"] == new Point(777, 333));
+        // Schnappschuss einer anderen Anordnung, Gerät fehlt: anteilig auf den Hauptbildschirm
+        var frac = new Placement("L", 0, 0, 0.5, 0.5, -1, -1);
+        var plan6 = Keeper.Plan(new Dictionary<string, Point> { ["a"] = new(10, 10) }, null, [new Dictionary<string, Placement> { ["a"] = frac }],
+            new List<MonitorInfo> { new("L", new Rect(0, 0, 1920, 1080), true) }, 100, out _);
+        yield return ("plan-fremder-schnappschuss-anteilig", plan6["a"] == new Point(960, 540));
+
+        // Monitor aus und wieder an; Windows mischt nach dem Zurückstellen noch einmal: Nachwache stellt wieder zurück 
+        var w7 = new FakeWorld(); var k7 = new Keeper(w7); double t7 = 0;
+        void Run7(double seconds) { for (double end = t7 + seconds; t7 < end; t7 += 3) k7.Tick(t7); }
+        Run7(15);
+        w7.Screens = "B"; w7.Desk["x"] = [5, 5]; w7.Desk["y"] = [5, 90]; Run7(12);
+        w7.Screens = "A"; w7.Desk["x"] = [7, 7]; Run7(9);
+        int firstRestore = w7.Applied;
+        w7.Desk["x"] = [600, 600]; w7.Desk["y"] = [700, 700]; Run7(9);
+        yield return ("hueter-nachwache-stellt-spaete-umordnung-zurueck", firstRestore == 1 && w7.Applied == 2 && w7.Desk["x"][0] == 10 && w7.Stored["A"]["x"][0] == 10 && w7.Stored["A"]["y"][0] == 100);
+        Run7(24); w7.Desk["x"] = [333, 333]; Run7(9);
+        yield return ("hueter-nach-nachwache-normal-speichern", w7.Stored["A"]["x"][0] == 333 && w7.Applied == 2);
+
+        // Doppelgänger aus der DPI-Virtualisierung (Seitenleisten-Ausgabe mit System-DPI, am Notebook gestartet)
+        yield return ("dpi-doppelgaenger-erkannt", Store.ScaledTwinKey("0,0,4300,1800,1,120", "0,0,3440,1440,1,96") && Store.ScaledTwinKey("0,0,1536,864,1,96", "0,0,1920,1080,1,120")
+            && Store.ScaledTwinKey("0,0,3440,1440,1,96;3440,0,1536,864,0,96", "0,0,3440,1440,1,96;3440,0,1920,1080,0,120"));
+        yield return ("dpi-echte-anordnungen-bleiben", !Store.ScaledTwinKey("0,0,3440,1440,1,120", "0,0,3440,1440,1,96") && !Store.ScaledTwinKey("0,0,1920,1080,1,120", "0,0,3440,1440,1,96")
+            && !Store.ScaledTwinKey("0,0,3440,1440,1,96", "0,0,3440,1440,1,96") && !Store.ScaledTwinKey("0,0,3440,1440,1,96;3440,0,1920,1080,0,120", "0,0,3440,1440,1,96"));
+        // echte Pixel: in diesem Prozess (pro Monitor) genau wie Windows; auch aus einem Thread mit System-DPI
+        var forms = System.Windows.Forms.Screen.AllScreens.Select(s => new Rect(s.Bounds.X, s.Bounds.Y, s.Bounds.Width, s.Bounds.Height)).OrderBy(r => r.X).ToList();
+        var mine = Physical.Displays().Select(d => d.Bounds).OrderBy(r => r.X).ToList();
+        yield return ("physisch-wie-windows", forms.SequenceEqual(mine));
+        var old = SetThreadDpiAwarenessContext(new IntPtr(-2));   // SYSTEM_AWARE wie Seitenleisten-Ausgabe
+        List<Rect> asSystem;
+        try { asSystem = Physical.Displays().Select(d => d.Bounds).OrderBy(r => r.X).ToList(); }
+        finally { SetThreadDpiAwarenessContext(old); }
+        yield return ("physisch-auch-mit-system-dpi", asSystem.SequenceEqual(mine) && AreDpiAwarenessContextsEqual(GetThreadDpiAwarenessContext(), old));
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr GetThreadDpiAwarenessContext();
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool AreDpiAwarenessContextsEqual(IntPtr a, IntPtr b);
+
+    /// <summary>Rechenzeit eines Szenenbilds (Zeichenliste aufbauen, wie Stage.Actors.OnRender) über die Angriffsphase: Mittel und 95-%-Wert in ms.</summary>
+    static (double Mean, double P95) DrawCost(Scene sc, double until)
+    {
+        var times = new List<double>();
+        var watch = new System.Diagnostics.Stopwatch();
+        for (int k = 0; k < 300; k++)
+        {
+            double at = until * k / 300;
+            var v = new DrawingVisual();
+            watch.Restart();
+            using (var dc = v.RenderOpen()) sc.Draw(dc, at);
+            times.Add(watch.Elapsed.TotalMilliseconds);
+        }
+        times.Sort();
+        return (Math.Round(times.Skip(10).Average(), 3), Math.Round(times[(int)(times.Count * 0.95)], 3));
+    }
+
+    /// <summary>Software-Rendern 1920×1080 über die Angriffsphase (Richtwert für Füllaufwand: Glühen, Rauch, Explosionen): Mittel und Maximum in ms.</summary>
+    static (double Mean, double Max) RenderCost(Scene sc, double until)
+    {
+        var target = new RenderTargetBitmap(1920, 1080, 96, 96, PixelFormats.Pbgra32);
+        var times = new List<double>();
+        for (double tt = 0.3; tt < until; tt += Math.Max(0.15, until / 60))
+        {
+            var v = new DrawingVisual();
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            using (var dc = v.RenderOpen()) sc.Draw(dc, tt);
+            target.Clear(); target.Render(v);
+            times.Add(sw.Elapsed.TotalMilliseconds);
+        }
+        return (Math.Round(times.Average(), 1), Math.Round(times.Max(), 1));
     }
 
     static readonly string[] Names = ["Проекты", "Заметки", "Корзина", "Картинки", "Документы", "Музыка", "Игры", "Загрузки"];

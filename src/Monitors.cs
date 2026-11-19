@@ -32,13 +32,12 @@ static class Monitors
         var list = new List<MonitorInfo>();
         var facts = DeviceFacts.Query();
         bool touch = DeviceFacts.HasTouchScreen();
-        foreach (var s in System.Windows.Forms.Screen.AllScreens)
+        foreach (var s in Physical.Displays())
         {
-            facts.TryGetValue(s.DeviceName, out var f);
-            string? device = DeviceId(s.DeviceName) ?? (f?.DevicePath is { Length: > 0 } dp ? dp : null);
-            int number = int.TryParse(new string(s.DeviceName.Reverse().TakeWhile(char.IsDigit).Reverse().ToArray()), out int n) ? n : 0;
-            list.Add(new MonitorInfo(device ?? s.DeviceName + "|" + s.Bounds.Width + "x" + s.Bounds.Height,
-                new Rect(s.Bounds.X, s.Bounds.Y, s.Bounds.Width, s.Bounds.Height), s.Primary)
+            facts.TryGetValue(s.Device, out var f);
+            string? device = DeviceId(s.Device) ?? (f?.DevicePath is { Length: > 0 } dp ? dp : null);
+            int number = int.TryParse(new string(s.Device.Reverse().TakeWhile(char.IsDigit).Reverse().ToArray()), out int n) ? n : 0;
+            list.Add(new MonitorInfo(device ?? s.Device + "|" + (int)s.Bounds.Width + "x" + (int)s.Bounds.Height, s.Bounds, s.Primary)
             {
                 Number = number, Maker = MakerOf(device), Model = f?.Model ?? "", Diagonal = f?.DiagonalInch ?? 0,
                 Kind = DeviceFacts.Classify(f, s.Bounds.Width, s.Bounds.Height, touch),
@@ -127,4 +126,71 @@ static class Monitors
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string DeviceKey;
     }
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern bool EnumDisplayDevices(string device, uint index, ref DisplayDevice info, uint flags);
+}
+
+/// <summary>
+/// Bildschirmgeometrie immer in echten Pixeln, wie Explorer sie für die Symbole benutzt. Seitenleisten-Ausgabe läuft mit System-DPI:
+/// startet es, während das Notebook (125 %) Hauptbildschirm ist, meldet Windows dem Programm den 3440er-Monitor als 4300×1800
+/// und alle Skalierungen als 120 dpi (19.11.2026: Schnappschüsse verschwunden, Symbole gestaucht). Abfragen und das
+/// Szenenfenster laufen deshalb kurz im Modus „pro Monitor“, egal wie der Gastgeber eingestellt ist.
+/// </summary>
+static class Physical
+{
+    internal sealed record Display(string Device, Rect Bounds, Rect Work, bool Primary, uint Dpi);
+
+    /// <summary>Für die Dauer des Blocks rechnet dieser Thread in echten Pixeln (Fenster, die darin entstehen, ebenso).</summary>
+    public static IDisposable Scope() => new Back(Enter());
+    sealed class Back(IntPtr old) : IDisposable
+    {
+        public void Dispose() { if (old != IntPtr.Zero) try { SetThreadDpiAwarenessContext(old); } catch (EntryPointNotFoundException) { } }
+    }
+    static IntPtr Enter() { try { return SetThreadDpiAwarenessContext(new IntPtr(-4)); } catch (EntryPointNotFoundException) { return IntPtr.Zero; } }   // PER_MONITOR_AWARE_V2
+
+    /// <summary>Alle Bildschirme: Gerätename (\\.\DISPLAYn), Lage und Arbeitsfläche in Pixeln, Hauptbildschirm, Skalierung (dpi).</summary>
+    public static List<Display> Displays()
+    {
+        using var scope = Scope();
+        var list = new List<Display>();
+        MonitorEnumProc each = (monitor, _, _, _) =>
+        {
+            var info = new MonitorInfoEx { Size = Marshal.SizeOf<MonitorInfoEx>() };
+            if (GetMonitorInfo(monitor, ref info))
+            {
+                uint dpi = 96;
+                try { if (GetDpiForMonitor(monitor, 0, out uint x, out _) == 0 && x > 0) dpi = x; } catch (DllNotFoundException) { }
+                list.Add(new Display(info.Device, R(info.Monitor), R(info.Work), (info.Flags & 1) != 0, dpi));
+            }
+            return true;
+        };
+        EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, each, IntPtr.Zero);
+        GC.KeepAlive(each);
+        if (list.Count == 0)
+        {
+            var s = System.Windows.Forms.Screen.PrimaryScreen ?? System.Windows.Forms.Screen.AllScreens[0];
+            list.Add(new Display(s.DeviceName, new Rect(s.Bounds.X, s.Bounds.Y, s.Bounds.Width, s.Bounds.Height), new Rect(s.WorkingArea.X, s.WorkingArea.Y, s.WorkingArea.Width, s.WorkingArea.Height), true, 96));
+        }
+        return list;
+    }
+
+    public static Display Primary() { var all = Displays(); return all.FirstOrDefault(d => d.Primary) ?? all[0]; }
+
+    /// <summary>Mauszeiger in echten Pixeln.</summary>
+    public static Point? Cursor() { using var scope = Scope(); return GetCursorPos(out var p) ? new Point(p.X, p.Y) : null; }
+
+    static Rect R(NativeRect r) => new(r.Left, r.Top, r.Right - r.Left, r.Bottom - r.Top);
+
+    [StructLayout(LayoutKind.Sequential)] struct NativeRect { public int Left, Top, Right, Bottom; }
+    [StructLayout(LayoutKind.Sequential)] struct NativePoint { public int X, Y; }
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    struct MonitorInfoEx
+    {
+        public int Size; public NativeRect Monitor, Work; public uint Flags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string Device;
+    }
+    delegate bool MonitorEnumProc(IntPtr monitor, IntPtr hdc, IntPtr rect, IntPtr data);
+    [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
+    [DllImport("user32.dll")] static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr clip, MonitorEnumProc proc, IntPtr data);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfoEx info);
+    [DllImport("shcore.dll")] static extern int GetDpiForMonitor(IntPtr monitor, int type, out uint x, out uint y);
+    [DllImport("user32.dll")] static extern bool GetCursorPos(out NativePoint p);
 }

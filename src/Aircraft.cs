@@ -177,103 +177,152 @@ static class Planes
     static readonly Brush Heat = Art.Glow("#C0FFB060");
 
     // ---------------------------------------------------------------- Ка-52 (Rumpf 13,5 m, Rotor Ø 14,5 m, zwei gegenläufige Dreiblattrotoren)
-    static readonly Geometry Ka52Body = Fly.G("M50,0 C50,-5.4 46,-8.4 38,-8.6 L10,-8.6 L-6,-6.6 L-18,-3 L-48,-1.7 L-48,1.7 L-18,3 L-6,6.6 L10,8.6 L38,8.6 C46,8.4 50,5.4 50,0 Z");
-    static readonly Geometry Ka52Stub = Fly.Both("M9,7.8 L5,23.5 L-4,23.5 L-2.5,7.8 Z");
-    static readonly Geometry Ka52Engines = Fly.Both("M16,8.2 L13.5,12 L-13,12 L-15,8.2 Z");
-    static readonly Geometry Ka52Tail = Fly.Both("M-39,1.5 L-41.5,11.2 L-47.5,11.2 L-47.5,1.5 Z");
-    static readonly Geometry Ka52Fins = Fly.Both("M-36.5,10.6 L-49.5,10.6 L-49.5,12.6 L-36.5,12.6 Z");
-    static readonly Brush KaLight = Fly.B("#58614F"), KaShade = Fly.B("#49513F"), KaBlade = Fly.B("#262923"), KaDisc = Fly.B("#1E202620"), Pod = Fly.B("#3A3F37");
-    static readonly Pen KaEdge = Fly.P("#2A2F25", 0.4), KaSeam = Fly.P("#22261F", 0.3);
-    const double RotorRadius = 54, RotorSpeed = 11;   // rad/s, sichtbar langsamer als echt, damit man die Blätter sieht
+    // Maße aus einer Dreiseitenansicht ausgemessen (19.11.2026: „sieht von oben nicht aus wie das Original“): schmaler Rumpf
+    // (Cockpit nebeneinander 1,7 m breit), Rotormast 5,5 m hinter der Nase, Triebwerke außen am Rumpfrücken mit schräg nach außen
+    // gerichteten Abgasrohren, Stummelflügel mit zwei Stationen und Täuschkörperbehältern an den Spitzen, langer Heckausleger,
+    // Höhenleitwerk mit Endscheiben. 1 Einheit = 0,138 m.
+    static readonly Geometry Ka52Body = Fly.G("M50,0 L49.3,-0.75 L47.6,-1.85 L45.1,-2.95 L42.1,-3.85 L38.2,-4.65 L35.4,-5.1 L32.6,-5.45 L29.8,-5.95 L22,-6.05 " +
+        "C16,-5.95 6,-5.85 -3,-5.75 C-10,-5.5 -18,-4.6 -24,-3.9 C-32,-3.1 -38,-2.4 -42.4,-1.5 C-45,-1 -47.2,-0.6 -47.2,0 " +
+        "C-47.2,0.6 -45,1 -42.4,1.5 C-38,2.4 -32,3.1 -24,3.9 C-18,4.6 -10,5.5 -3,5.75 C6,5.85 16,5.95 22,6.05 " +
+        "L29.8,5.95 L32.6,5.45 L35.4,5.1 L38.2,4.65 L42.1,3.85 L45.1,2.95 L47.6,1.85 L49.3,0.75 Z");
+    static readonly Geometry Ka52Stub = Fly.Both("M12.1,5.6 L11.6,24.1 L5.2,24.1 L0.3,5.6 Z");
+    static readonly Geometry Ka52Pods = Fly.Both("M14.2,25.7 C13.6,24.4 12.2,24.1 10.5,24.1 L3.4,24.2 C2.8,24.4 2.6,25 2.6,25.7 C2.6,26.4 2.8,27 3.4,27.2 L10.5,27.3 C12.2,27.3 13.6,27 14.2,25.7 Z");
+    static readonly Geometry Ka52Engines = Fly.Both("M19.6,5.4 C19.9,7.2 19.4,8.9 18,9.5 L4.6,9.9 C2.8,10 0.8,9.6 -1.2,8.7 L-2.6,5.4 Z");
+    static readonly Geometry Ka52Exhaust = Fly.Both("M3.4,9.1 L0.4,12.9 L-1.8,12.1 L0.2,8.4 Z");
+    static readonly Geometry Ka52Intake = Fly.Both("M20.4,7.4 C20.4,6.3 19.6,5.6 18.6,5.6 C17.4,5.6 16.8,6.4 16.8,7.4 C16.8,8.4 17.4,9.2 18.6,9.2 C19.6,9.2 20.4,8.5 20.4,7.4 Z");
+    static readonly Geometry Ka52Tail = Fly.Both("M-25.4,3.4 L-25.9,10.8 L-34.4,10.8 L-35.6,3.4 Z");
+    static readonly Geometry Ka52Endplates = Fly.Both("M-24.2,10.7 L-35.9,10.7 L-36.4,11.3 L-35.9,11.9 L-24.2,11.9 L-23.6,11.3 Z");
+    static readonly Geometry Ka52Fin = Fly.G("M-33.5,0 L-38,-1 L-46.4,-0.8 L-47.6,0 L-46.4,0.8 L-38,1 Z");
+    static readonly Geometry Ka52Glass = Fly.Both("M41.4,0.45 L41.8,3.3 C39.4,4.5 34.4,5.05 27.6,4.95 L26.2,0.45 Z");
+    static readonly Geometry KaBladeShape = Fly.G("M2.6,-1.55 L48.6,-1.7 L52.5,-0.35 L52.5,1.15 L2.6,1.65 Z");
+    static readonly Brush KaLight = Fly.B("#58614F"), KaShade = Fly.B("#49513F"), KaDark = Fly.B("#3C4334"), KaBlade = Fly.B("#262923"), KaDisc = Fly.B("#1E202620"), Pod = Fly.B("#3A3F37"),
+        Soot = Fly.B("#2B2D2A"), KaDust = Fly.B("#6B705E");
+    static readonly Pen KaEdge = Fly.P("#2A2F25", 0.4), KaSeam = Fly.P("#22261F", 0.3), Barrel = Fly.P("#202320", 0.9);
+    /// <summary>Bewegungsunschärfe der Blätter: vorab gemischte Farben statt PushOpacity (jede Deckkraftgruppe kostete eine eigene Zwischenfläche).</summary>
+    static readonly Brush[][] KaTrail = [Trails(0.55), Trails(1.0)];
+    static Brush[] Trails(double strength) => [.. new[] { 0.9, 0.17, 0.12, 0.07 }.Select(a => (Brush)Fly.B($"#{(byte)Math.Round(a * strength * 255):X2}262923"))];
+    internal static readonly Point KaHub = new(10.4, 0);
+    const double RotorRadius = 52.5, RotorSpeed = 11;   // rad/s, sichtbar langsamer als echt, damit man die Blätter sieht
+    /// <summary>Kanonenmündung (2A42 rechts am Rumpf), innere Station (B-8V20), äußere Station (Vikhr), Sensor in der Nase.</summary>
+    internal static readonly Vector KaMuzzle = new(25.6, 6.4), KaRockets = new(15.8, 14.2), KaVikhr = new(16.4, 19.7), KaSensor = new(49.2, 0);
 
-    public static void Ka52(DrawingContext dc, Point at, double heading, double u, double altitude, double t)
+    public static void Ka52(DrawingContext dc, Point at, double heading, double u, double altitude, double t, bool rotors = true)
     {
-        Fly.ShadowOf(dc, at, heading, u, altitude, Ka52Stub, Ka52Tail, Ka52Body, Ka52Engines);
-        // Schatten der Rotorkreise
-        dc.PushTransform(new TranslateTransform(altitude * 100 * u * 0.16, altitude * 100 * u * 0.26));
-        dc.PushTransform(Fly.Frame(at, heading, u));
-        dc.DrawEllipse(KaDisc, null, new Point(4, 0), RotorRadius, RotorRadius);
-        dc.Pop(); dc.Pop();
+        Fly.ShadowOf(dc, at, heading, u, altitude, Ka52Stub, Ka52Pods, Ka52Tail, Ka52Body, Ka52Engines);
+        if (rotors)
+        {   // Schatten der Rotorkreise
+            dc.PushTransform(new TranslateTransform(altitude * 100 * u * 0.16, altitude * 100 * u * 0.26));
+            dc.PushTransform(Fly.Frame(at, heading, u));
+            dc.DrawEllipse(KaDisc, null, KaHub, RotorRadius, RotorRadius);
+            dc.Pop(); dc.Pop();
+        }
 
         dc.PushTransform(Fly.Frame(at, heading, u));
         dc.DrawGeometry(KaShade, KaEdge, Ka52Stub);
         foreach (double s in new[] { -1.0, 1.0 })
         {
-            dc.DrawRoundedRectangle(Pod, KaEdge, new Rect(-6, 12.8 * s - 2, 14, 4), 2, 2);    // Raketenbehälter innen
-            dc.DrawRoundedRectangle(Pod, KaEdge, new Rect(-8, 20.2 * s - 2.6, 17, 5.2), 1, 1);     // außen: Vikhr-Starter, 6 Rohre
-            dc.DrawLine(KaSeam, new Point(-8, 20.2 * s - 0.9), new Point(9, 20.2 * s - 0.9));
-            dc.DrawLine(KaSeam, new Point(-8, 20.2 * s + 0.9), new Point(9, 20.2 * s + 0.9));
+            // innen B-8V20 mit 20 S-8, außen APU-6 mit sechs Vikhr (von oben drei Rohre)
+            dc.DrawRoundedRectangle(Pod, KaEdge, new Rect(-1.8, KaRockets.Y * s - 1.9, 17.6, 3.8), 1.9, 1.9);
+            dc.DrawEllipse(KaDark, null, new Point(KaRockets.X - 0.4, KaRockets.Y * s), 0.7, 1.5);
+            dc.DrawRoundedRectangle(Pod, KaEdge, new Rect(-4.4, KaVikhr.Y * s - 1.5, 20.8, 3.0), 0.8, 0.8);
+            dc.DrawLine(KaSeam, new Point(-4.4, KaVikhr.Y * s - 0.5), new Point(16.4, KaVikhr.Y * s - 0.5));
+            dc.DrawLine(KaSeam, new Point(-4.4, KaVikhr.Y * s + 0.5), new Point(16.4, KaVikhr.Y * s + 0.5));
         }
+        dc.DrawGeometry(KaShade, KaEdge, Ka52Pods);
         dc.DrawGeometry(KaShade, KaEdge, Ka52Tail);
-        dc.DrawGeometry(KaShade, KaEdge, Ka52Fins);
+        dc.DrawGeometry(KaDark, KaEdge, Ka52Endplates);
         dc.DrawGeometry(KaLight, KaEdge, Ka52Body);
+        dc.DrawGeometry(KaShade, KaEdge, Ka52Fin);
+        dc.DrawRectangle(KaDark, KaEdge, new Rect(6, 5.4, 7.5, 1.8));          // Lafette der 2A42 rechts
+        dc.DrawLine(Barrel, new Point(12, KaMuzzle.Y), (Point)KaMuzzle);
+        dc.DrawGeometry(Soot, KaEdge, Ka52Exhaust);
         dc.DrawGeometry(KaShade, KaEdge, Ka52Engines);
-        dc.DrawEllipse(Glass, KaEdge, new Point(33, -3.6), 8, 3.4);   // nebeneinander sitzende Besatzung
-        dc.DrawEllipse(Glass, KaEdge, new Point(33, 3.6), 8, 3.4);
-        dc.DrawEllipse(Pod, KaEdge, new Point(47, 0), 2.6, 2.6);         // Sensorkugel
-        dc.DrawRectangle(Pod, KaEdge, new Rect(18, 7.8, 12, 2));          // Bordkanone rechts
-        Art.Star(dc, new Point(-30, 0), 1.6, 0);
-        // unterer Rotor gegen, oberer Rotor im Uhrzeigersinn
-        Rotor(dc, -t * RotorSpeed + 0.5, -1, 0.55);
-        Rotor(dc, t * RotorSpeed, 1, 1);
-        dc.DrawEllipse(KaShade, KaEdge, new Point(4, 0), 3.4, 3.4);
-        dc.DrawEllipse(KaBlade, null, new Point(4, 0), 1.6, 1.6);
+        dc.DrawGeometry(KaDust, KaEdge, Ka52Intake);                             // Staubschutz vor den Einläufen
+        dc.DrawGeometry(Glass, KaEdge, Ka52Glass);                             // nebeneinander sitzende Besatzung
+        dc.DrawLine(KaSeam, new Point(-3, -5.6), new Point(-3, 5.6));
+        dc.DrawLine(KaSeam, new Point(-20, 0), new Point(-44, 0));
+        if (rotors)
+        {   // unterer Rotor gegen, oberer Rotor im Uhrzeigersinn
+            Rotor(dc, -t * RotorSpeed + 0.5, -1, 0);
+            Rotor(dc, t * RotorSpeed, 1, 1);
+        }
+        dc.DrawEllipse(KaShade, KaEdge, KaHub, 3.6, 3.6);
+        dc.DrawEllipse(KaBlade, null, KaHub, 1.7, 1.7);
         dc.Pop();
     }
 
-    static void Rotor(DrawingContext dc, double angle, int direction, double strength)
+    static void Rotor(DrawingContext dc, double angle, int direction, int level)
     {
-        dc.DrawEllipse(KaDisc, null, new Point(4, 0), RotorRadius, RotorRadius);
+        dc.DrawEllipse(KaDisc, null, KaHub, RotorRadius, RotorRadius);
+        var trail = KaTrail[level];
         for (int b = 0; b < 3; b++)
         {
             double a = angle + b * Math.Tau / 3;
-            for (int trail = 3; trail >= 0; trail--)   // Bewegungsunschärfe: blasse Kopien hinter dem Blatt (gegen die Drehrichtung)
+            for (int k = 3; k >= 0; k--)   // Bewegungsunschärfe: blasse Kopien hinter dem Blatt (gegen die Drehrichtung)
             {
-                double at = (a - trail * 0.08 * direction) * 180 / Math.PI;
-                dc.PushTransform(new RotateTransform(at, 4, 0));
-                dc.PushOpacity((trail == 0 ? 0.9 : 0.22 - trail * 0.05) * strength);
-                dc.DrawRoundedRectangle(KaBlade, null, new Rect(4, -1.3, RotorRadius, 2.6), 1.2, 1.2);
+                var turn = new RotateTransform((a - k * 0.08 * direction) * 180 / Math.PI, KaHub.X, KaHub.Y); turn.Freeze();
+                dc.PushTransform(turn);
+                dc.PushTransform(Shift);
+                dc.DrawGeometry(trail[k], null, KaBladeShape);
                 dc.Pop(); dc.Pop();
             }
         }
     }
+    static readonly TranslateTransform Shift = Frozen(new TranslateTransform(KaHub.X, KaHub.Y));
+    static T Frozen<T>(T f) where T : Freezable { f.Freeze(); return f; }
 
-    // ---------------------------------------------------------------- Ту-95МС (Länge 46 m, Spannweite 50 m, 35° Pfeilung, 4 × NK-12 mit gegenläufigen Vierblattpropellern)
-    static readonly Geometry Tu95Body = Fly.G("M50,0 C49,-2.7 46,-3.9 40,-4.2 L-40,-4.2 L-50,-2.3 L-52.5,0 L-50,2.3 L-40,4.2 L40,4.2 C46,3.9 49,2.7 50,0 Z");
-    static readonly Geometry Tu95Wing = Fly.Both("M10,4 L-26,54 L-32,54.6 L-16,8 L-18,4 Z");
-    static readonly Geometry Tu95Tail = Fly.Both("M-34,4 L-45.5,22 L-50,22.5 L-47.5,4 Z");
-    static readonly Geometry Tu95Fin = Fly.G("M-26,-0.9 L-50,-1 L-53,0 L-50,1 L-26,0.9 Z");
+    // ---------------------------------------------------------------- Ту-95МС (Länge 46,2 m, Spannweite 50 m, 4 × NK-12 mit gegenläufigen Vierblattpropellern Ø 5,6 m)
+    // Maße aus einer Dreiseitenansicht ausgemessen : Flügel weit vorn (Wurzelvorderkante bei +24), Vorderkante 33°,
+    // Hinterkante 25° gepfeilt; Triebwerke bei 26 % und 50 % der Halbspannweite, Propeller weit vor der Vorderkante; innen lange
+    // Fahrwerksgondeln, die weit hinter die Hinterkante reichen; schmales, stark gepfeiltes Höhenleitwerk; Heckstand mit Zwillingskanone.
+    static readonly Geometry Tu95Body = Fly.G("M50.2,0 C50.2,-1.4 49.2,-2.4 47.6,-2.8 C45.5,-3.25 43,-3.45 40,-3.45 L-18,-3.45 C-26,-3.3 -38,-2.4 -46,-1.7 L-51.6,-1.25 " +
+        "C-52.4,-1.2 -52.8,-0.7 -52.8,0 C-52.8,0.7 -52.4,1.2 -51.6,1.25 L-46,1.7 C-38,2.4 -26,3.3 -18,3.45 L40,3.45 C43,3.45 45.5,3.25 47.6,2.8 C49.2,2.4 50.2,1.4 50.2,0 Z");
+    static readonly Geometry Tu95Wing = Fly.Both("M23.6,2.6 L-9.3,53 C-10.4,55 -12.3,56.1 -14.1,56 C-15.4,55.9 -16,55 -15.9,53.2 L7.3,2.6 Z");
+    static readonly Geometry Tu95Tail = Fly.Both("M-36.4,2 L-48.6,16 C-49.4,16.7 -51.2,16.9 -52.3,16.2 L-52.9,14.6 L-46.4,2 Z");
+    static readonly Geometry Tu95Fin = Fly.G("M-24,0 C-30,-0.9 -40,-1.2 -50,-1 L-53,-0.4 L-53,0.4 L-50,1 C-40,1.2 -30,0.9 -24,0 Z");
+    static readonly Geometry Tu95Gear = Fly.Both("M9.6,14.4 C9.6,13.3 6,12.55 1.5,12.55 C-3,12.55 -6,13.4 -7.4,14.4 C-6,15.4 -3,16.25 1.5,16.25 C6,16.25 9.6,15.5 9.6,14.4 Z");
+    static readonly Geometry Tu95Inner = Fly.Both("M26,12.7 L26,16.1 C22,16.4 14,16.4 11,16.1 C9.6,15.9 9.2,15.1 9.2,14.4 C9.2,13.7 9.6,12.9 11,12.7 C14,12.4 22,12.4 26,12.7 Z");
+    static readonly Geometry Tu95Outer = Fly.Both("M18.2,26.2 L18.2,29.2 C15,29.4 8,29.4 5.5,29.1 C4,28.9 3.4,28.3 3.4,27.7 C3.4,27.1 4,26.5 5.5,26.3 C8,26 15,26 18.2,26.2 Z");
+    static readonly Geometry Tu95Glass = Fly.G("M46.6,0 C46.4,-1.5 45.6,-2.3 44.2,-2.5 L41.6,-2.6 L41.2,0 L41.6,2.6 L44.2,2.5 C45.6,2.3 46.4,1.5 46.6,0 Z");
     static readonly Brush BearLight = Fly.B("#C4C9CD"), BearShade = Fly.B("#B1B7BC"), Blade = Fly.B("#2E3135"), Spinner = Fly.B("#9AA1A8"), PropDisc = Fly.B("#24303030");
-    static readonly Pen BearEdge = Fly.P("#727A82", 0.35), BladePen = Fly.P("#2E3135", 1.3), Probe = Fly.P("#5E656C", 0.8);
-    static readonly double[] BearEngines = [17, 34];
-    static double LeadingEdge(double y) => 10 - 36 * (y - 4) / 50;
+    static readonly Pen BearEdge = Fly.P("#727A82", 0.35), BladePen = Fly.P("#2E3135", 1.3), Probe = Fly.P("#5E656C", 0.8), Guns = Fly.P("#4A5056", 0.45);
+    /// <summary>Triebwerke: Lage quer zur Flugrichtung, vordere Propellerebene, Spinnerspitze.</summary>
+    static readonly (double Y, double Prop, double Tip)[] BearEngines = [(14.4, 26.6, 31.1), (27.7, 18.6, 22.9)];
+    /// <summary>Flügelstationen für die Ch-101: zwischen Rumpf und innerem Triebwerk, zwischen den Triebwerken.</summary>
+    internal static readonly Vector[] BearStations = [new(10, 8), new(4, 21)];
+    static readonly Geometry Tu95Spinners = Fly.Both(string.Join(" ", BearEngines.Select(e => FormattableString.Invariant(
+        $"M{e.Prop + 1.4},{e.Y - 1.3} C{e.Tip - 1.2},{e.Y - 1.1} {e.Tip},{e.Y - 0.3} {e.Tip},{e.Y} C{e.Tip},{e.Y + 0.3} {e.Tip - 1.2},{e.Y + 1.1} {e.Prop + 1.4},{e.Y + 1.3} Z"))));
 
     public static void Tu95(DrawingContext dc, Point at, double heading, double u, double altitude, double t)
     {
-        Fly.ShadowOf(dc, at, heading, u, altitude, Tu95Wing, Tu95Tail, Tu95Body);
+        Fly.ShadowOf(dc, at, heading, u, altitude, Tu95Wing, Tu95Tail, Tu95Body, Tu95Inner, Tu95Outer, Tu95Gear);
         dc.PushTransform(Fly.Frame(at, heading, u));
         dc.DrawGeometry(BearShade, BearEdge, Tu95Wing);
+        foreach (double s in new[] { -1.0, 1.0 })
+        {
+            dc.DrawLine(Seam, new Point(9.6, 6 * s), new Point(-12.8, 50 * s));     // Klappen und Querruder
+            dc.DrawLine(Seam, new Point(-4.6, 32 * s), new Point(-2.2, 32 * s));
+            Art.Star(dc, new Point(-8.5, 44 * s), 2.2, 0);
+        }
+        dc.DrawGeometry(BearLight, BearEdge, Tu95Gear);
         dc.DrawGeometry(BearShade, BearEdge, Tu95Tail);
         dc.DrawGeometry(BearLight, BearEdge, Tu95Body);
         dc.DrawGeometry(BearShade, BearEdge, Tu95Fin);
-        dc.DrawLine(Probe, new Point(50, 0), new Point(56, 0));                // Betankungssonde
-        dc.DrawEllipse(Glass, BearEdge, new Point(41, 0), 3.6, 2.4);
+        dc.DrawGeometry(Glass, BearEdge, Tu95Glass);
+        dc.DrawLine(Probe, new Point(47.6, 0), new Point(54.2, 0));            // Betankungssonde
+        dc.DrawLine(Guns, new Point(-52.6, -0.45), new Point(-55, -0.45));     // Heckstand GSh-23
+        dc.DrawLine(Guns, new Point(-52.6, 0.45), new Point(-55, 0.45));
+        dc.DrawGeometry(BearLight, BearEdge, Tu95Inner);
+        dc.DrawGeometry(BearLight, BearEdge, Tu95Outer);
         foreach (double s in new[] { -1.0, 1.0 })
-        {
-            dc.DrawLine(Seam, new Point(-17, 9 * s), new Point(-30.5, 51 * s));   // Klappen/Querruder
-            foreach (double y in BearEngines)
+            foreach (var (y, prop, tip) in BearEngines)
             {
-                double x = LeadingEdge(y);
-                dc.DrawRoundedRectangle(BearLight, BearEdge, new Rect(x - 16, y * s - 2.4, 27, 4.8), 2.2, 2.2);   // Triebwerksgondel
-                double prop = x + 11.6;
-                // Draufsicht: die Propellerscheibe steht quer zur Flugrichtung, die Blätter erscheinen als Striche, deren Länge mit dem Drehwinkel schwankt
-                dc.DrawRectangle(PropDisc, null, new Rect(prop - 0.8, y * s - 6.6, 3.4, 13.2));
+                // Draufsicht: die Propellerscheiben stehen quer zur Flugrichtung, die Blätter erscheinen als Striche, deren Länge mit dem Drehwinkel schwankt
+                dc.DrawRectangle(PropDisc, null, new Rect(prop - 0.8, y * s - 6.2, 3.4, 12.4));
                 Propeller(dc, prop, y * s, t * 24 + y, 1);
-                Propeller(dc, prop + 1.8, y * s, -t * 24 + y * 0.5, -1);
-                dc.DrawEllipse(Spinner, BearEdge, new Point(prop + 3.2, y * s), 1.8, 1.3);
+                Propeller(dc, prop + 1.6, y * s, -t * 24 + y * 0.5, -1);
             }
-            Art.Star(dc, new Point(-14, 44 * s), 2.2, 0);
-        }
+        dc.DrawGeometry(Spinner, BearEdge, Tu95Spinners);
         Art.Star(dc, new Point(-46, 0), 1.0, 0);
         dc.Pop();
     }
@@ -283,7 +332,7 @@ static class Planes
         for (int b = 0; b < 4; b++)
         {
             double a = angle + b * Math.PI / 2;
-            double len = 6.6 * Math.Sin(a);
+            double len = 6.2 * Math.Sin(a);
             double lean = 0.5 * Math.Cos(a) * dir;
             dc.DrawLine(BladePen, new Point(x, y), new Point(x + lean, y + len));
         }
@@ -400,17 +449,13 @@ static class Planes
     /// <summary>Rauchspur der Vikhr, bleibt nach dem Einschlag kurz stehen.</summary>
     public static void VikhrTrail(DrawingContext dc, Point from, Point at, double u, double opacity)
     {
-        dc.PushOpacity(Math.Clamp(opacity, 0, 1));
-        dc.DrawLine(Scaled(VikhrSmoke, u), from, at);
-        dc.Pop();
+        dc.DrawLine(Soft.FadePen(VikhrSmoke.Brush, VikhrSmoke.Thickness * Math.Max(0.6, u), Math.Clamp(opacity, 0, 1)), from, at);
     }
 
     /// <summary>Leitstrahl vom Visier zum Ziel (gedämpft, flackernd).</summary>
     public static void Laser(DrawingContext dc, Point from, Point to, double u, double opacity)
     {
-        dc.PushOpacity(Math.Clamp(opacity, 0, 1));
-        dc.DrawLine(Scaled(LaserBeam, u), from, to);
-        dc.Pop();
+        dc.DrawLine(Soft.FadePen(LaserBeam.Brush, LaserBeam.Thickness * Math.Max(0.6, u), Math.Clamp(opacity, 0, 1)), from, to);
     }
 
     static Pen Scaled(Pen p, double u) { var c = p.Clone(); c.Thickness = p.Thickness * Math.Max(0.6, u); c.Freeze(); return c; }
@@ -427,7 +472,8 @@ static class Planes
         dc.PushTransform(new TranslateTransform(at.X, at.Y));
         dc.PushTransform(new RotateTransform(turn * 180 / Math.PI));
         dc.PushTransform(new ScaleTransform(1, 1 - 0.8 * flat));
-        dc.PushOpacity(1 - 0.85 * flat);
+        bool fading = flat > 0.001;
+        if (fading) dc.PushOpacity(1 - 0.85 * flat);
         for (int i = 0; i < 8; i++)
         {
             double a0 = i * Math.Tau / 8, a1 = (i + 1) * Math.Tau / 8;
@@ -442,13 +488,15 @@ static class Planes
             dc.DrawGeometry(i % 2 == 0 ? CanopyA : CanopyB, CanopyEdge, g);
         }
         dc.DrawEllipse(CanopyVent, null, new Point(0, 0), r * 0.12, r * 0.12);
-        dc.Pop(); dc.Pop(); dc.Pop(); dc.Pop();
+        if (fading) dc.Pop();
+        dc.Pop(); dc.Pop(); dc.Pop();
     }
 
     /// <summary>Fallschirmjäger von oben, trägt das Symbol über dem Kopf weg.</summary>
     public static void Carrier(DrawingContext dc, Point at, double heading, double size, double step, double opacity)
     {
-        dc.PushOpacity(opacity);
+        bool fading = opacity < 0.999;
+        if (fading) dc.PushOpacity(opacity);
         dc.PushTransform(Fly.Frame(at, heading, size / 10));
         double swing = Math.Sin(step) * 1.2;
         dc.DrawEllipse(Trooper, null, new Point(-1 + swing, -1.8), 1.4, 0.9);      // Beine im Schritt
@@ -456,7 +504,8 @@ static class Planes
         dc.DrawEllipse(Trooper, CanopyEdge, new Point(0, 0), 2.2, 3.4);            // Schultern
         dc.DrawEllipse(Skin, null, new Point(0.4, 0), 1.3, 1.3);                   // Kopf
         dc.DrawRoundedRectangle(Box, BoxEdge, new Rect(1.2, -3.6, 7.2, 7.2), 1.6, 1.6);   // getragenes Symbol
-        dc.Pop(); dc.Pop();
+        dc.Pop();
+        if (fading) dc.Pop();
     }
 }
 
@@ -675,7 +724,7 @@ sealed class HelicopterRaid : IAttack
                 {
                     case Weapon.Gun:
                     {   // Feuerstoß: 6 Schuss, Treffer wandern von vorn auf das Symbol
-                        var muzzle = hover + Fly.Rot(new Vector(30, 8.8) * u, aim);
+                        var muzzle = hover + Fly.Rot(Planes.KaMuzzle * u, aim);
                         var back = d / d.Length;
                         double speed = h * 3.0;
                         for (int i = 0; i < 6; i++)
@@ -697,7 +746,7 @@ sealed class HelicopterRaid : IAttack
                         for (int i = 0; i < 2; i++)
                         {
                             double s = i == 0 ? 1 : -1;
-                            var launch = hover + Fly.Rot(new Vector(8, 12.8 * s) * u, aim);
+                            var launch = hover + Fly.Rot(new Vector(Planes.KaRockets.X, Planes.KaRockets.Y * s) * u, aim);
                             var to = target + side * (i == 0 ? 0.15 * iconSize : 0);
                             double fire = start + i * 0.12, impact = fire + 0.22 + (to - launch).Length / (h * 1.7);
                             rounds.Add(new Round(launch, to, fire, impact, weapon));
@@ -711,7 +760,7 @@ sealed class HelicopterRaid : IAttack
                     {   // Vikhr vom äußeren Starter, abwechselnd links und rechts; Leitstrahl bis zum Einschlag
                         double s = vikhr % 2 == 0 ? 1 : -1;
                         vikhr--;
-                        var launch = hover + Fly.Rot(new Vector(9, 20.2 * s) * u, aim);
+                        var launch = hover + Fly.Rot(new Vector(Planes.KaVikhr.X, Planes.KaVikhr.Y * s) * u, aim);
                         double impact = start + 0.35 + (target - launch).Length / (h * 1.6);
                         rounds.Add(new Round(launch, target, start, impact, weapon));
                         blasts.Add((target, impact)); sizes.Add(1.15);
@@ -799,7 +848,7 @@ sealed class HelicopterRaid : IAttack
                     if (fade > 0) Planes.VikhrTrail(dc, r.From, at, u, fade);
                     if (k < 1)
                     {
-                        Planes.Laser(dc, pos + Fly.Rot(new Vector(47, 0) * u, heading), r.To, u, 0.55 + 0.3 * Math.Sin(t * 41));
+                        Planes.Laser(dc, pos + Fly.Rot(Planes.KaSensor * u, heading), r.To, u, 0.55 + 0.3 * Math.Sin(t * 41));
                         Planes.Vikhr(dc, at, Math.Atan2(r.To.Y - r.From.Y, r.To.X - r.From.X), u);
                     }
                     break;
@@ -846,8 +895,9 @@ sealed class BearRaid : IAttack
         {
             double rt = enter + 0.9 + i * 0.32;
             var pos = PlaneAt(rt);
-            double side = i % 2 == 0 ? 1 : -1, station = (i / 2) % 2 == 0 ? 13 : 24;
-            var drop = pos + new Vector(-6 * u, side * station * u);
+            double side = i % 2 == 0 ? 1 : -1;
+            var station = Planes.BearStations[(i / 2) % 2];
+            var drop = pos + new Vector(station.X * u, side * station.Y * u);
             double ignite = rt + 0.5;
             double flight = 1.3 + (targets[i] - drop).Length / Math.Max(1, stage.Width * 0.5);
             missiles[i] = new Missile(drop, new Vector(speed, 0), targets[i], rt, ignite, ignite + flight, random.NextDouble());

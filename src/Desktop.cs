@@ -62,7 +62,7 @@ sealed class ShellDesktop : IIconSurface
             Check(((OleWindow)shellView).GetWindow(out var viewWindow));
             var list = FindWindowEx(viewWindow, IntPtr.Zero, "SysListView32", null);
             var corner = new NativePoint();
-            ClientToScreen(list == IntPtr.Zero ? viewWindow : list, ref corner);
+            using (Physical.Scope()) ClientToScreen(list == IntPtr.Zero ? viewWindow : list, ref corner);   // echte Pixel wie die Elementpositionen
             origin = new Point(corner.X, corner.Y);
             Check(view.GetSpacing(out var spacing));
             IconSize = spacing.X > 0 ? Math.Clamp(spacing.X * 0.58, 16, 160) : 48;
@@ -209,6 +209,8 @@ sealed class ShellDesktop : IIconSurface
         return ids.Count;
     }
 
+    /// <summary>Linke obere Ecke der Symbolfläche (aller Bildschirme) in Pixeln.</summary>
+    public Point Origin => origin;
     public Point CenterOf(int[] item) => ToScreen(new NativePoint { X = item[0], Y = item[1] });
     /// <summary>Symbolmitte (Bildschirmpixel) → Elementposition (Explorer).</summary>
     public int[] ItemOf(Point center) { var p = ToItem(center); return [p.X, p.Y]; }

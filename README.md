@@ -51,6 +51,15 @@ DeskKeeper sits quietly in the tray and remembers your icon layout **per display
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.2.2
+
+- **Mixed scaling fixed.** Started while the laptop screen (125 %) was the main display, DeskKeeper saw a 3440×1440 monitor as 4300×1800. Layouts landed under a wrong key, icons were squeezed, and older snapshots seemed to be gone. DeskKeeper now always works in real pixels, the way Explorer does. Arrangements that were stored with the wrong scaling are moved aside (`profile\quarantaene-dpi`), not deleted.
+- **Monitor off and on again:** if Windows shuffles the icons once more right after DeskKeeper has put them back, DeskKeeper puts them back again instead of saving the mess.
+- **Before a layout is overwritten** with many icons in new places, the old one is kept as an automatic snapshot.
+- **Snapshots of other display arrangements can be restored.** Icons go to the same display, or proportionally onto the main display if that one is not connected.
+- **Smoother scenes:** burning icons and sparks no longer use opacity layers. A frame of the Tu-22M3 carpet bombing renders in 17 ms instead of 149 ms (software reference).
+- **Tu-95MS and Ka-52 redrawn** from measured three-view drawings. The Tu-95MS has its wing further forward, the main-gear pods behind the trailing edge and a narrow tailplane. The Ka-52 has a narrow side-by-side cockpit, side engines with angled exhausts, stub wings with B-8 and Vikhr stations, and a tailplane with endplates.
+
 ## What's new in 1.2.1
 
 - **The Ka-52 attacks every icon on its own.** It turns to each icon and picks a weapon by distance: the 30 mm cannon (a tracer burst that walks onto the icon) for the nearest ones, a pair of S-8 rockets for the middle ones, a Vikhr guided missile for the farthest ones – it keeps the target in its sights until impact.

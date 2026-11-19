@@ -70,7 +70,7 @@ sealed class Stage : Window
     public static string ZOrderProbe(Rect area)
     {
         var stage = new Stage(area, null);
-        stage.Show();
+        using (Physical.Scope()) stage.Show();
         stage.SendToBottom();
         var frame = new System.Windows.Threading.DispatcherFrame();
         var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(900) };
@@ -193,11 +193,13 @@ static class Runner
                 }
             }
             var homes = final.ToDictionary(e => e.Key, e => desktop.CenterOf(e.Value), StringComparer.OrdinalIgnoreCase);
-            var screens = System.Windows.Forms.Screen.AllScreens.Select(s => new Rect(s.Bounds.X, s.Bounds.Y, s.Bounds.Width, s.Bounds.Height)).ToArray();
-            var primary = screens[Array.FindIndex(System.Windows.Forms.Screen.AllScreens, s => s.Primary)];
+            var displays = Physical.Displays();
+            var screens = displays.Select(s => s.Bounds).ToArray();
+            var main = displays.FirstOrDefault(s => s.Primary) ?? displays[0];
+            var primary = main.Bounds;
             var all = screens.Aggregate(Rect.Union);
-            // Дубина so groß wie der Saugroboter von Seitenleisten-Ausgabe: 76 DIP Fahrgestell-Maß × DPI-Faktor.
-            double robot = 64 * GetDpiForSystem() / 96.0;   // Fahrgestell so breit wie der Saugroboter (Ø 64 DIP)
+            // Дубина so groß wie der Saugroboter von Seitenleisten-Ausgabe (Ø 64 DIP) bei der Skalierung des Hauptbildschirms
+            double robot = 64 * main.Dpi / 96.0;
             var scene = new Scene(desktop.Icons, homes, desktop.IconSize, screens, primary, jericho, robot, nuclear, attack: attack);
             // Verbrannte Symbole liegen außerhalb aller Bildschirme (unter der Unterkante), bis Дубина sie holt.
             var stash = new Point(all.Left + desktop.IconSize * 2, all.Bottom + desktop.IconSize * 30);
@@ -223,7 +225,7 @@ static class Runner
             stage = new Stage(all, scene);
             stage.Escape += () => aborted = true;
             stage.StayAtBottom = !toggled;
-            stage.Show();
+            using (Physical.Scope()) stage.Show();   // Fenster in echten Pixeln, auch wenn der Gastgeber mit System-DPI läuft
             stage.SendToBottom();
             Fault.Note($"Szene läuft: {scene.Duration:0.0} s, Fläche {all}, {desktop.Icons.Count} Symbole, Fenster sichtbar={stage.IsVisible}");
             await Task.Delay(60);
@@ -300,7 +302,6 @@ static class Runner
         note = Loc.T("r.notHidden");
         try { System.IO.Directory.CreateDirectory(Store.Folder); System.IO.File.AppendAllText(System.IO.Path.Combine(Store.Folder, "protokoll.txt"), DateTime.Now.ToString("s") + " " + text + Environment.NewLine); } catch { }
     }
-    [DllImport("user32.dll")] static extern uint GetDpiForSystem();
 
     /// <summary>Nach Absturz/Abmelden: unterbrochene Szene zurückstellen.</summary>
     public static string? RecoverPending()

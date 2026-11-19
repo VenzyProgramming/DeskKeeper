@@ -36,8 +36,8 @@ static class Store
     static string ProfileFile(string key) => Path.Combine(Folder, "profile", Hash(key) + ".json");
 
     /// <summary>Schlüssel der aktuellen Bildschirmanordnung: Lage, Größe, Skalierung, Hauptbildschirm (Reihenfolge egal).</summary>
-    internal static string ScreenKey() => Demo.On ? Demo.CurrentKey : string.Join(";", System.Windows.Forms.Screen.AllScreens
-        .Select(s => $"{s.Bounds.X},{s.Bounds.Y},{s.Bounds.Width},{s.Bounds.Height},{(s.Primary ? 1 : 0)},{Dpi(s)}").OrderBy(x => x, StringComparer.Ordinal));
+    internal static string ScreenKey() => Demo.On ? Demo.CurrentKey : string.Join(";", Physical.Displays()
+        .Select(s => $"{(int)s.Bounds.X},{(int)s.Bounds.Y},{(int)s.Bounds.Width},{(int)s.Bounds.Height},{(s.Primary ? 1 : 0)},{s.Dpi}").OrderBy(x => x, StringComparer.Ordinal));
     /// <summary>Schlüssel bis 2.6 (ohne Skalierung), damit vorhandene Profile weiter gelten.</summary>
     static string LegacyKey(string key) => string.Join(";", key.Split(';').Select(p => string.Join(",", p.Split(',').Take(5))));
 
@@ -50,18 +50,6 @@ static class Store
         return screens + " · " + string.Join(" · ", parts.Select(p => $"{p[2]}×{p[3]}" + (p.Length > 5 && p[5] != "96" ? $" ({int.Parse(p[5]) * 100 / 96} %)" : "")));
     }
 
-    static uint Dpi(System.Windows.Forms.Screen s)
-    {
-        try
-        {
-            var monitor = MonitorFromPoint(new NativePoint { X = s.Bounds.X + s.Bounds.Width / 2, Y = s.Bounds.Y + s.Bounds.Height / 2 }, 2);
-            return GetDpiForMonitor(monitor, 0, out uint x, out _) == 0 ? x : 96;
-        }
-        catch { return 96; }
-    }
-    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)] struct NativePoint { public int X, Y; }
-    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr MonitorFromPoint(NativePoint p, uint flags);
-    [System.Runtime.InteropServices.DllImport("shcore.dll")] static extern int GetDpiForMonitor(IntPtr monitor, int type, out uint x, out uint y);
 
     static string LastKeyFile => Path.Combine(Folder, "letzte-anordnung.txt");
     internal static string? LastKey
@@ -89,6 +77,57 @@ static class Store
         catch { }
         return list;
     }
+    /// <summary>
+    /// Anordnungen, die nur durch DPI-Virtualisierung entstanden sind: gleiche Bildschirme wie die jetzige, aber alle Maße mit dem
+    /// Verhältnis zweier Skalierungen gestreckt (4300×1800 bei 120 dpi statt 3440×1440 bei 96 dpi). Ihre Dateien (Stand, Plätze,
+    /// Geräte, Schnappschüsse) wandern nach profile\quarantaene-dpi – wiederherstellbar, nichts wird gelöscht.
+    /// </summary>
+    internal static int QuarantineTwins(string current)
+    {
+        int moved = 0;
+        try
+        {
+            string dir = Path.Combine(Folder, "profile"), index = Path.Combine(dir, "anordnungen.json");
+            if (!File.Exists(index)) return 0;
+            var keys = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(index)) ?? [];
+            var real = Parts(current);
+            foreach (var k in keys.Where(k => k != current && ScaledTwin(Parts(k), real)).ToList())
+            {
+                string bin = Path.Combine(dir, "quarantaene-dpi");
+                Directory.CreateDirectory(bin);
+                foreach (var f in Directory.EnumerateFiles(dir, Hash(k) + "*").ToList()) File.Move(f, Path.Combine(bin, Path.GetFileName(f)), overwrite: true);
+                File.AppendAllText(Path.Combine(bin, "liesmich.txt"), $"{DateTime.Now:s} {Hash(k)} = {k} (echt: {current})" + Environment.NewLine);
+                keys.Remove(k); moved++;
+            }
+            if (moved > 0) File.WriteAllText(index, JsonSerializer.Serialize(keys));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { Fault.Report(e); }
+        return moved;
+    }
+
+    static List<(int W, int H, bool Primary, int Dpi, int X)> Parts(string key) => key.Split(';', StringSplitOptions.RemoveEmptyEntries)
+        .Select(p => p.Split(',')).Where(p => p.Length >= 6 && p.Take(4).All(v => int.TryParse(v, out _)) && int.TryParse(p[5], out _))
+        .Select(p => (int.Parse(p[2]), int.Parse(p[3]), p[4] == "1", int.Parse(p[5]), int.Parse(p[0])))
+        .OrderByDescending(p => p.Item3).ThenBy(p => p.Item5).ToList();
+
+    internal static bool ScaledTwinKey(string twin, string real) => ScaledTwin(Parts(twin), Parts(real));
+
+    /// <summary>Alle Teile mit derselben (System-)Skalierung und je Bildschirm um dieses Verhältnis gestreckt – mindestens einer wirklich anders.</summary>
+    internal static bool ScaledTwin(List<(int W, int H, bool Primary, int Dpi, int X)> twin, List<(int W, int H, bool Primary, int Dpi, int X)> real)
+    {
+        if (twin.Count == 0 || twin.Count != real.Count || twin.Any(p => p.Dpi != twin[0].Dpi)) return false;
+        bool scaled = false;
+        for (int i = 0; i < twin.Count; i++)
+        {
+            var (a, b) = (twin[i], real[i]);
+            if (a.Primary != b.Primary || b.Dpi <= 0) return false;
+            double f = (double)a.Dpi / b.Dpi;
+            if (Math.Abs(a.W - b.W * f) > 2 || Math.Abs(a.H - b.H * f) > 2) return false;
+            if (a.Dpi != b.Dpi) scaled = true;
+        }
+        return scaled;
+    }
+
     static void Remember(string key)
     {
         try

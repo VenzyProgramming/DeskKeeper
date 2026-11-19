@@ -39,6 +39,41 @@ static class Soft
         dc.DrawImage(image, new Rect(center.X - rx, center.Y - ry, rx * 2, ry * 2));
     }
 
+    const int Steps = 32;
+    static readonly Dictionary<(Brush, int, int), Brush> faded = new(ReferenceEqualityComparer2.Instance);
+    static readonly Dictionary<(Brush, int, int), Pen> fadedPens = new(ReferenceEqualityComparer2.Instance);
+
+    /// <summary>Einfarbiger Pinsel mit eingebackener Deckkraft (32 Stufen) statt PushOpacity: jede Deckkraftgruppe legt in WPF
+    /// eine eigene Zwischenfläche an. Mit 32 brennenden Symbolen kostete das 60 % der Bildzeit (19.11.2026: „ein bisschen laggy“).</summary>
+    public static Brush Fade(Brush solid, double opacity)
+    {
+        int level = Math.Clamp((int)Math.Round(opacity * Steps), 0, Steps);
+        if (level == Steps) return solid;
+        var key = (solid, level, -1);
+        if (!faded.TryGetValue(key, out var brush))
+        {
+            var c = solid is SolidColorBrush s ? s.Color : Colors.Gray;
+            var b = new SolidColorBrush(Color.FromArgb((byte)Math.Round(c.A * level / (double)Steps), c.R, c.G, c.B));
+            b.Freeze();
+            faded[key] = brush = b;
+        }
+        return brush;
+    }
+
+    /// <summary>Stift mit runden Enden, Farbe mit eingebackener Deckkraft; Breite auf 0,05 px gerundet.</summary>
+    public static Pen FadePen(Brush solid, double width, double opacity)
+    {
+        int level = Math.Clamp((int)Math.Round(opacity * Steps), 0, Steps), w = Math.Max(1, (int)Math.Round(width * 20));
+        var key = (solid, level, w);
+        if (!fadedPens.TryGetValue(key, out var pen))
+        {
+            pen = new Pen(Fade(solid, level / (double)Steps), w / 20.0) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round, LineJoin = PenLineJoin.Round };
+            pen.Freeze();
+            fadedPens[key] = pen;
+        }
+        return pen;
+    }
+
     sealed class ReferenceEqualityComparer2 : IEqualityComparer<(Brush, int, int)>
     {
         public static readonly ReferenceEqualityComparer2 Instance = new();

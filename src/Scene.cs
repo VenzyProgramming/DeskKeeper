@@ -355,8 +355,7 @@ sealed class Scene
         double sparks = 1 - Smooth((age - 0.05) / 0.85);
         if (sparks > 0.01)
         {
-            var pen = new Pen(Flare, Math.Max(1, s * 0.028)) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
-            dc.PushOpacity(sparks);
+            var pen = Soft.FadePen(Flare, Math.Max(1, s * 0.028), sparks);
             int count = size >= 1 ? 18 : 9;
             for (int n = 0; n < count; n++)
             {
@@ -366,7 +365,6 @@ sealed class Scene
                 Point At(double q) => p + v * (1 - Math.Exp(-2.2 * q)) / 2.2 + new Vector(0, s * 2.6 * q * q);
                 dc.DrawLine(pen, At(Math.Max(0, age - 0.05)), At(age));
             }
-            dc.Pop();
         }
     }
 
@@ -403,30 +401,25 @@ sealed class Scene
             {
                 double k = 1 - 0.25 * Smooth((a - 0.15) / 0.35);
                 var box = new Rect(c.X - s * 0.42 * k, c.Y - s * 0.42 * k, s * 0.84 * k, s * 0.84 * k);
-                dc.PushOpacity(body);
-                dc.DrawRoundedRectangle(Char, new Pen(CharEdge, Math.Max(1, s * 0.03)), box, s * 0.12, s * 0.12);
-                var crack = new Pen(Ember, Math.Max(1, s * 0.03)) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
-                dc.PushOpacity(1 - Smooth((a - 0.1) / 0.3));
+                dc.DrawRoundedRectangle(Soft.Fade(Char, body), Soft.FadePen(CharEdge, Math.Max(1, s * 0.03), body), box, s * 0.12, s * 0.12);
+                var crack = Soft.FadePen(Ember, Math.Max(1, s * 0.03), body * (1 - Smooth((a - 0.1) / 0.3)));
                 dc.DrawLine(crack, c + new Vector(-0.3, -0.1 + seed * 0.2) * s * k, c + new Vector(0.05, 0.08) * s * k);
                 dc.DrawLine(crack, c + new Vector(0.05, 0.08) * s * k, c + new Vector(0.28, -0.22) * s * k);
                 dc.DrawLine(crack, c + new Vector(0.05, 0.08) * s * k, c + new Vector(-0.05, 0.32) * s * k);
-                dc.Pop();
-                dc.DrawRoundedRectangle(Char, null, new Rect(c.X - s * 0.55, c.Y + s * 0.5, s * 1.1, s * 0.28 * k), s * 0.06, s * 0.06);
-                dc.Pop();
+                dc.DrawRoundedRectangle(Soft.Fade(Char, body), null, new Rect(c.X - s * 0.55, c.Y + s * 0.5, s * 1.1, s * 0.28 * k), s * 0.06, s * 0.06);
             }
             double flakes = Smooth((a - 0.18) / 0.15) * (1 - Smooth((a - 0.45) / 0.35));
             if (flakes > 0.01)
             {
-                dc.PushOpacity(flakes);
+                Brush ember = Soft.Fade(Ember, flakes), grey = Soft.Fade(AshGrey, flakes);
                 for (int f = 0; f < 10; f++)
                 {
                     double fx = ((f * 37 + (int)(seed * 97)) % 100) / 100.0 - 0.5, fy = ((f * 53 + (int)(seed * 61)) % 100) / 100.0 - 0.5;
                     double q = Math.Max(0, a - 0.18);
                     var at = c + new Vector(fx * s * 0.8 + Math.Sin(q * 9 + f) * s * 0.06, fy * s * 0.7 + q * q * s * 2.4 + q * s * 0.3);
                     double size = s * (0.035 + 0.03 * (f % 3));
-                    dc.DrawRectangle(f % 4 == 0 ? Ember : AshGrey, null, new Rect(at.X - size / 2, at.Y - size / 2, size, size));
+                    dc.DrawRectangle(f % 4 == 0 ? ember : grey, null, new Rect(at.X - size / 2, at.Y - size / 2, size, size));
                 }
-                dc.Pop();
             }
         }
     }

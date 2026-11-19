@@ -169,11 +169,11 @@ static class Sorter
     /// <summary>Zielanordnung für die Symbole des Hauptbildschirms; Symbole anderer Bildschirme bleiben, wo sie sind.</summary>
     internal static (Dictionary<string, int[]> Layout, Dictionary<string, string> Kinds, int Moved) Prepare(ShellDesktop desktop)
     {
-        var screen = System.Windows.Forms.Screen.PrimaryScreen ?? System.Windows.Forms.Screen.AllScreens[0];
-        var work = new Rect(screen.WorkingArea.X, screen.WorkingArea.Y, screen.WorkingArea.Width, screen.WorkingArea.Height);
+        var screen = Physical.Primary();
+        var work = screen.Work;
         Rect? blocked = ReserveLeft > 0 && ReserveLeft < work.Width / 2
             ? new Rect(work.X, work.Y, ReserveLeft, ReserveHeight > 0 ? Math.Min(ReserveHeight, work.Height) : work.Height) : null;
-        var bounds = new Rect(screen.Bounds.X, screen.Bounds.Y, screen.Bounds.Width, screen.Bounds.Height);
+        var bounds = screen.Bounds;
         var mine = desktop.Icons.Where(i => bounds.Contains(i.Center)).ToList();
         var layout = desktop.Snapshot();
         var grid = Categories.Grid.From(work, (int)Math.Round(desktop.SpacingX), (int)Math.Round(desktop.SpacingY), mine.Select(i => layout[i.Id]), desktop.CenterOf);
