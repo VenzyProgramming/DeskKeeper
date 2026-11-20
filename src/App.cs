@@ -151,6 +151,27 @@ static class Program
             return result;
         }
         if (args.Length == 2 && args[0] == "--duell-film") return Promo.DuelFilm(args[1]);
+#if PUBLIC_EDITION
+        if (args.Length == 2 && args[0] == "--showcase")
+        {
+            // Werbevideo mit Mauszeiger durch die echte Oberfläche , nur Vorführdaten in einer Datenkopie neben der Ausgabe
+            if (!Demo.On) { Console.WriteLine("DESKKEEPER_DEMO=1 setzen"); return 2; }
+            string data = System.IO.Path.Combine(System.IO.Path.GetFullPath(args[1]), "_daten");
+            try { if (System.IO.Directory.Exists(data)) System.IO.Directory.Delete(data, true); } catch { }
+            System.IO.Directory.CreateDirectory(data);
+            Store.Folder = data;
+            Demo.Seed();
+            if (Store.LoadAuto(Store.ScreenKey()) is { } seed) Store.SaveSnapshot(Store.ScreenKey(), seed);
+            Store.SaveOptions(Store.LoadOptions() with { Theme = "dark", Language = "en" });
+            Look.Reset();
+            Loc.Use("en");
+            int result = 1;
+            app.Startup += (_, _) => { try { result = Promo.Showcase(args[1]); } catch (Exception e) { Console.WriteLine(e); } app.Shutdown(); };
+            app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            app.Run();
+            return result;
+        }
+#endif
         if (args.Length >= 2 && args[0] == "--promo")
         {
             // Werbevideo als Bildfolge (nur mit Vorführdaten)

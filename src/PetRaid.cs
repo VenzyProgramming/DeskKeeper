@@ -763,6 +763,9 @@ sealed class PetRaid : IAttack
             dc.DrawEllipse(ShadowBrush, null, new Point(p.X, p.Y + k), blen * 0.46 * k, 2.2 * k);
     }
 
+    /// <summary>Mitte des Tiers (für eine Kamera, die ihm folgt), null solange es nicht da ist.</summary>
+    public Point? AnimalAt(double time) => Current(time) is { } p ? new Point(p.X, p.Y - sheet.G * k * 0.45) : null;
+
     Pose? Current(double time)
     {
         if (PoseAt(time) is { } p) return p;

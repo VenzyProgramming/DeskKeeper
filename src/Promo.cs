@@ -15,7 +15,7 @@ namespace DeskKeeper;
 /// Oberfläche → alle Zerstörungsarten → alle Helfer → Ausblick, Rückmeldungen, Open Source → Abspann. 1920×1080, 30 Bilder/s, nur
 /// Vorführdaten. Schreibt timeline.json für die Tonspur (werkzeuge/promo_audio.py).
 /// </summary>
-static class Promo
+static partial class Promo
 {
     const int W = 1920, H = 1080, Fps = 30;
     static readonly Typeface Bold = new(new FontFamily("Segoe UI Variable Display, Segoe UI"), FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
@@ -286,13 +286,13 @@ static class Promo
     internal record Cue(double T, string Kind, double Pan, double Gain, double Length = 0);
     static double Pan(double x) => Math.Clamp(x / 1920 * 2 - 1, -1, 1);
 
-    internal static void WriteTimeline(string path, List<double> beats, double total, List<Cue> cues)
+    internal static void WriteTimeline(string path, List<double> beats, double total, List<Cue> cues, string extra = "")
     {
         var inv = CultureInfo.InvariantCulture;
         var sb = new System.Text.StringBuilder();
         sb.Append("{\"total\":").Append(total.ToString("0.###", inv)).Append(",\"beats\":[").Append(string.Join(",", beats.Select(b => b.ToString("0.###", inv)))).Append("],\"cues\":[");
         sb.Append(string.Join(",", cues.OrderBy(c => c.T).Select(c => $"{{\"t\":{c.T.ToString("0.###", inv)},\"kind\":\"{c.Kind}\",\"pan\":{c.Pan.ToString("0.##", inv)},\"gain\":{c.Gain.ToString("0.##", inv)},\"len\":{c.Length.ToString("0.###", inv)}}}")));
-        sb.Append("]}");
+        sb.Append(']').Append(extra).Append('}');
         File.WriteAllText(path, sb.ToString());
     }
 

@@ -219,6 +219,18 @@ SHORT["shuffle"] = (shuffle, 0.22)
 SHORT["cut"] = (cut, 0.16)
 
 
+def click():
+    """Mausklick: hartes Klacken mit kurzem Körper (Showcase-Video)."""
+    dur = 0.06
+    t = t_axis(dur)
+    return norm(band(noise(dur), 2000, 9000) * env(dur, 0.0003, 0.004) + 0.5 * np.sin(2 * np.pi * 1800 * t) * env(dur, 0.0003, 0.006))
+
+
+SHORT["click"] = (click, 0.16)
+SHORT["open"] = (lambda: whoosh(0.3, 900, 6000), 0.05)
+SHORT["minimize"] = (lambda: whoosh(0.32, 400, 3500), 0.07)
+
+
 def main(timeline, out):
     tl = json.load(open(timeline, encoding="utf-8"))
     total = tl["total"] + 1.0
@@ -270,8 +282,16 @@ def main(timeline, out):
             voice_l[i:i + len(x)] += x; voice_r[i:i + len(x)] += x
             m = len(x) + int(0.25 * SR)
             d = vduck[i:i + m]; d *= 0.45
-    pl, pr = pad(total)
-    L += pl * 0.08 * duck; R += pr * 0.08 * duck
+    if "bpm" in tl:
+        # Showcase: eigene Musik nach Takt und Teilen der Zeitleiste (promo_music.py), unter Einschlägen leicht abgesenkt
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import promo_music
+        ml, mr = promo_music.track(total, tl["bpm"], [(p["t"], p["part"]) for p in tl["parts"]])
+        level = float(os.environ.get("DESKKEEPER_MUSIC", "0.55"))
+        L += ml * level * duck; R += mr * level * duck
+    else:
+        pl, pr = pad(total)
+        L += pl * 0.08 * duck; R += pr * 0.08 * duck
     L *= vduck; R *= vduck
     peak0 = max(np.max(np.abs(L)), np.max(np.abs(R)), 1e-9)
     L = L / peak0 * 0.8 + voice_l * 0.75; R = R / peak0 * 0.8 + voice_r * 0.75

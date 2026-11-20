@@ -386,6 +386,17 @@ sealed class PublicWindow : Window, IDeskWindow
         if (!test) Next(); else while (queue.Count > 0) queue.Dequeue()();
     }
 
+    /// <summary>Werbevideo (--showcase): Teile der Oberfläche, die der Film anzeigt und umschaltet. Nur Darstellung: Seitenwechsel,
+    /// Auswahl von Szene und Helfer (gespeichert in der Datenkopie), Scrollen – nie Speichern, Start oder Werkzeuge auslösen.</summary>
+    internal sealed record ShowParts(Grid Root, Action<int> Go, IReadOnlyDictionary<string, ToggleButton> Scenes, IReadOnlyList<ToggleButton> HelperChips,
+        Button Start, Button Save, Border[] Nav, ScrollViewer ScenePage);
+
+    internal ShowParts ForShowcase()
+    {
+        Go(1); UpdateLayout(); LoadPictures(); Go(0); UpdateLayout();
+        return new ShowParts(root, Go, weaponTiles, helperButtons, start, save, navItems, (ScrollViewer)pages[1]);
+    }
+
     public void UiTest(string png)
     {
         string Name(string suffix) => System.IO.Path.ChangeExtension(png, null) + suffix + ".png";

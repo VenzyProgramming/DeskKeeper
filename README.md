@@ -61,6 +61,7 @@ And since it is open source, you can fix it yourself, mod it, or add your own sc
 
 - The Bengal cat and the German Shepherd now walk in from the side of the screen instead of popping up on it, and every animal leaves the same way.
 - The German Shepherd handles scattered desktops: it herds and buries each group of icons on its own (corners, edges, middle) until nothing is left, and no icon slides off the screen while it herds.
+- **New promo video.** A cursor clicks through the real app in real time: pick a scene, hit Start, the window minimizes and the scene plays on the desktop, from cruise missiles to the pets, then the helpers bring everything back. Original synthesized music at 120 BPM, every cut on the beat. `DeskKeeper.exe --showcase <folder>` renders it (demo mode, public edition), `src/tools/promo_audio.py` and `src/tools/promo_music.py` make the soundtrack.
 
 ## What's new in 1.7.0
 
