@@ -45,15 +45,15 @@ sealed class Stage : Window
             handle = new WindowInteropHelper(this).Handle;
             // Durchklickbar und nie aktiv: WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE.
             SetWindowLong(handle, -20, GetWindowLong(handle, -20) | 0x20 | 0x80 | 0x08000000);
-            SetWindowPos(handle, StayAtBottom ? new IntPtr(1) : IntPtr.Zero, (int)bounds.X, (int)bounds.Y, (int)bounds.Width, (int)bounds.Height, 0x0010);   // HWND_BOTTOM
+            SetWindowPos(handle, StayAtBottom ? AboveDesktop(handle) : IntPtr.Zero, (int)bounds.X, (int)bounds.Y, (int)bounds.Width, (int)bounds.Height, 0x0010);   // direkt über dem Desktop
             RegisterHotKey(handle, 1, 0x4000, 0x1B);   // Esc, MOD_NOREPEAT
             HwndSource.FromHwnd(handle).AddHook((IntPtr w, int msg, IntPtr wp, IntPtr lp, ref bool handled) =>
             {
                 if (msg == 0x0312 && wp.ToInt32() == 1) { handled = true; Escape?.Invoke(); }
-                if (msg == 0x0046 && lp != IntPtr.Zero && StayAtBottom)   // WM_WINDOWPOSCHANGING: immer ganz unten bleiben
+                if (msg == 0x0046 && lp != IntPtr.Zero && StayAtBottom)   // WM_WINDOWPOSCHANGING: immer direkt über dem Desktop bleiben
                 {
                     var pos = Marshal.PtrToStructure<WindowPos>(lp);
-                    pos.InsertAfter = new IntPtr(1);
+                    pos.InsertAfter = AboveDesktop(handle);
                     pos.Flags &= ~0x0004u;   // SWP_NOZORDER entfernen
                     Marshal.StructureToPtr(pos, lp, false);
                 }
@@ -109,7 +109,27 @@ sealed class Stage : Window
     [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc proc, IntPtr l);
     [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, System.Text.StringBuilder s, int n);
-    public void SendToBottom() { if (handle != IntPtr.Zero) SetWindowPos(handle, StayAtBottom ? new IntPtr(1) : IntPtr.Zero, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010); }   // HWND_BOTTOM bzw. HWND_TOP, ohne Aktivieren
+    public void SendToBottom() { if (handle != IntPtr.Zero) SetWindowPos(handle, StayAtBottom ? AboveDesktop(handle) : IntPtr.Zero, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010); }   // direkt über dem Desktop bzw. HWND_TOP, ohne Aktivieren
+
+    /// <summary>Einfügestelle direkt über der obersten Desktop-Ebene (Progman/WorkerW): das Fenster davor. Vorher HWND_BOTTOM – ist der
+    /// Desktop aktiv (Klick auf den Desktop, „Alle minimieren“), hebt Windows ihn an und die Bühne lag darunter: alle Flugzeuge und Helfer
+    /// unsichtbar . Ohne Desktop-Fenster: HWND_BOTTOM wie bisher.</summary>
+    static IntPtr AboveDesktop(IntPtr self)
+    {
+        IntPtr desk = IntPtr.Zero;
+        for (var h = GetTopWindow(IntPtr.Zero); h != IntPtr.Zero; h = GetWindow(h, 2))   // GW_HWNDNEXT: von oben nach unten
+        {
+            if (h == self || !IsWindowVisible(h)) continue;
+            var cls = new System.Text.StringBuilder(64); GetClassName(h, cls, 64);
+            if (cls.ToString() is "Progman" or "WorkerW") { desk = h; break; }
+        }
+        if (desk == IntPtr.Zero) return new IntPtr(1);
+        var above = GetWindow(desk, 3);   // GW_HWNDPREV
+        while (above == self) above = GetWindow(above, 3);
+        return above == IntPtr.Zero ? IntPtr.Zero : above;   // nichts darüber: ganz oben
+    }
+    [DllImport("user32.dll")] static extern IntPtr GetTopWindow(IntPtr parent);
+    [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr h, uint command);
 
     [StructLayout(LayoutKind.Sequential)]
     struct WindowPos { public IntPtr Hwnd, InsertAfter; public int X, Y, Cx, Cy; public uint Flags; }
@@ -216,13 +236,12 @@ static class Runner
             // Raster während der Szene aus: mit Raster nimmt Explorer die Warteposition außerhalb nicht an und reiht „versteckte“
             // Symbole sichtbar in freie Zellen ein . Am Ende rastet RestoreSnapshot alles in Explorers Raster ein.
             const bool gridLocked = false;
-            if (gridLocked)
-            {
+            {   // getragene Symbole zeichnet die Bühne über Palette, Ladefläche und Rumpf (20.11.2026: vorher verdeckt, „unsichtbar“)
                 int px = (int)Math.Round(desktop.IconSize);
                 foreach (var icon in desktop.Icons) ShellIcons.Get(icon.Id, px);   // vorab laden, nicht erst im Bildtakt
                 scene.IconImage = id => ShellIcons.Get(id, px);
             }
-            else desktop.FreeMovement();
+            desktop.FreeMovement();   // Raster ist während der Szene immer aus (gridLocked = false)
             stage = new Stage(all, scene);
             stage.Escape += () => aborted = true;
             stage.StayAtBottom = !toggled;
