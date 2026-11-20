@@ -882,7 +882,11 @@ sealed class RowRaid : IAttack
             }
         }
         if (!carpet) for (int k = 0; k < 2; k++) climbFrom[k] = lastRelease[k] + 0.25;   // Su-34 zieht nach dem letzten Abwurf hoch
-        else for (int k = 0; k < 2; k++) sweepFrom[k] = lastRelease[k] + 0.3;            // Tu-22M3 schwenkt die Flügel zurück
+        else for (int k = 0; k < 2; k++)
+            {   // Tu-22M3 : spätestens zur Bildschirmmitte Flügel zurück und sofort beschleunigen – beide Maschinen
+                double middle = enter + k * gap + (stage.Left + stage.Width * 0.5 - startX) / speed;
+                sweepFrom[k] = Math.Max(middle, lastRelease[k] + 0.2);
+            }
         Blasts = drops.Select(d => (d.To, d.Impact)).Concat(rockets.Select(r => (r.Target, r.Impact))).ToList();
         LastImpact = Blasts.Count > 0 ? Blasts.Max(b => b.T) : enter + 2;
         End = Math.Max(LastImpact, enter + gap + (stage.Right + span * 1.5 - startX) / speed);
@@ -892,7 +896,7 @@ sealed class RowRaid : IAttack
     {
         double x = startX + speed * (t - enter - k * gap);
         // Tu-22M3: nach dem Zurückschwenken Nachbrenner und Beschleunigung auf gut das Dreifache 
-        double a = t - sweepFrom[k] - 0.6;
+        double a = t - sweepFrom[k] - 0.15;   // gleich nach dem Anlegen der Flügel
         if (a > 0) x += speed * (a * a * 1.7 / (1 + a * 0.3));   // 20.11.2026: sehr schnell weg wie die Tu-160M (gut das Sechsfache)
         double y = rows[k] + Math.Sin(x / stage.Width * 3 + k * 1.7) * stage.Height * 0.012;
         double c = t - climbFrom[k];
@@ -963,7 +967,7 @@ sealed class RowRaid : IAttack
             if (t < enter + k * gap) continue;
             var p = PlaneAt(k, t);
             if (p.X > stage.Right + span * 1.5 || p.Y < stage.Top - span * 2) continue;
-            if (kind == Kind.Carpet) Planes.Tu22(dc, p, HeadingAt(k, t), u, 1, 30 + 35 * Fly.Smooth((t - sweepFrom[k]) / 1.6), Fly.Smooth((t - sweepFrom[k] - 0.7) / 0.5), t);
+            if (kind == Kind.Carpet) Planes.Tu22(dc, p, HeadingAt(k, t), u, 1, 30 + 35 * Fly.Smooth((t - sweepFrom[k]) / 1.6), Fly.Smooth((t - sweepFrom[k] - 0.05) / 0.35), t);
             else Planes.Su34(dc, p, HeadingAt(k, t), u, 0.45, t);
         }
     }
@@ -1657,8 +1661,34 @@ sealed class GunshipRaid : IAttack
         path.Add(Hermite(t, t + outHop, pos, dir * outLength, exit, new Vector(-1, -0.3) * outLength));
         End = t + outHop;
         Blasts = blasts; BlastSizes = sizes;
-        LastImpact = blasts.Count > 0 ? blasts.Max(b => b.Item2) : 2;
         track = new FlightTrack(Planned, 0.3, End, 75, 45, 0.45);   // 20.11.2026: kein abrupter Richtungswechsel mehr
+        // Alle Geschütze sitzen links (20.11.2026: „стреляет налево, через корпус … невозможно“): ein Schuss fällt erst, wenn das Ziel
+        // links querab liegt (±55°); sonst wartet er, bis die Linkskurve das Ziel wieder auf die Geschützseite bringt.
+        var visible = screens is { Count: > 0 } ? screens : [stage];
+        bool Ready(double q, Point to) => OnGunSide(q, to) && visible.Any(r => r.Contains(At(q)));
+        for (int i = 0; i < Shots.Count; i++)
+        {
+            var s = Shots[i];
+            if (Ready(s.Fire, s.To)) continue;
+            double shift = -1;
+            for (double q = 0.05; s.Fire + q < End - 0.5; q += 0.05) if (Ready(s.Fire + q, s.To)) { shift = q; break; }
+            if (shift < 0) { if (!s.Kill) { Shots.RemoveAt(i--); } continue; }
+            Shots[i] = s with { Fire = s.Fire + shift, Impact = s.Impact + shift };
+            if (s.Kill)
+            {
+                int b = blasts.FindIndex(x => x.Item1 == s.To && Math.Abs(x.Item2 - s.Impact) < 1e-6);
+                if (b >= 0) blasts[b] = (s.To, s.Impact + shift);
+            }
+        }
+        LastImpact = blasts.Count > 0 ? blasts.Max(b => b.Item2) : 2;
+    }
+
+    /// <summary>Liegt das Ziel links querab (Geschützseite), höchstens 55° vor oder hinter der Querachse?</summary>
+    internal bool OnGunSide(double t, Point target)
+    {
+        var d = target - At(t);
+        double rel = Math.IEEERemainder(Math.Atan2(d.Y, d.X) - (HeadingAt(t) - Math.PI / 2), 2 * Math.PI);
+        return Math.Abs(rel) <= 55 * Math.PI / 180;
     }
 
     FlightTrack? track;

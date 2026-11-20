@@ -229,6 +229,7 @@ static class Check
                     var kills = gunship.Shots.Where(s => s.Kill).ToList();
                     var off = kills.Where(s => !screens.Any(r => r.Contains(gunship.PlaneAt(s.Fire)))).Select(s => $"{s.Fire:0.0}s@{gunship.PlaneAt(s.Fire).X:0},{gunship.PlaneAt(s.Fire).Y:0}").ToList();
                     if (off.Count > 0) Console.WriteLine("ac130 ausserhalb: " + string.Join(" ", off));
+                    Pass("ac130-schiesst-nur-nach-links", gunship.Shots.All(s => gunship.OnGunSide(s.Fire, s.To)));   // Geschütze nur links 
                     Pass("ac130-kreist-auf-dem-bildschirm", kills.All(s => screens.Any(r => r.Contains(gunship.PlaneAt(s.Fire)))));
                     Pass("ac130-gruppe-haelt-erst-durch", kills.Count > 0 && gunship.Shots.Any(s => !s.Kill && s.Fire < kills.Min(k => k.Fire)));
                     results["ac130-kreise"] = gunship.Orbits;
