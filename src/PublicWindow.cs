@@ -31,7 +31,7 @@ sealed class PublicWindow : Window, IDeskWindow
     readonly Popup legendPopup = new();
     readonly Button save, restore, start;
     ToggleButton pickJericho = null!, pickNuke = null!, pickTu = null!;
-    static readonly string[] Weapons = ["jericho", "nuke", Attacks.Tu160, Attacks.Tu22, Attacks.Su34, Attacks.Ka52, Attacks.Tu95, Attacks.Il76, Attacks.Ac130, Attacks.Shahed, Attacks.A10, Attacks.Su25, Attacks.F35, Attacks.Su57, Attacks.Duel, Attacks.B2, Attacks.Vacuum, Attacks.Gravity];
+    static readonly string[] Weapons = ["jericho", "nuke", Attacks.Tu160, Attacks.Tu22, Attacks.Su34, Attacks.Ka52, Attacks.Tu95, Attacks.Il76, Attacks.Ac130, Attacks.Shahed, Attacks.A10, Attacks.Su25, Attacks.F35, Attacks.Su57, Attacks.Duel, Attacks.B2, Attacks.MiG31, Attacks.Hunter, Attacks.Su35, Attacks.MQ9, Attacks.SR71, Attacks.Vacuum, Attacks.Gravity];
     readonly Dictionary<string, ToggleButton> weaponTiles = [];
     string Weapon() => weaponTiles.FirstOrDefault(w => w.Value.IsChecked == true).Key ?? "jericho";
     readonly List<ToggleButton> skinButtons = [];
@@ -112,7 +112,7 @@ sealed class PublicWindow : Window, IDeskWindow
         content.Children.Add(header);
 
         pages[0] = ScreensPage();
-        pages[1] = ScenePage();
+        pages[1] = Scroll(ScenePage());   // 20.11.2026: alle Szenen erreichbar
         pages[2] = Scroll(ToolsPage());
         pages[3] = Scroll(SettingsPage());
         foreach (var p in pages) { Grid.SetRow(p, 1); content.Children.Add(p); }

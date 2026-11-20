@@ -311,15 +311,15 @@ sealed class ShahedRaid : IAttack
 /// </summary>
 sealed class StrafeRaid : IAttack
 {
-    public enum Kind { A10, Su25 }
-    public enum Weapon { Gun, Rocket, Missile }
+    public enum Kind { A10, Su25, Su35 }
+    public enum Weapon { Gun, Rocket, Missile, Bomb }
     internal record Shot(Weapon Weapon, double Fire, double Impact, Point To, bool Kill);
     record Segment(double From, double To, Func<double, Point> At, double Altitude0, double Altitude1);
     readonly Kind kind;
     readonly List<Segment> path = [];
     internal readonly List<Shot> Shots = [];
     readonly List<(double T, Vector Side)> flares = [];
-    readonly double span, u;
+    readonly double span, u, perMeter;
     internal int Passes { get; }
     public IReadOnlyList<(Point P, double T)> Blasts { get; }
     public IReadOnlyList<double>? BlastSizes { get; }
@@ -331,13 +331,21 @@ sealed class StrafeRaid : IAttack
     public StrafeRaid(Kind kind, Rect stage, IReadOnlyList<Point> targets, double iconSize)
     {
         this.kind = kind;
-        double meters = kind == Kind.A10 ? 17.53 : 14.36;
+        // Spannweite (m), Spannweite in Modelleinheiten, Tempo in Spannweiten je s (20.11.2026: Su-35, MQ-9 dazu; F-22, J-20 und Su-27 wieder entfernt)
+        var (meters, model, pace) = kind switch
+        {
+            Kind.A10 => (17.53, 107.8, 3.2), Kind.Su25 => (14.36, 93.4, 3.7), Kind.Su35 => (15.3, 69.9, 3.6), _ => (14.36, 93.4, 3.7),
+        };
         span = Scale.PerMeter(iconSize) * meters;   // Spannweite im gemeinsamen Maßstab
-        u = span / (kind == Kind.A10 ? 107.8 : 93.4);
+        perMeter = Scale.PerMeter(iconSize);
+        // Su-35S (20.11.2026: „маневры одни и те же“): Schubvektorsteuerung, engere Kurven, Angriff aus mittlerer Höhe
+        TurnRate = (kind == Kind.Su35 ? 112 : 85) * Math.PI / 180; RollRate = (kind == Kind.Su35 ? 110 : 90) * Math.PI / 180;
+        double runAlt = kind == Kind.Su35 ? 0.72 : 0.32;
+        u = span / model;
         Reach = iconSize * 0.5;
-        double speed = span * (kind == Kind.A10 ? 3.2 : 3.7);   // etwas gemächlicher: kleinerer Wendekreis 
+        double speed = span * pace;   // etwas gemächlicher: kleinerer Wendekreis 
         double lead = span * 1.15;   // Schrägentfernung beim Feuern: der Einschlag liegt so weit vor der Nase
-        var random = new Random(kind == Kind.A10 ? 10 : 25);
+        var random = new Random(10 + (int)kind * 15);
         // Gruppen: höchstens acht Anflüge
         double near = iconSize * 2.4; List<List<Point>> groups;
         while (true) { groups = Gather(targets, near); if (groups.Count <= 6 || near > iconSize * 20) break; near *= 1.3; }
@@ -372,15 +380,30 @@ sealed class StrafeRaid : IAttack
             var fireStart = c + axis * (s0 - lead - iconSize * 0.8);
             var runEnd = c + axis * (s1 - lead + span * 2.2);
             // Kurve zum Anflugbeginn
-            Approach(ref t, ref pos, ref dir, runStart, axis, speed, alt, 0.32);
+            Approach(ref t, ref pos, ref dir, runStart, axis, speed, alt, runAlt);
             // Anflug geradeaus
             double run = (runEnd - runStart).Length / speed;
             double t0 = t - Vector.Multiply(pos - runStart, axis) / speed; var start = runStart;   // die Simulation endet knapp hinter dem Startpunkt
-            path.Add(new Segment(t, t0 + run, q => start + axis * ((q - t0) * speed), 0.32, 0.32));
+            path.Add(new Segment(t, t0 + run, q => start + axis * ((q - t0) * speed), runAlt, runAlt));
             double TimeAt(Point onTrack) => t0 + Vector.Multiply(onTrack - start, axis) / speed;
             bool rockets = kind == Kind.Su25 && pass % 2 == 0 && members.Count >= 2;
             int k0 = 0;
-            if (kind == Kind.A10 && members.Count >= 3 && pass < 2)
+            if (kind == Kind.Su35)
+            {   // Х-29Т aus größerer Entfernung auf das erste Symbol, КАБ-500Кр aus dem Tunnel zwischen den Gondeln auf die übrigen; keine Kanone
+                var first = members[0];
+                double fire = TimeAt(c + axis * (s0 - lead * 3.4));
+                Shots.Add(new Shot(Weapon.Missile, fire, fire + 1.2, first, true));
+                blasts.Add((first, fire + 1.2)); sizes.Add(1.3);
+                for (int k = 1; k < members.Count; k++)
+                {
+                    var target = members[k];
+                    double drop = TimeAt(c + axis * (Vector.Multiply(target - c, axis) - lead * 1.9));
+                    Shots.Add(new Shot(Weapon.Bomb, drop, drop + 1.25, target, true));
+                    blasts.Add((target, drop + 1.25)); sizes.Add(1.15);
+                }
+                k0 = members.Count;
+            }
+            else if (kind == Kind.A10 && pass < 2 && members.Count >= 3)
             {   // AGM-65 auf das erste Symbol: früher abgefeuert, schlägt kurz vor dem Feuerstoß ein
                 var target = members[0];
                 double fire = TimeAt(c + axis * (s0 - lead * 2.6));
@@ -410,7 +433,7 @@ sealed class StrafeRaid : IAttack
                     blasts.Add((target, hit)); sizes.Add(kind == Kind.A10 ? 0.8 : 0.7);
                 }
             }
-            if (!rockets)
+            if (!rockets && k0 < members.Count)
             {   // Feuerstoß: Leuchtspur alle 0,05 s, der Einschlag wandert entlang der Symbole
                 var walk = new List<Point> { members[k0] - axis * iconSize * 0.9 };
                 walk.AddRange(members.Skip(k0)); walk.Add(members[^1] + axis * iconSize * 0.7);
@@ -426,14 +449,15 @@ sealed class StrafeRaid : IAttack
                 }
             }
             t = t0 + run;
-            pos = runEnd; dir = axis; alt = 0.32;
+            pos = runEnd; dir = axis; alt = runAlt;
             // Abfangen: drei Paar Täuschkörper
             for (int i = 0; i < 3; i++) flares.Add((t - 0.3 + i * 0.22, new Vector(-axis.Y, axis.X)));
             // Steigen auf Kurvenhöhe
             var climbEnd = pos + axis * span * 2.4;
             var p0 = pos; double tc = t;
-            path.Add(new Segment(tc, tc + span * 2.4 / speed, q => p0 + axis * ((q - tc) * speed), 0.32, 0.85));
-            t += span * 2.4 / speed; pos = climbEnd; alt = 0.85;
+            double climbAlt = kind == Kind.Su35 ? 1.0 : 0.85;
+            path.Add(new Segment(tc, tc + span * 2.4 / speed, q => p0 + axis * ((q - tc) * speed), runAlt, climbAlt));
+            t += span * 2.4 / speed; pos = climbEnd; alt = climbAlt;
             pass++;
         }
         Passes = pass;
@@ -444,13 +468,14 @@ sealed class StrafeRaid : IAttack
         End = t;
         Blasts = blasts; BlastSizes = sizes;
         LastImpact = blasts.Count > 0 ? blasts.Max(b => b.Item2) : 2;
-        track = new FlightTrack(q => Planned(q).P, 0.3, End, 85, 90, 0.5);   // Querlage weich einnehmen statt sprunghafter Drehrate
+        track = kind == Kind.Su35 ? new FlightTrack(q => Planned(q).P, 0.3, End, 115, 112, 0.45) : new FlightTrack(q => Planned(q).P, 0.3, End, 85, 90, 0.5);   // Querlage weich einnehmen statt sprunghafter Drehrate
     }
 
     // ------------------------------------------------------------ Flugbahn (20.11.2026: „die A-10C … abrupt“)
     // Anflüge als Dubins-Bahn (Kurve, Gerade, Kurve) mit festem Wendekreis bei fester Geschwindigkeit, am Ende genau auf der Angriffsspur;
     // danach glättet ein simulierter Pilot die Übergänge (Drehrate und Rollbeschleunigung begrenzt). Abflug als einfache Verfolgung.
-    const double TurnRate = 85 * Math.PI / 180, RollRate = 90 * Math.PI / 180, Dt = 1 / 120.0;
+    readonly double TurnRate = 85 * Math.PI / 180, RollRate = 90 * Math.PI / 180;
+    const double Dt = 1 / 120.0;
     double rate;
 
     void Steer(ref double t, ref Point pos, ref Vector dir, double speed, double alt0, double alt1, Func<Point, Vector, (Point Aim, bool Done)> steer, Func<Point, Point>? land = null, bool dry = false)
@@ -625,8 +650,12 @@ sealed class StrafeRaid : IAttack
         var at = State(t).P; double h = HeadingAt(t);
         Vector offset = w switch
         {
-            Weapon.Gun => kind == Kind.A10 ? new Vector(51, -0.6) : new Vector(36, -3.2),
-            Weapon.Missile => new Vector(12, -35),
+            Weapon.Gun => kind == Kind.A10 ? new Vector(51, -0.6) : kind == Kind.Su35 ? new Vector(20, -9) : new Vector(36, -3.2),
+            Weapon.Missile => kind switch
+            {
+                Kind.A10 => new Vector(12, -35), Kind.Su35 => new Vector(-6, (index % 2 == 0 ? -16 : 16)), _ => new Vector(-4, (index % 2 == 0 ? -4 : 4)),
+            },
+            Weapon.Bomb => new Vector(-8, index % 2 == 0 ? -1.5 : 1.5),
             _ => new Vector(10, (index % 2 == 0 ? 19 : 24.5) * (index % 4 < 2 ? -1 : 1)),
         };
         return at + Fly.Rot(offset * u, h);
@@ -659,7 +688,15 @@ sealed class StrafeRaid : IAttack
                 case Weapon.Missile:
                     var d = s.To - from;
                     Planes.Rocket(dc, from, head, u * 1.2, t);
-                    Planes.Maverick(dc, head, Math.Atan2(d.Y, d.X), u);
+                    if (kind == Kind.Su35) Planes.Kh29(dc, head, Math.Atan2(d.Y, d.X), perMeter * 3.9 / 100 * 1.9);
+                    else Planes.Maverick(dc, head, Math.Atan2(d.Y, d.X), u);
+                    break;
+                case Weapon.Bomb:
+                    {   // КАБ-500Кр gleitet schräg nach unten, wird kleiner
+                        var db = s.To - from;
+                        var glide = from + db * (k * k * 0.35 + k * 0.65);
+                        Planes.Kab500(dc, glide, Math.Atan2(db.Y, db.X), perMeter * 3.05 / 100 * (2.0 - 0.7 * k));
+                    }
                     break;
             }
         }
@@ -672,6 +709,7 @@ sealed class StrafeRaid : IAttack
                 int fired = Shots.Count(s => s.Weapon == Weapon.Missile && s.Fire <= t);
                 Planes.A10(dc, p, heading, u, alt, t, 2 - fired);
             }
+            else if (kind == Kind.Su35) Planes.Su35(dc, p, heading, u, alt, t, alt > 0.8 ? 0.7 : 0.3);
             else
             {
                 int total = Math.Max(1, Shots.Count(s => s.Weapon == Weapon.Rocket));

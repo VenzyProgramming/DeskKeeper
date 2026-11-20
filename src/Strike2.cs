@@ -42,12 +42,7 @@ static partial class Planes
         }
         dc.DrawGeometry(LightningDark, null, LightningIntakes);
         dc.DrawGeometry(null, LightningSeam, LightningSeams);
-        if (bay > 0.01)
-            foreach (double s in new[] { -1.0, 1.0 })
-            {   // Klappen klappen nach außen auf, darunter der dunkle Schacht
-                dc.DrawRectangle(LightningDark, null, new Rect(-24, s > 0 ? 1.6 : -5.6, 18, 4));
-                dc.DrawRectangle(LightningShade, LightningEdge, new Rect(-24, s > 0 ? 5.6 : -5.6 - 3.4 * bay, 18, 3.4 * bay));
-            }
+        // Waffenschächte liegen an der Unterseite und öffnen nach unten: von oben nicht sichtbar (wie bei der Su-57, 20.11.2026)
         dc.DrawGeometry(LightningShade, LightningEdge, LightningFins);
         dc.DrawGeometry(LightningGold, LightningEdge, LightningCanopy);
         dc.DrawGeometry(null, LightningShine, LightningGlint);
@@ -92,12 +87,7 @@ static partial class Planes
         dc.DrawGeometry(FelonTop, FelonEdge, FelonBoom);
         dc.DrawGeometry(null, FelonSeam, FelonSeams);
         dc.DrawRectangle(null, FelonSeam, new Rect(-42.7, -1.1, 4.3, 2.2));   // Bremsschirmklappe
-        if (bay > 0.01)
-            foreach (double s in new[] { -1.0, 1.0 })
-            {   // zwei Schächte hintereinander zwischen den Gondeln
-                dc.DrawRectangle(FelonDark, null, new Rect(-30, s > 0 ? 0.6 : -3.6, 26, 3));
-                dc.DrawRectangle(FelonShade, FelonEdge, new Rect(-30, s > 0 ? 3.6 : -3.6 - 2.6 * bay, 26, 2.6 * bay));
-            }
+        // Waffenschächte liegen unten zwischen den Gondeln und öffnen nach unten: von oben nicht sichtbar (20.11.2026: „люки открываются сверху … неправильно“)
         dc.DrawGeometry(FelonShade, FelonEdge, FelonFins);
         dc.DrawGeometry(FelonDark, FelonEdge, FelonCanopy);
         dc.DrawGeometry(FelonGold, null, FelonGlass);
@@ -409,6 +399,7 @@ sealed class VacuumRaid : IAttack
     }
 
     /// <summary>Das Symbol gleitet in den letzten 0,35 s vor dem Einsaugen in den Roboter.</summary>
+    public bool DrawsMovedIcons => true;   // 20.11.2026: doppelte Symbole am Anfang
     public Point? Move(Point start, double t)
     {
         if (!sucked.TryGetValue(start, out var s) || t < s.T - 0.35) return null;
@@ -506,6 +497,7 @@ sealed class GravityRaid : IAttack
         End = LastImpact + 0.3;
     }
 
+    public bool DrawsMovedIcons => true;   // 20.11.2026: doppelte Symbole am Anfang
     public Point? Move(Point start, double t)
     {
         if (!fallers.TryGetValue(start, out var f) || t < 0.3) return null;

@@ -21,6 +21,10 @@ interface IAttack
     IReadOnlyList<double>? BlastSizes => null;
     /// <summary>Eigene Bewegung eines Symbols vor dem Verschwinden (Saugroboter, Schwerkraft); null: bleibt an seinem Platz.</summary>
     Point? Move(Point start, double t) => null;
+    /// <summary>true: während des Angriffs zeichnet die Bühne alle Symbole selbst (mit Beschriftung), die echten Symbole warten von
+    /// Anfang an außerhalb – Explorer kommt bei vielen Verschiebungen je Sekunde nicht nach (20.11.2026: SR-71 – Originale blieben
+    /// stehen; Schwerkraft – anfangs doppelte Symbole, Originale verschwanden verspätet).</summary>
+    bool DrawsMovedIcons => false;
     /// <summary>Flugbahnen aller Luftfahrzeuge (Lage über der Zeit, von, bis) für die Prüfung der Fluglage (Drehrate, Ruck).</summary>
     IEnumerable<(Func<double, Point> At, double From, double To)> Flights => [];
     void Draw(DrawingContext dc, double t);
@@ -98,8 +102,8 @@ sealed class FlightTrack
 static class Attacks
 {
     public const string Tu160 = "tu160", Tu22 = "tu22m3", Su34 = "su34", Ka52 = "ka52", Tu95 = "tu95", Il76 = "il76", Ac130 = "ac130", Shahed = "shahed", A10 = "a10", Su25 = "su25",
-        F35 = "f35", Su57 = "su57", B2 = "b2", Vacuum = "vacuum", Gravity = "gravity", Duel = "duel";
-    public static readonly string[] All = [Tu160, Tu22, Su34, Ka52, Tu95, Il76, Ac130, Shahed, A10, Su25, F35, Su57, Duel, B2, Vacuum, Gravity];
+        F35 = "f35", Su57 = "su57", B2 = "b2", Vacuum = "vacuum", Gravity = "gravity", Duel = "duel", MiG31 = "mig31", Hunter = "s70", Su35 = "su35", MQ9 = "mq9", SR71 = "sr71";
+    public static readonly string[] All = [Tu160, Tu22, Su34, Ka52, Tu95, Il76, Ac130, Shahed, A10, Su25, F35, Su57, Duel, B2, MiG31, Hunter, Su35, MQ9, SR71, Vacuum, Gravity];
 
     /// <param name="clusters">dichteste Gruppen zuerst (für Marschflugkörper)</param>
     /// <param name="icons">Symbolmitten auf dem Hauptbildschirm (für Treffer je Symbol)</param>
@@ -130,6 +134,11 @@ static class Attacks
             B2 => new SpiritRaid(area, all.Count > 0 ? all : each, iconSize),
             Vacuum => new VacuumRaid(stage, all.Count > 0 ? all : each, iconSize),
             Duel => new DuelRaid(area, all.Count > 0 ? all : each, iconSize),
+            MiG31 => new KinzhalRaid(area, all.Count > 0 ? all : each, iconSize, screens),
+            Hunter => new HunterRaid(area, all.Count > 0 ? all : each, iconSize),
+            Su35 => new StrafeRaid(StrafeRaid.Kind.Su35, area, all.Count > 0 ? all : each, iconSize),
+            MQ9 => new ReaperRaid(area, all.Count > 0 ? all : each, iconSize, screens),
+            SR71 => new SonicRaid(area, all.Count > 0 ? all : each, iconSize, screens),
             Gravity => new GravityRaid(area, all.Count > 0 ? all : each, iconSize, screens),
             _ => null,
         };

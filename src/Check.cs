@@ -199,7 +199,7 @@ static class Check
             }
 
             // Neue Luftangriffe : je Angriff alle Symbole weg vor DUM-E, am Ende alle zuhause, Dauer begrenzt, Standbilder
-            foreach (var (attack, frames) in new (string, double[])[] { (Attacks.Tu22, [1.6, 2.6, 4.2]), (Attacks.Su34, [1.0, 1.9, 2.9]), (Attacks.Ka52, [1.6, 3.8, 6.0]), (Attacks.Tu95, [2.2, 3.8, 5.4]), (Attacks.Il76, [2.6, 4.2, 6.8]), (Attacks.Ac130, [2.4, 4.6, 7.4]), (Attacks.Shahed, [3.0, 4.4, 6.5]), (Attacks.A10, [2.0, 3.4, 5.5]), (Attacks.Su25, [2.0, 3.4, 5.5]), (Attacks.F35, [1.4, 2.2, 3.2]), (Attacks.Duel, [2.0, 3.2, 4.6]), (Attacks.Su57, [1.4, 2.2, 3.2]), (Attacks.B2, [2.0, 3.6, 5.2]), (Attacks.Vacuum, [2.0, 5.0, 9.0]), (Attacks.Gravity, [1.6, 2.8, 3.3]) })
+            foreach (var (attack, frames) in new (string, double[])[] { (Attacks.Tu22, [1.6, 2.6, 4.2]), (Attacks.Su34, [1.0, 1.9, 2.9]), (Attacks.Ka52, [1.6, 3.8, 6.0]), (Attacks.Tu95, [2.2, 3.8, 5.4]), (Attacks.Il76, [2.6, 4.2, 6.8]), (Attacks.Ac130, [2.4, 4.6, 7.4]), (Attacks.Shahed, [3.0, 4.4, 6.5]), (Attacks.A10, [2.0, 3.4, 5.5]), (Attacks.Su25, [2.0, 3.4, 5.5]), (Attacks.F35, [1.4, 2.2, 3.2]), (Attacks.Duel, [2.0, 3.2, 4.6]), (Attacks.Su57, [1.4, 2.2, 3.2]), (Attacks.B2, [2.0, 3.6, 5.2]), (Attacks.MiG31, [1.6, 2.6, 3.4]), (Attacks.Hunter, [1.4, 2.2, 3.2]), (Attacks.Su35, [2.0, 3.4, 5.5]), (Attacks.MQ9, [2.0, 3.4, 5.5]), (Attacks.SR71, [1.0, 1.6, 2.2]), (Attacks.Vacuum, [2.0, 5.0, 9.0]), (Attacks.Gravity, [1.6, 2.8, 3.3]) })
             {
                 var sc = new Scene(icons, homes, iconSize, screens, primary, true, 64, attack: attack);
                 Pass(attack + "-einschlaege-vorhanden", sc.Raid.Count >= 1);
@@ -208,7 +208,7 @@ static class Check
                 if (attack != Attacks.Il76) Pass(attack + "-kein-einschlag-ins-leere", sc.Raid.All(b => icons.Any(i => (b.P - i.Center).Length <= iconSize * 1.2)));
                 Pass(attack + "-alle-symbole-weg-vor-dume", sc.IconCenters(sc.RobotStart - 0.05).Values.All(v => v is null));
                 Pass(attack + "-am-ende-alle-zuhause", sc.IconCenters(sc.Duration).All(e => e.Value is { } v && (v - homes[e.Key]).Length < 0.5));
-                double limit = attack == Attacks.Ka52 ? 110 : attack == Attacks.Ac130 ? 140 : attack is Attacks.A10 or Attacks.Su25 ? 145 : attack == Attacks.Vacuum ? 130 : attack == Attacks.Duel ? 125 : 100;   // Duell langsamer, ohne ruckartige Manöver, mit Abschuss am Ende    // AC-130: Show je Gruppe    // Ka-52 greift jedes Symbol einzeln an : dauert mit der Symbolzahl länger
+                double limit = attack == Attacks.Ka52 ? 110 : attack == Attacks.Ac130 ? 140 : attack is Attacks.A10 or Attacks.Su25 or Attacks.Su35 or Attacks.MQ9 ? 145 : attack == Attacks.Vacuum ? 130 : attack == Attacks.Duel ? 125 : 100;   // Duell langsamer, ohne ruckartige Manöver, mit Abschuss am Ende    // AC-130: Show je Gruppe    // Ka-52 greift jedes Symbol einzeln an : dauert mit der Symbolzahl länger
                 Pass($"{attack}-dauer-unter-{limit:0}-s", sc.Duration < limit);
                 results[attack + "-dauer-s"] = Math.Round(sc.Duration, 1);
                 var (mean, p95) = DrawCost(sc, sc.RobotStart);
@@ -224,6 +224,12 @@ static class Check
                     Pass($"{attack}-fluglage-ohne-ruck", a.Turn <= 125 && a.Roll <= 120);
                 }
                 for (int f = 0; f < frames.Length; f++) Save(Frame(sc, all, icons, frames[f], 0.5), Path.Combine(output, $"{attack}-{f + 1}.png"));
+                if (sc.Attack is SonicRaid sonic)
+                {   // 20.11.2026: Symbole fliegen weg, während die SR-71 vorbeizieht, nicht erst nach dem Abflug
+                    double lag = sonic.Targets.Select(p => sonic.HitAt(p) - sonic.Passes(p)).DefaultIfEmpty(0).Max();
+                    results["sr71-verzoegerung-max-s"] = Math.Round(lag, 2);
+                    Pass("sr71-symbole-fliegen-beim-ueberflug", lag <= 0.6);
+                }
                 if (sc.Attack is GunshipRaid gunship)
                 {
                     var kills = gunship.Shots.Where(s => s.Kill).ToList();
@@ -646,6 +652,7 @@ static class Check
             foreach (var icon in icons)
             {
                 if (centers[icon.Id] is not { } c) continue;
+                if (!scene.Resting(icon.Id, c) || scene.DrawnOnly(icon.Id, t)) continue;   // wie die Bühne: unterwegs wartet das echte Symbol im Versteck
                 dc.DrawRoundedRectangle(new SolidColorBrush(Color.FromRgb(0xE7, 0xB4, 0x7B)), null, new Rect(c.X - 24, c.Y - 24, 48, 40), 6, 6);
                 var text = new FormattedText(icon.Name, System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, face, 12, Brushes.White, 1);
                 dc.DrawText(text, new Point(c.X - text.Width / 2, c.Y + 20));

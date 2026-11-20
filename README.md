@@ -57,6 +57,25 @@ And since it is open source, you can fix it yourself, mod it, or add your own sc
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.6.0
+
+Five new scenes, 23 in total:
+
+- **MiG-31K with Kh-47M2 Kinzhal:** an interceptor per icon group. It drops the missile, the tail fairing falls away, the motor lights, the missile climbs, glides in a plasma glow and dives almost vertically onto the group. A bright flash, a shock ring and a dust ring run outward.
+- **Su-57 with the S-70 Okhotnik:** the flying-wing drone flies in formation with the Su-57. The drone drops KAB-500 guided bombs, the Su-57 fires missiles from its internal bays. The S-70 follows a three-view outline, with the free nozzle between the tail points and the camouflage copied from a reference drawing.
+- **Su-35S:** a Kh-29T on the first icon of each group from further out, then KAB-500Kr guided bombs on the rest. It attacks from medium altitude and turns much tighter than the attack jets.
+- **MQ-9 Reaper:** slow and high. It circles over each group, a pulsing laser spot marks the target, and one Hellfire goes per group. The blast catches the neighbours.
+- **SR-71 Blackbird:** crosses all screens at Mach 3. The shock wave sweeps your icons away as it passes. No fire, no ash.
+
+Also new:
+
+- **Aircraft and weapons redrawn from real top views:** MiG-31K, Su-35S, SR-71 and MQ-9 were measured from three-view drawings and checked by overlay. Kinzhal, KAB-500Kr, Kh-29T and Hellfire have rounded shading, seams, control surfaces and seeker glass set into the nose.
+- **Natural flight paths for every aircraft:** turns and roll are limited like a real pilot would fly them. The AC-130 only fires to its left, where its guns are. The Tu-22M3 drops bombs, then fires missiles, sweeps its wings back and leaves fast.
+- **Stealth jets keep their weapon bays hidden:** the bay doors of the F-35A and Su-57 open downwards, so you no longer see them from above.
+- **Moving icons look right:** while icons fly, fall, get carried or sucked in, the scene draws them with their names, and the real icons wait out of sight. No more doubled icons at the start, no icons that stay behind, no gap after a helper sets an icon down. Carried icons have their real size.
+- **The scene window stays directly above the desktop,** so scenes are visible again on every setup.
+- **The scene list scrolls,** so all scenes can be reached.
+
 ## What's new in 1.5.0
 
 - **New scene: Duel, F-35A vs Su-57.** The two jets fight a rolling-scissors dogfight across your whole screen, and the lead keeps changing. Whoever is behind fires air-to-air missiles and cannon bursts. The jet in front throws fans of flares, the missiles get decoyed and hit your icons. Long curling smoke trails, wingtip vortices and afterburner glow. In the end the Su-57 gets behind the F-35: the first missile goes for the flares, the second one hits. The F-35 explodes, spins down trailing fire and smoke and crashes, and the Su-57 pulls away on full afterburner. 18 scenes in total.
@@ -210,7 +229,7 @@ Switch *Restore style* to **With DUM-E** and a small top-down robot arm with a t
 
 <p align="center"><img src="docs/media/dum-e.gif" width="70%" alt="DUM-E carrying icons back"></p>
 
-And if you are having a really bad day, the **Scene** page lets you wipe your desktop first, eighteen ways so far: a Jericho strike, a mushroom cloud, Tu-160M and Tu-95MS cruise missiles, Tu-22M3 carpet bombing, Su-34 precision strikes, a Ka-52 attack, Il-76 paratroopers who simply carry your icons away, an AC-130U circling each group, a Shahed-136 drone swarm, A-10C or Su-25 gun runs, F-35A and Su-57 stealth strikes, an F-35A vs Su-57 dogfight, a B-2 Spirit, a robot vacuum that sucks your icons up, or simply turning gravity off. Icons turn to ash. Then a helper of your choice rebuilds everything, exactly as it was: DUM-E, a forklift, a crane truck, delivery drones, a CH-47 Chinook or a Mi-26. Therapy, basically.
+And if you are having a really bad day, the **Scene** page lets you wipe your desktop first, 23 ways so far: a Jericho strike, a mushroom cloud, Tu-160M and Tu-95MS cruise missiles, Tu-22M3 carpet bombing, Su-34 precision strikes, a Ka-52 attack, Il-76 paratroopers who simply carry your icons away, an AC-130U circling each group, a Shahed-136 drone swarm, A-10C or Su-25 gun runs, F-35A and Su-57 stealth strikes, an F-35A vs Su-57 dogfight, a B-2 Spirit, a MiG-31K with a Kinzhal, a Su-57 with the S-70 Okhotnik drone, a Su-35S, an MQ-9 Reaper, an SR-71 whose shock wave sweeps your icons away, a robot vacuum that sucks your icons up, or simply turning gravity off. Icons turn to ash. Then a helper of your choice rebuilds everything, exactly as it was: DUM-E, a forklift, a crane truck, delivery drones, a CH-47 Chinook or a Mi-26. Therapy, basically.
 
 <p align="center"><img src="docs/media/scene.png" width="70%" alt="Scene page"></p>
 

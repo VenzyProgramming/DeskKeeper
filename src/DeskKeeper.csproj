@@ -16,5 +16,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Assets/explosion-*.png" />
+    <Resource Include="Assets/s70-tarnung.png" />
   </ItemGroup>
 </Project>

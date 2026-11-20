@@ -50,6 +50,11 @@ static class Preview
         [Attacks.F35] = (8.4, 0.52, (dc, c, h, u) => Planes.F35(dc, c, h, u, 0.35, 0.3, 0)),
         [Attacks.Su57] = (8.4, 0.58, (dc, c, h, u) => Planes.Su57(dc, c, h, u, 0.35, 0.3, 0)),
         [Attacks.B2] = (9, 0.36, (dc, c, h, u) => Planes.B2(dc, c, h, u, 0.4, 0.3)),
+        [Attacks.Hunter] = (8.6, 0.5, (dc, c, h, u) => Planes.S70(dc, c, h, u * 0.85, 0.35, 0.3)),
+        [Attacks.Su35] = (8.4, 0.6, (dc, c, h, u) => Planes.Su35(dc, c, h, u, 0.35, 0.3)),
+        [Attacks.MQ9] = (9, 0.3, (dc, c, h, u) => Planes.MQ9(dc, c, h, u, 0.35, 0.3)),
+        [Attacks.SR71] = (8.4, 0.62, (dc, c, h, u) => Planes.SR71(dc, c, h, u, 0.35, 0.3, 0.5)),
+        [Attacks.MiG31] = (8.4, 0.6, (dc, c, h, u) => Planes.MiG31(dc, c, h, u, 0.35, 0.3, kinzhal: true, burner: 0.5)),
     };
 
     static BitmapSource RenderHero(string scene, int width)

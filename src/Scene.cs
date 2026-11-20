@@ -208,17 +208,51 @@ sealed class Scene
     /// des Bildschirms und springt erst am Ziel in seine Rasterzelle. Ohne Bildquelle (Vorschau, Prüfung) wird nichts gezeichnet.</summary>
     public Func<string, ImageSource?>? IconImage { get; set; }
 
+    /// <summary>Größe der von der Bühne gezeichneten Symbole in Pixeln (echte Symbolgröße der Desktopansicht, nicht der Rasterabstand;
+    /// 20.11.2026: Drohnen trugen zu große Symbole). Ohne Angabe die Szenengröße.</summary>
+    public double CarriedSize { get; set; }
+
+    /// <summary>Symbol fliegt gerade nur als Bild (Angriff zeichnet bewegte Symbole selbst, z. B. SR-71): echtes Symbol bleibt versteckt.</summary>
+    public bool DrawnOnly(string id, double t) => bomber is { DrawsMovedIcons: true } && !robot.IconAt(id, t).Handled && IconAt(id, t) is not null;
+
     /// <summary>Liegt das Symbol in einer festen Zelle (Ausgangs- oder Zielplatz)?</summary>
     public bool Resting(string id, Point p) => (p - start[id]).LengthSquared < 1 || (p - home[id]).LengthSquared < 1;
+
+    /// <summary>So lange zeichnet die Bühne ein abgesetztes Symbol noch weiter, bis Explorer das echte Symbol sicher an den Platz gesetzt
+    /// hat (20.11.2026: „anfangs unsichtbar, nach einer gewissen Zeit sichtbar“).</summary>
+    const double Settle = 0.8;
 
     void DrawCarried(DrawingContext dc, double t)
     {
         if (IconImage is null) return;
+        double s = CarriedSize > 0 ? CarriedSize : iconSize;
         foreach (var icon in icons)
         {
-            if (IconAt(icon.Id, t) is not { } c || Resting(icon.Id, c) || IconImage(icon.Id) is not { } image) continue;
-            dc.DrawImage(image, new Rect(c.X - iconSize / 2, c.Y - iconSize / 2, iconSize, iconSize));
+            if (IconAt(icon.Id, t) is not { } c || IconImage(icon.Id) is not { } image) continue;
+            bool draw = !Resting(icon.Id, c) || DrawnOnly(icon.Id, t)
+                || IconAt(icon.Id, t - Settle) is { } b && (!Resting(icon.Id, b) || DrawnOnly(icon.Id, t - Settle));
+            if (!draw) continue;
+            dc.DrawImage(image, new Rect(c.X - s / 2, c.Y - s / 2, s, s));
+            var label = Label(icon, s);
+            var at = new Point(c.X - label.MaxTextWidth / 2, c.Y + s / 2 + s * 0.06);   // zentriert im Textfeld
+            dc.DrawText(LabelShadow(icon, s), at + new Vector(1, 1));
+            dc.DrawText(label, at);
         }
+    }
+
+    // Beschriftung wie auf dem Desktop: weiß mit Schatten, höchstens zwei Zeilen
+    readonly Dictionary<string, FormattedText> labels = new(), shadows = new();
+    static readonly Typeface LabelFace = new("Segoe UI");
+    FormattedText Label(IconInfo icon, double s) => labels.TryGetValue(icon.Id, out var l) ? l : labels[icon.Id] = MakeLabel(icon.Name, s, Brushes.White);
+    FormattedText LabelShadow(IconInfo icon, double s) => shadows.TryGetValue(icon.Id, out var l) ? l : shadows[icon.Id] = MakeLabel(icon.Name, s, LabelShade);
+    static readonly Brush LabelShade = Solid("#C0000000");
+    FormattedText MakeLabel(string name, double s, Brush brush)
+    {
+        var text = new FormattedText(name, System.Globalization.CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, LabelFace, Math.Max(9, s * 0.25), brush, 1)
+        {
+            MaxTextWidth = Math.Max(s * 1.6, iconSize * 1.5), MaxLineCount = 2, Trimming = TextTrimming.CharacterEllipsis, TextAlignment = TextAlignment.Center,
+        };
+        return text;
     }
 
     static readonly Brush Cream = Solid("#FFF4DC"), Amber = Solid("#FFB056"), Ember = Solid("#FF6A1F"), Flare = Solid("#FFD58A"),

@@ -16,6 +16,91 @@ static class Program
         Store.Migrate();
         var app = new Application { ShutdownMode = ShutdownMode.OnMainWindowClose };
         if (args.Length >= 3 && args[0] == "--szene") return Check.SceneFrames(args[1], args[2], args.Skip(3).Select(x => double.Parse(x, System.Globalization.CultureInfo.InvariantCulture)).ToList());
+        if (args.Length == 3 && args[0] == "--zeichne")
+        {   // Ein Flugzeug groß, Nase nach oben, auf hellem Grund (Vergleich mit Vorlagen)
+            var v = new System.Windows.Media.DrawingVisual();
+            using (var dc = v.RenderOpen())
+            {
+                dc.DrawRectangle(System.Windows.Media.Brushes.LightSlateGray, null, new Rect(0, 0, 1000, 1000));
+                var c = new Point(500, 470); double h = -Math.PI / 2, u = 6;
+                switch (args[1])
+                {
+                    case "s70": Planes.S70(dc, c, h, u, 0, 0); break;
+                    case "mig31": Planes.MiG31(dc, c, h, u * 0.8, 0, 0, true, 0); break;
+                    case "su35": Planes.Su35(dc, c, h, u * 0.8, 0, 0); break;
+                    case "mq9": Planes.MQ9(dc, c, h, u * 0.5, 0, 0); break;
+                    case "sr71": Planes.SR71(dc, c, h, u * 0.8, 0, 0, 0); break;
+                    case "kinzhal": Planes.Kinzhal(dc, c, h, u * 1.1, 0, false, 0, 0); break;
+                    case "kab500": Planes.Kab500(dc, c, h, u * 1.1); break;
+                    case "kh29": Planes.Kh29(dc, c, h, u * 1.1, false); break;
+                    case "hellfire": Planes.Hellfire(dc, c, h, u * 1.1, false); break;
+                }
+            }
+            var bmp = new System.Windows.Media.Imaging.RenderTargetBitmap(1000, 1000, 96, 96, System.Windows.Media.PixelFormats.Pbgra32); bmp.Render(v);
+            var enc = new System.Windows.Media.Imaging.PngBitmapEncoder(); enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bmp));
+            using (var file = System.IO.File.Create(args[2])) enc.Save(file);
+            return 0;
+        }
+        if (args.Length == 2 && args[0] == "--vergleich")
+        {   // Alle neuen Flugzeuge im gleichen Maßstab nebeneinander, Nasen auf einer Linie, mit 10-m-Maßstab 
+            const double pxPerM = 22, top = 140;
+            var planes = new (string Name, double Length, double Span, Action<System.Windows.Media.DrawingContext, Point, double> Draw)[]
+            {
+                ("МиГ-31К", 22.69, 13.46, (dc, p, u) => Planes.MiG31(dc, p, -Math.PI / 2, u, 0, 0, true, 0)),
+                ("Су-35С", 21.9, 15.3, (dc, p, u) => Planes.Su35(dc, p, -Math.PI / 2, u, 0, 0, 0)),
+                ("SR-71A", 32.74, 16.94, (dc, p, u) => Planes.SR71(dc, p, -Math.PI / 2, u, 0, 0, 0)),
+                ("С-70 «Охотник»", 14, 19, (dc, p, u) => Planes.S70(dc, p, -Math.PI / 2, u, 0, 0)),
+                ("MQ-9 Reaper", 11, 20.1, (dc, p, u) => Planes.MQ9(dc, p, -Math.PI / 2, u, 0, 0, 4)),
+            };
+            double width = planes.Sum(p => p.Span + 4) * pxPerM + 120, height = top + 34 * pxPerM + 120;
+            var v = new System.Windows.Media.DrawingVisual();
+            using (var dc = v.RenderOpen())
+            {
+                dc.DrawRectangle(System.Windows.Media.Brushes.LightSlateGray, null, new Rect(0, 0, width, height));
+                var face = new System.Windows.Media.Typeface("Segoe UI Semibold");
+                double x = 60;
+                foreach (var p in planes)
+                {
+                    double cx = x + (p.Span + 4) * pxPerM / 2, u = pxPerM * p.Length / 100;
+                    p.Draw(dc, new Point(cx, top + 50 * u), u);
+                    var label = new System.Windows.Media.FormattedText($"{p.Name}\n{p.Length:0.##} × {p.Span:0.##} m", System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, face, 22, System.Windows.Media.Brushes.White, 1) { TextAlignment = TextAlignment.Center };
+                    dc.DrawText(label, new Point(cx, top + p.Length * pxPerM + 24));
+                    x += (p.Span + 4) * pxPerM;
+                }
+                dc.DrawLine(new System.Windows.Media.Pen(System.Windows.Media.Brushes.White, 4), new Point(60, 60), new Point(60 + 10 * pxPerM, 60));
+                dc.DrawText(new System.Windows.Media.FormattedText("10 m", System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, face, 22, System.Windows.Media.Brushes.White, 1), new Point(70 + 10 * pxPerM, 44));
+            }
+            var bmp = new System.Windows.Media.Imaging.RenderTargetBitmap((int)width, (int)height, 96, 96, System.Windows.Media.PixelFormats.Pbgra32); bmp.Render(v);
+            var enc = new System.Windows.Media.Imaging.PngBitmapEncoder(); enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bmp));
+            using (var file = System.IO.File.Create(args[1])) enc.Save(file);
+            return 0;
+        }
+        if (args.Length == 3 && args[0] == "--zeichne-gross")
+        {   // Ein Flugzeug bildfüllend (1600 × 1600), Nase oben, zum genauen Begutachten
+            const double size = 1600;
+            var v = new System.Windows.Media.DrawingVisual();
+            using (var dc = v.RenderOpen())
+            {
+                dc.DrawRectangle(System.Windows.Media.Brushes.LightSlateGray, null, new Rect(0, 0, size, size));
+                double h = -Math.PI / 2;
+                // Modellmaße: Länge 100, Spannweite in Einheiten, Mitte der Länge in Einheiten
+                var (span, mid) = args[1] switch { "mig31" => (59.5, 0.0), "su35" => (69.9, 0.0), "sr71" => (51.8, 0.0), "s70" => (140.0, -6.0), "mq9" => (183.0, 4.0), _ => (100.0, 0.0) };
+                double u = (size - 160) / Math.Max(112, span);
+                var c = new Point(size / 2, size / 2 + mid * u);
+                switch (args[1])
+                {
+                    case "mig31": Planes.MiG31(dc, c, h, u, 0, 0, true, 0); break;
+                    case "su35": Planes.Su35(dc, c, h, u, 0, 0, 0); break;
+                    case "sr71": Planes.SR71(dc, c, h, u, 0, 0, 0); break;
+                    case "s70": Planes.S70(dc, c, h, u, 0, 0); break;
+                    case "mq9": Planes.MQ9(dc, c, h, u, 0, 0, 4); break;
+                }
+            }
+            var bmp = new System.Windows.Media.Imaging.RenderTargetBitmap((int)size, (int)size, 96, 96, System.Windows.Media.PixelFormats.Pbgra32); bmp.Render(v);
+            var enc = new System.Windows.Media.Imaging.PngBitmapEncoder(); enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bmp));
+            using (var file = System.IO.File.Create(args[2])) enc.Save(file);
+            return 0;
+        }
         if (args.Length == 2 && args[0] == "--vorschau")
         {   // Vorschaubilder aller Szenen-Kacheln (nur Bilder)
             System.IO.Directory.CreateDirectory(args[1]);

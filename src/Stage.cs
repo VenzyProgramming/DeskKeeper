@@ -237,9 +237,11 @@ static class Runner
             // Symbole sichtbar in freie Zellen ein . Am Ende rastet RestoreSnapshot alles in Explorers Raster ein.
             const bool gridLocked = false;
             {   // getragene Symbole zeichnet die Bühne über Palette, Ladefläche und Rumpf (20.11.2026: vorher verdeckt, „unsichtbar“)
-                int px = (int)Math.Round(desktop.IconSize);
+                // echte Symbolgröße der Desktopansicht (48 bei 100 %), nicht der Rasterabstand (20.11.2026: „große Verknüpfungssymbole“)
+                int px = (int)Math.Round(desktop.ViewIconSize() * main.Dpi / 96.0);
                 foreach (var icon in desktop.Icons) ShellIcons.Get(icon.Id, px);   // vorab laden, nicht erst im Bildtakt
                 scene.IconImage = id => ShellIcons.Get(id, px);
+                scene.CarriedSize = px;
             }
             desktop.FreeMovement();   // Raster ist während der Szene immer aus (gridLocked = false)
             stage = new Stage(all, scene);
@@ -271,7 +273,10 @@ static class Runner
                     foreach (var (id, maybe) in scene.IconCenters(t))
                     {
                         // unterwegs (nur bei festem Raster): echtes Symbol wartet außerhalb, die Bühne zeichnet es
-                        bool away = maybe is null || gridLocked && !scene.Resting(id, maybe.Value);
+                        // außerhalb aller Bildschirme oder nur gezeichnet (SR-71): echtes Symbol wartet außerhalb, Explorer nimmt Ziele jenseits
+                        // des Rands nicht zuverlässig an (20.11.2026: Originale blieben stehen, später „unsichtbar“)
+                        // Unterwegs zeichnet die Bühne das Symbol; das echte bekommt nur Versteck und Ziel (wenige Verschiebungen, Explorer kommt nach)
+                        bool away = maybe is null || !scene.Resting(id, maybe.Value) || scene.DrawnOnly(id, t) || !all.Contains(maybe.Value);
                         var p = away ? stash : maybe!.Value;
                         if (away) hidden ??= id;
                         if (!last.TryGetValue(id, out var q) || (q - p).LengthSquared > 0.25) { changed[id] = p; last[id] = p; }
