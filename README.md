@@ -57,6 +57,11 @@ And since it is open source, you can fix it yourself, mod it, or add your own sc
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.7.1
+
+- The Bengal cat and the German Shepherd now walk in from the side of the screen instead of popping up on it, and every animal leaves the same way.
+- The German Shepherd handles scattered desktops: it herds and buries each group of icons on its own (corners, edges, middle) until nothing is left, and no icon slides off the screen while it herds.
+
 ## What's new in 1.7.0
 
 Three animal scenes in pixel art, 26 scenes in total. Each animal has its own way of wrecking your desktop:

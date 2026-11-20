@@ -17,6 +17,16 @@ namespace DeskKeeper;
 static class Check
 {
     /// <summary>Schnelle Einzelbilder einer Szene auf der Prüffläche (--szene &lt;art&gt; &lt;ordner&gt; [zeiten…]), dazu Dauer und Treffer.</summary>
+    /// <summary>Breiter Bildschirm 3440×1440 mit 33 Symbolen in verstreuten Gruppen (Ecken, Ränder, Mitte), Symbolgröße 67 px.</summary>
+    internal static (Rect Screen, List<IconInfo> Icons, double Size) WideDesk()
+    {
+        int[][] cells = [[68, 884], [68, 982], [68, 1080], [68, 1178], [68, 1276], [416, 2], [416, 100], [416, 198], [416, 296], [416, 394], [416, 492], [532, 2], [532, 100],
+            [1692, 1276], [1808, 2], [1808, 1276], [1924, 2], [1924, 1276], [2040, 1276], [2968, 2], [3084, 2], [3084, 100], [3084, 198], [3084, 296], [3084, 394], [3084, 492],
+            [3316, 2], [3316, 100], [3316, 198], [3316, 296], [3316, 394], [3316, 1276], [532, 198]];
+        var icons = cells.Select((c, i) => new IconInfo("w" + i, Names[i % Names.Length], new Point(c[0] + 58, c[1] + 49))).ToList();
+        return (new Rect(0, 0, 3440, 1440), icons, 67.3);
+    }
+
     public static int SceneFrames(string attack, string output, IReadOnlyList<double> times)
     {
         Directory.CreateDirectory(output);
@@ -26,9 +36,15 @@ static class Check
         var icons = new List<IconInfo>();
         for (int i = 0; i < 14; i++) icons.Add(new IconInfo("i" + i, Names[i % Names.Length], new Point(52 + (i / 8) * 86, 52 + (i % 8) * 104)));
         for (int i = 0; i < 6; i++) icons.Add(new IconInfo("s" + i, Names[(i + 3) % Names.Length], new Point(1980 + i * 90, -300)));
+        if (Environment.GetEnvironmentVariable("DK_FRAME_WIDE") == "1")
+        {   // Prüfbilder auf dem breiten Bildschirm mit verstreuten Gruppen
+            var (w, wi, ws) = WideDesk();
+            primary = w; screens = [w]; icons = wi; iconSize = ws;
+        }
         var homes = icons.ToDictionary(i => i.Id, i => i.Center);
-        var all = Rect.Union(primary, second);
+        var all = screens.Aggregate(Rect.Union);
         var sc = new Scene(icons, homes, iconSize, screens, primary, true, 64, attack: attack);
+        if (sc.Attack is PetRaid pr) { var (pin, pout) = pr.EntersAndLeavesOffscreen(); Console.WriteLine($"tier: uebrig {pr.Leftovers}, chaos bis {pr.LastImpact:0.0} s, vom rand {pin}, hinaus {pout}"); }
         Console.WriteLine($"{attack}: Dauer {sc.Duration:0.0} s, Einschläge {sc.Raid.Count}, Roboter ab {sc.RobotStart:0.0} s, " +
             $"jedes Symbol getroffen {icons.All(i => sc.Raid.Any(b => (b.P - i.Center).Length <= iconSize * 2.2))}");
         if (sc.Attack is { } flying && flying.Flights.Any()) { var a = Attitude(flying, all); Console.WriteLine($"fluglage: drehrate max {a.Turn:0} grad/s, drehbeschleunigung max {a.Roll:0} grad/s² ({a.Where})"); }
@@ -229,6 +245,20 @@ static class Check
                 {   // Tiere : jedes Symbol räumt das Tier selbst ab, keines verschwindet nur durch die Zeitgrenze
                     results[attack + "-uebrig"] = pet.Leftovers;
                     Pass(attack + "-alle-vom-tier-abgeraeumt", pet.Leftovers == 0);
+                    // 20.11.2026: Tiere laufen vom Rand herein und wieder hinaus, statt im Bild aufzutauchen
+                    var (enters, leaves) = pet.EntersAndLeavesOffscreen();
+                    Pass(attack + "-kommt-vom-rand", enters); Pass(attack + "-geht-ueber-den-rand", leaves);
+                    // breiter Bildschirm mit verstreuten Gruppen (Ecken, Ränder, Mitte): der Schäferhund vergräbt jede Gruppe
+                    var (wide, spread, size) = WideDesk();
+                    var ws = new Scene(spread, spread.ToDictionary(i => i.Id, i => i.Center), size, [wide], wide, true, 96, attack: attack);
+                    if (ws.Attack is PetRaid wp)
+                    {
+                        results[attack + "-breit-uebrig"] = wp.Leftovers; results[attack + "-breit-dauer-s"] = Math.Round(ws.Duration, 1); results[attack + "-breit-chaos-s"] = Math.Round(wp.LastImpact, 1);
+                        Pass(attack + "-breit-alle-vom-tier-abgeraeumt", wp.Leftovers == 0);
+                        var (we, wl) = wp.EntersAndLeavesOffscreen();
+                        Pass(attack + "-breit-kommt-vom-rand", we); Pass(attack + "-breit-geht-ueber-den-rand", wl);
+                        Pass(attack + "-breit-am-ende-alle-zuhause", ws.IconCenters(ws.Duration).All(e => e.Value is { } v && (v - spread.First(i => i.Id == e.Key).Center).Length < 0.5));
+                    }
                 }
                 if (sc.Attack is SonicRaid sonic)
                 {   // 20.11.2026: Symbole fliegen weg, während die SR-71 vorbeizieht, nicht erst nach dem Abflug

@@ -192,7 +192,13 @@ sealed class PetRaid : IAttack
                 ic.Vx *= f; ic.Vy *= f;
                 if (Math.Abs(ic.Vx) < 2 && Math.Abs(ic.Vy) < 2) ic.Vx = ic.Vy = 0;
             }
-            if (!OnScreen(new Point(ic.X, ic.Y), iconSize * 0.6)) Vanish(ic);
+            if (kind == Kind.Shepherd)
+            {   // der Hund treibt zusammen, aber nichts rutscht über den Rand: alles soll unter den Hügel
+                var s = ScreenOf(new Point(ic.X, ic.Y)); s.Inflate(-iconSize * 0.5, -iconSize * 0.5);
+                if (ic.X < s.Left) { ic.X = s.Left; ic.Vx = Math.Abs(ic.Vx) * 0.3; } else if (ic.X > s.Right) { ic.X = s.Right; ic.Vx = -Math.Abs(ic.Vx) * 0.3; }
+                if (ic.Y < s.Top) { ic.Y = s.Top; ic.Vy = Math.Abs(ic.Vy) * 0.3; } else if (ic.Y > s.Bottom) { ic.Y = s.Bottom; ic.Vy = -Math.Abs(ic.Vy) * 0.3; }
+            }
+            else if (!OnScreen(new Point(ic.X, ic.Y), iconSize * 0.6)) Vanish(ic);
         }
         // Stöße zwischen Symbolen (Billard): nur wenn eines sich bewegt
         double min = iconSize * 1.05;
@@ -252,12 +258,29 @@ sealed class PetRaid : IAttack
     /// <summary>Anfangstempo, mit dem ein Symbol (Reibung) bis über den Rand gleitet.</summary>
     double ExitSpeed(Ico ic, int dir) => Friction * (ExitDistance(new Point(ic.X, ic.Y), new Vector(dir, 0)) + iconSize * 0.8) * 1.18;
 
+    /// <summary>Punkt seitlich neben allen Bildschirmen auf Höhe von p (20.11.2026: Tiere laufen vom Rand herein, statt im Bild aufzutauchen;
+    /// von unten ragte der Kopf sofort über die Taskleiste). Die ganze Figur liegt dort außerhalb.</summary>
     Point Outside(Point p)
     {
-        var s = ScreenOf(p);
-        double l = p.X - s.Left, r = s.Right - p.X, b = s.Bottom - p.Y;
-        double m = Math.Min(l, Math.Min(r, b)), off = 34 * k;
-        return m == l ? new Point(s.Left - off, p.Y) : m == r ? new Point(s.Right + off, p.Y) : new Point(p.X, s.Bottom + off);
+        int dir = ExitDir(p);
+        double x = p.X + dir * (ExitDistance(p, new Vector(dir, 0)) + (sheet.W + 6) * k);
+        for (int guard = 0; guard < 200 && SpriteOnScreen(x, p.Y); guard++) x += dir * iconSize;
+        return new Point(x, p.Y);
+    }
+
+    /// <summary>Berührt die Figur (Drehpunkt x, Bodenlinie y, beide Blickrichtungen) einen Bildschirm?</summary>
+    bool SpriteOnScreen(double x, double y)
+    {
+        var box = new Rect(x - sheet.W * k, y - sheet.G * k, 2 * sheet.W * k, sheet.H * k);
+        return screens.Any(s => s.IntersectsWith(box));
+    }
+
+    /// <summary>Prüfung: Anfang und Ende der Szene liegen ganz außerhalb aller Bildschirme.</summary>
+    public (bool In, bool Out) EntersAndLeavesOffscreen()
+    {
+        if (poses.Count == 0) return (true, true);
+        var last = kind == Kind.Pug ? (Pose?)null : poses[^1];
+        return (!SpriteOnScreen(poses[0].X, poses[0].Y), last is not { } l || !SpriteOnScreen(l.X, l.Y));
     }
 
     // ---- Drehbuch-Bausteine
@@ -576,47 +599,57 @@ sealed class PetRaid : IAttack
         if (ics.Count == 0) yield break;
         var m0 = sheet.Anims[sheet.Of("carry")].Mouth[0];
         double mdx = m0.X - sheet.Px;
-        var order = screens.Where(s => ics.Any(i => s.Contains(i.Start))).OrderBy(s => s == primary ? 0 : 1).ThenBy(s => s.Left).ToList();
-        bool first = true;
-        foreach (var s in order)
+        // 20.11.2026: verstreute Symbolgruppen (Ecken, Ränder, Mitte) einzeln zusammentreiben und vergraben, bis keines mehr übrig ist
+        bool first = true; bool shaken = false;
+        for (int pass = 0; pass < 40 && Free.Any() && t < Cap - 8; pass++)
         {
-            var group = Free.Where(i => s.Contains(new Point(i.X, i.Y))).ToList();
-            if (group.Count == 0) continue;
-            var inner = s; inner.Inflate(-3 * iconSize, -2.5 * iconSize);
+            var groups = Clusters();
+            var here = new Point(ax, ay);
+            var group = first
+                ? groups.OrderBy(g => primary.Contains(new Point(g[0].X, g[0].Y)) ? 0 : 1).ThenByDescending(g => g.Count).First()
+                : groups.OrderBy(g => g.Min(i => (new Point(i.X, Gy(i)) - here).LengthSquared)).First();
+            int before = Free.Count();
+            var s = ScreenOf(new Point(group.Average(i => i.X), group.Average(i => i.Y)));
+            var inner = s; inner.Inflate(-2.6 * iconSize, -2.2 * iconSize);
             if (inner.Width <= 0 || inner.Height <= 0) inner = s;
             var c = new Point(Math.Clamp(group.Average(i => i.X), inner.Left, inner.Right), Math.Clamp(group.Average(i => i.Y), inner.Top, inner.Bottom));
+            int n = group.Count;
+            double pileR = 0.62 * iconSize * Math.Sqrt(n) + 0.6 * iconSize;
             double rx0 = group.Max(i => Math.Abs(i.X - c.X)) + 2.4 * iconSize, ry0 = group.Max(i => Math.Abs(i.Y - c.Y)) + 2.0 * iconSize;
-            double pileR = 0.62 * iconSize * Math.Sqrt(group.Count) + 0.6 * iconSize;
-            var p0 = new Point(c.X, c.Y + ry0);
+            var path = s; path.Inflate(-iconSize * 0.45, -iconSize * 0.45);
+            Point Inside(Point p) => new(Math.Clamp(p.X, path.Left, path.Right), Math.Clamp(p.Y, path.Top + sheet.G * k * 0.6, path.Bottom));
+            var p0 = Inside(new Point(c.X, c.Y + iconSize * 0.5 + ry0));
             if (first)
             {
-                var e = Outside(p0); ax = e.X; ay = e.Y; first = false;
-                foreach (var _ in Walk(p0.X, Math.Min(p0.Y, s.Bottom - iconSize), "run", 220)) yield return 0;
+                var e = Outside(p0); ax = e.X; ay = e.Y; face = p0.X >= ax ? 1 : -1;
+                foreach (var _ in Walk(p0.X, p0.Y, "run", 240)) yield return 0;
                 foreach (var _ in Play("bark", 3, new() { [1] = Bark })) yield return 0;
             }
             else
             {
-                foreach (var _ in Walk(p0.X, Math.Min(p0.Y, s.Bottom - iconSize), "run", 260)) yield return 0;
-                foreach (var _ in Play("bark", 2, new() { [1] = Bark })) yield return 0;
+                foreach (var _ in Walk(p0.X, p0.Y, "run", 270)) yield return 0;
+                if (n >= 3) foreach (var _ in Play("bark", 1, new() { [1] = Bark })) yield return 0;
             }
-            // Zusammentreiben: Runden um die Symbole, enger werdend
-            PreviewTime = Math.Max(PreviewTime, t + 1.2);
-            int n = 54;
-            double laps = 1.6, rEnd = pileR + 1.4 * iconSize;
-            for (int i = 1; i <= n; i++)
-            {
-                double q = (double)i / n, a = Math.PI / 2 + q * Math.Tau * laps;
-                double rx = rx0 + (rEnd - rx0) * q, ry = ry0 + (rEnd - ry0) * q;
-                var p = new Point(c.X + rx * Math.Cos(a), c.Y + iconSize * 0.5 + ry * Math.Sin(a));
-                foreach (var _ in Walk(p.X, p.Y, "run", 300, herd: c)) yield return 0;
+            if (n >= 3)
+            {   // Zusammentreiben: Runden um die Symbole, enger werdend, immer auf dem Bildschirm
+                if (first) PreviewTime = t + 1.2;
+                double laps = n >= 6 ? 1.6 : 1.2, rEnd = pileR + 1.4 * iconSize;
+                int pts = Math.Clamp((int)(laps * Math.Tau * (rx0 + ry0 + 2 * rEnd) / 4 / (0.8 * iconSize)), 14, 54);
+                for (int i = 1; i <= pts; i++)
+                {
+                    double q = (double)i / pts, a = Math.PI / 2 + q * Math.Tau * laps;
+                    double rx = rx0 + (rEnd - rx0) * q, ry = ry0 + (rEnd - ry0) * q;
+                    var p = Inside(new Point(c.X + rx * Math.Cos(a), c.Y + iconSize * 0.5 + ry * Math.Sin(a)));
+                    foreach (var _ in Walk(p.X, p.Y, "run", 300, herd: c)) yield return 0;
+                }
+                foreach (var _ in Wait(0.25)) yield return 0;
             }
-            foreach (var _ in Wait(0.3)) yield return 0;
-            // Ausreißer holen (das erste wird geschüttelt)
-            bool shaken = false;
-            for (int guard = 0; guard < 12; guard++)
+            first = false;
+            // Ausreißer dieser Gruppe holen (der erste der Szene wird geschüttelt)
+            for (int guard = 0; guard < n + 3; guard++)
             {
-                var stray = Free.Where(i => s.Contains(new Point(i.X, i.Y)))
-                    .Where(i => (new Point(i.X, i.Y) - c).Length > pileR * 1.3).OrderBy(i => (new Point(i.X, i.Y) - new Point(ax, ay)).LengthSquared).FirstOrDefault();
+                var stray = group.Where(i => i.Alive && !i.Carried && i.Sink <= 0 && (new Point(i.X, i.Y) - c).Length > pileR * 1.3)
+                    .OrderBy(i => (new Point(i.X, i.Y) - new Point(ax, ay)).LengthSquared).FirstOrDefault();
                 if (stray is null) break;
                 foreach (var _ in Fetch(stray, mdx)) yield return 0;
                 if (carry is null) continue;
@@ -630,17 +663,20 @@ sealed class PetRaid : IAttack
                     wobble = 0;
                 }
                 var dirIn = new Point(ax, ay) - c; if (dirIn.Length < 1) dirIn = new Vector(1, 0); dirIn.Normalize();
-                var spot = c + dirIn * (pileR + iconSize * 0.9);
-                foreach (var _ in Walk(spot.X, spot.Y + iconSize * 0.5, "carry", 110)) yield return 0;
+                var spot = Inside(c + dirIn * (pileR + iconSize * 0.9) + new Vector(0, iconSize * 0.5));
+                foreach (var _ in Walk(spot.X, spot.Y, "carry", 120)) yield return 0;
                 Drop(new Point(c.X + dirIn.X * pileR * 0.9, c.Y + dirIn.Y * pileR * 0.9));
             }
             // Vergraben: neben dem Haufen buddeln, Erde fliegt auf den Haufen
             int side = ax < c.X ? -1 : 1;
             var dig = new Point(c.X + side * (pileR + 24 * k), c.Y + iconSize * 0.5 + 2 * k);
-            if (!OnScreen(dig, 0)) { side = -side; dig = new Point(c.X + side * (pileR + 24 * k), dig.Y); }
-            foreach (var _ in Walk(dig.X, dig.Y, "trot", 100, faceEnd: side)) yield return 0;
-            var pile = Free.Where(i => (new Point(i.X, i.Y) - c).Length <= pileR * 1.6).OrderByDescending(i => (new Point(i.X, i.Y) - new Point(ax, ay)).Length).ToList();
-            double loops = 4;
+            if (!path.Contains(dig)) { side = -side; dig = new Point(c.X + side * (pileR + 24 * k), dig.Y); }
+            dig = Inside(dig);
+            foreach (var _ in Walk(dig.X, dig.Y, "trot", 110, faceEnd: side)) yield return 0;
+            var pile = Free.Where(i => group.Contains(i) && (new Point(i.X, i.Y) - c).Length <= pileR * 2.2 || (new Point(i.X, i.Y) - c).Length <= pileR * 1.6)
+                .OrderByDescending(i => (new Point(i.X, i.Y) - new Point(ax, ay)).Length).ToList();
+            if (pile.Count == 0) continue;
+            double loops = n <= 2 ? 2 : n <= 5 ? 3 : 4;
             double span = sheet.Anims[sheet.Of("dig")].Count * loops / sheet.Anims[sheet.Of("dig")].Fps;
             mounds.Add((new Point(c.X, c.Y + iconSize * 0.55), t, t + span + 0.4, (pileR * 2 + iconSize) / k));
             int perEvent = Math.Max(1, (int)Math.Ceiling(pile.Count / (loops * 2)));
@@ -653,12 +689,40 @@ sealed class PetRaid : IAttack
             }
             foreach (var _ in Play("dig", loops, new() { [0] = DigFx, [3] = DigFx })) yield return 0;
             foreach (var ic in pile.Where(i => i.Alive && i.Sink <= 0)) ic.Sink = 1.1;
-            foreach (var _ in Wait(0.6)) yield return 0;
+            foreach (var _ in Wait(0.4)) yield return 0;
+            if (Free.Count() >= before)
+            {   // nichts geschafft (sollte nicht vorkommen): an Ort und Stelle einbuddeln, damit die Szene weitergeht
+                foreach (var ic in group.Where(i => i.Alive && !i.Carried && i.Sink <= 0)) { ic.Sink = 1.1; Dust(ic.X, Gy(ic)); }
+            }
         }
         // Wache halten am letzten Hügel, dann davon
         foreach (var _ in Play("lie", 2)) yield return 0;
         var exit = Outside(new Point(ax, ay));
         foreach (var _ in Walk(exit.X, exit.Y, "run", 240)) yield return 0;
+    }
+
+    /// <summary>Freie Symbole in Gruppen: benachbart (höchstens 3,6 Symbolgrößen Abstand) und auf demselben Bildschirm.</summary>
+    List<List<Ico>> Clusters()
+    {
+        var left = Free.ToList();
+        var result = new List<List<Ico>>();
+        double link = 3.6 * iconSize;
+        while (left.Count > 0)
+        {
+            var g = new List<Ico> { left[0] }; left.RemoveAt(0);
+            var scr = ScreenOf(new Point(g[0].X, g[0].Y));
+            for (int i = 0; i < g.Count; i++)
+            {
+                var a = g[i];
+                for (int j = left.Count - 1; j >= 0; j--)
+                {
+                    var o = left[j];
+                    if (Math.Abs(o.X - a.X) <= link && Math.Abs(o.Y - a.Y) <= link && ScreenOf(new Point(o.X, o.Y)) == scr) { g.Add(o); left.RemoveAt(j); }
+                }
+            }
+            result.Add(g);
+        }
+        return result;
     }
 
     void Bark()
