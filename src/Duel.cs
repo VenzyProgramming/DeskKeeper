@@ -188,13 +188,15 @@ sealed class DuelRaid : IAttack
         }
         double fire1 = Aim(finalPass + 3.6, finalPass + 4.6), hit1 = fire1 + 1.25;
         fans.Add(new Fan(true, fire1 + 0.45));
+        Point Decoy()
         {
             double hh = Heading(true, hit1 - 0.5);
             var back = -new Vector(Math.Cos(hh), Math.Sin(hh)); var across = new Vector(-back.Y, back.X);
-            var decoy = PlaneAt(true, hit1 - 0.5) + back * spanF * 1.6 + across * spanF * 0.9;
-            Shots.Add(new Shot(false, fire1, hit1, decoy));
-            airBursts.Add((decoy, hit1, 0.6));
+            return PlaneAt(true, hit1 - 0.5) + back * spanF * 1.6 + across * spanF * 0.9;
         }
+        int decoyShot = Shots.Count, decoyBurst = airBursts.Count;
+        Shots.Add(new Shot(false, fire1, hit1, Decoy()));
+        airBursts.Add((Decoy(), hit1, 0.6));
         bursts.Add(new Burst(false, fire1 + 0.25));
         double fire2 = Aim(fire1 + 0.7, fire1 + 1.5);
         killAt = fire2 + 1.25;
@@ -202,6 +204,7 @@ sealed class DuelRaid : IAttack
         killPoint = PlaneAt(true, killAt);
         killVelocity = (PlaneAt(true, killAt) - PlaneAt(true, killAt - 0.05)) / 0.05;
         killHeading = Heading(true, killAt);
+        int killShot = Shots.Count, killBurst = airBursts.Count;
         Shots.Add(new Shot(false, fire2, killAt, killPoint));
         airBursts.Add((killPoint, killAt, 1.4));
         crashAt = killAt + 2.6;
@@ -210,7 +213,22 @@ sealed class DuelRaid : IAttack
         LastImpact = Math.Max(LastImpact, crashAt + 1.0);   // DUM-E wartet, bis die F-35A aufgeschlagen ist
         if (Environment.GetEnvironmentVariable("DK_DUEL_DEBUG") is "1") Console.WriteLine($"gruppen {groups.Count}, ueberfluege {string.Join(" ", passes.Select(p => p.ToString("0.0")))}");
         End = Math.Max(Math.Max(LastImpact + 0.4, breakAt + 3.2), crashAt + 2.6);
+
+        // Natürliche Fluglage (20.11.2026: „auch fürs Duell … Flugbahn natürlicher“): jeder Jet folgt seiner geplanten Lage als
+        // simulierter Pilot (Drehrate und Rollbeschleunigung begrenzt); das Finale wird an die geglätteten Bahnen angepasst.
+        trackF = new FlightTrack(t => Planned(true, t), 0, End, 120, 80, 0.45);
+        trackS = new FlightTrack(t => Planned(false, t), 0, End, 120, 80, 0.45);
+        Shots[decoyShot] = Shots[decoyShot] with { To = Decoy() };
+        airBursts[decoyBurst] = (Decoy(), hit1, 0.6);
+        killPoint = PlaneAt(true, killAt);
+        killVelocity = (PlaneAt(true, killAt) - PlaneAt(true, killAt - 0.05)) / 0.05;
+        killHeading = Heading(true, killAt);
+        Shots[killShot] = Shots[killShot] with { To = killPoint };
+        airBursts[killBurst] = (killPoint, killAt, 1.4);
+        airBursts[killBurst + 1] = (WreckAt(crashAt), crashAt, 1.7);
     }
+
+    FlightTrack? trackF, trackS;
 
     Point OnLine(double d)
     {
@@ -223,6 +241,7 @@ sealed class DuelRaid : IAttack
     }
 
     internal double BreakAt => breakAt;
+    public IEnumerable<(Func<double, Point> At, double From, double To)> Flights => [(t => PlaneAt(true, t), 0.3, Math.Min(killAt, End)), (t => PlaneAt(false, t), 0.3, End)];
 
     /// <summary>Wrack der F-35A nach dem Treffer: gleitet mit abnehmender Geschwindigkeit weiter, dreht sich immer schneller,
     /// sinkt bis zum Aufschlag (Schatten wandert unter das Wrack).</summary>
@@ -254,7 +273,9 @@ sealed class DuelRaid : IAttack
 
     /// <summary>Lage eines Jets: Mitte des Paares auf dem Weg, Längsversatz nach Führung, Querversatz beim Überholen (an der
     /// über ±150 px geglätteten Bahnrichtung). Nach dem Auseinanderbrechen zieht jeder zu seiner Seite weg.</summary>
-    internal Point PlaneAt(bool f35, double t)
+    internal Point PlaneAt(bool f35, double t) => (f35 ? trackF : trackS)?.At(t) ?? Planned(f35, t);
+
+    Point Planned(bool f35, double t)
     {
         double sign = f35 ? 1 : -1, lead = Lead(t);
         double brk = Fly.Smooth((t - breakAt) / 1.6);
@@ -287,6 +308,7 @@ sealed class DuelRaid : IAttack
 
     double Heading(bool f35, double t)
     {
+        if ((f35 ? trackF : trackS) is { } track) return track.Heading(t);
         var a = PlaneAt(f35, t - 0.04); var b = PlaneAt(f35, t + 0.04);
         return Math.Atan2(b.Y - a.Y, b.X - a.X);
     }

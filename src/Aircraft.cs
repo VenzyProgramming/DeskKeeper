@@ -21,7 +21,78 @@ interface IAttack
     IReadOnlyList<double>? BlastSizes => null;
     /// <summary>Eigene Bewegung eines Symbols vor dem Verschwinden (Saugroboter, Schwerkraft); null: bleibt an seinem Platz.</summary>
     Point? Move(Point start, double t) => null;
+    /// <summary>Flugbahnen aller Luftfahrzeuge (Lage über der Zeit, von, bis) für die Prüfung der Fluglage (Drehrate, Ruck).</summary>
+    IEnumerable<(Func<double, Point> At, double From, double To)> Flights => [];
     void Draw(DrawingContext dc, double t);
+}
+
+/// <summary>
+/// Natürliche Flugbahn (20.11.2026: „die AC-130 kann abrupt schnell Richtung wechseln … bei allen Flugzeugen die Flugbahn natürlicher“):
+/// ein simuliertes Flugzeug folgt der geplanten Bahn wie ein Pilot (Verfolgung eines Punktes kurz voraus). Die Drehrate ist begrenzt
+/// (Kurvenradius) und baut sich nur mit begrenzter Rollbeschleunigung auf und ab (Querlage einnehmen); die Geschwindigkeit ändert sich nur
+/// stetig. Engere Stellen der Planung werden so zu weiten, runden Kurven statt Haken.
+/// </summary>
+sealed class FlightTrack
+{
+    readonly double from, dt;
+    readonly Point[] p;
+    readonly double[] h;
+
+    /// <param name="maxTurn">größte Drehrate in Grad/s</param>
+    /// <param name="roll">größte Änderung der Drehrate in Grad/s² (Einrollen in die Kurve)</param>
+    /// <param name="lead">Vorhalt in Sekunden: so weit voraus auf der geplanten Bahn zielt der Pilot</param>
+    public FlightTrack(Func<double, Point> plan, double from, double to, double maxTurn, double roll, double lead = 0.45)
+    {
+        this.from = from; dt = 1 / 120.0;
+        int n = (int)Math.Ceiling((to - from) / dt) + 2;
+        p = new Point[n]; h = new double[n];
+        Point Plan(double t)
+        {   // vor und nach der Planung geradeaus weiter
+            if (t < from) { var a = plan(from); var v = (plan(from + 0.05) - a) / 0.05; return a + v * (t - from); }
+            if (t > to) { var b = plan(to); var v = (b - plan(to - 0.05)) / 0.05; return b + v * (t - to); }
+            return plan(t);
+        }
+        double PlanSpeed(double t) => (Plan(t + 0.05) - Plan(t - 0.05)).Length / 0.1;
+        double top = 1; for (double t = from; t <= to; t += 0.05) top = Math.Max(top, PlanSpeed(t));
+        double turnMax = maxTurn * Math.PI / 180, rollMax = roll * Math.PI / 180, accel = top * 0.9;
+        var pos = Plan(from);
+        var d0 = Plan(from + 0.05) - pos;
+        double hd = Math.Atan2(d0.Y, d0.X), rate = 0, v = PlanSpeed(from);
+        for (int i = 0; i < n; i++)
+        {
+            double t = from + i * dt;
+            p[i] = pos; h[i] = hd;
+            var aim = Plan(t + lead) - pos;
+            double reach = Math.Max(aim.Length, v * lead * 0.5 + 1);
+            double alpha = Math.IEEERemainder(Math.Atan2(aim.Y, aim.X) - hd, 2 * Math.PI);
+            // Verfolgung: Krümmung 2·sin α / Abstand, als Drehrate begrenzt; rechtzeitig ausrollen
+            double want = Math.Abs(alpha) > Math.PI / 2 ? Math.Sign(alpha) * turnMax   // Ziel hinter der Maschine: voll eindrehen statt geradeaus davon
+                : Math.Clamp(2 * v * Math.Sin(alpha) / reach, -turnMax, turnMax);
+            double stop = Math.Sqrt(2 * rollMax * Math.Abs(alpha));
+            want = Math.Clamp(want, -stop, stop);
+            rate += Math.Clamp(want - rate, -rollMax * dt, rollMax * dt);
+            hd += rate * dt;
+            // Tempo: geplantes Tempo, dazu Ausgleich des Rückstands entlang der Flugrichtung (stetig)
+            var dir = new Vector(Math.Cos(hd), Math.Sin(hd));
+            double behind = Vector.Multiply(Plan(t) - pos, dir);
+            double goal = Math.Clamp(PlanSpeed(t) + behind / 0.8, PlanSpeed(t) * 0.55, PlanSpeed(t) * 1.6 + 1);
+            v += Math.Clamp(goal - v, -accel * dt, accel * dt);
+            pos += dir * v * dt;
+        }
+    }
+
+    public Point At(double t)
+    {
+        double f = Math.Clamp((t - from) / dt, 0, p.Length - 1.001);
+        int i = (int)f; double k = f - i;
+        return p[i] + (p[i + 1] - p[i]) * k;
+    }
+
+    public double Heading(double t)
+    {
+        double f = Math.Clamp((t - from) / dt, 0, h.Length - 1.001);
+        int i = (int)f; return Fly.Turn(h[i], h[i + 1], f - i);
+    }
 }
 
 static class Attacks
@@ -739,6 +810,10 @@ sealed class RowRaid : IAttack
     readonly double[] sweepFrom = [double.MaxValue, double.MaxValue];
     readonly List<Drop> drops = [];
     record Drop(int Plane, Point From, Point To, double Release, double Impact);
+    /// <summary>Ch-22 (Tu-22M3): fällt aus dem Rumpf, zündet, fliegt in weitem Bogen auf eines der letzten Symbole der Reihe.</summary>
+    record Rocket(int Plane, Point Drop, Vector V0, Point Target, double Release, double Ignite, double Impact, double Seed);
+    readonly List<Rocket> rockets = [];
+    readonly double rocketU;
 
     public IReadOnlyList<(Point P, double T)> Blasts { get; }
     public double LastImpact { get; }
@@ -767,9 +842,16 @@ sealed class RowRaid : IAttack
         var byRow = new[] { new List<Point>(), new List<Point>() };
         foreach (var p in targets) byRow[Math.Abs(p.Y - rows[0]) <= Math.Abs(p.Y - rows[1]) ? 0 : 1].Add(p);
         var lastRelease = new double[2];
+        rocketU = Scale.PerMeter(iconSize) * 11.65 / 13.7;   // Ch-22: 11,65 m
+        var lastBomb = new double[2];
+        var finals = new List<Point>[2];
         for (int k = 0; k < 2; k++)
         {
             var list = byRow[k].OrderBy(p => p.X).ToList();
+            // Tu-22M3 : Bomben auf die Reihe, die letzten Symbole bekommen Ch-22-Marschflugkörper, dann Nachbrenner und weg
+            int last = carpet && list.Count >= 2 ? Math.Max(1, (int)Math.Round(list.Count * 0.3)) : 0;
+            finals[k] = list.Skip(list.Count - last).ToList();
+            list = list.Take(list.Count - last).ToList();
             var aims = new List<Point>();
             for (int i = 0; i < list.Count; i++)
             {
@@ -785,11 +867,24 @@ sealed class RowRaid : IAttack
                 drops.Add(new Drop(k, from, p, rt, rt + fall));
                 lastRelease[k] = Math.Max(lastRelease[k], rt);
             }
+            lastBomb[k] = Math.Max(lastRelease[k], enter + k * gap + 0.3);
+            for (int j = 0; j < finals[k].Count; j++)
+            {   // Abwurf in Reihenfolge, die Flugkörper überholen den Bomber und drehen auf ihre Ziele
+                double rt = lastBomb[k] + 0.1 + j * 0.14;   // gleich nach der letzten Bombe, solange die Ziele noch vor der Nase liegen
+                var at = PlaneAt(k, rt);
+                var dir = PlaneAt(k, rt + 0.02) - PlaneAt(k, rt - 0.02); dir.Normalize();
+                var drop = at - dir * span * 0.05 + new Vector(-dir.Y, dir.X) * ((j % 2 == 0 ? 1 : -1) * span * 0.015);
+                double ignite = rt + 0.25;
+                double dist = (finals[k][j] - drop).Length;
+                double flight = 0.55 + dist / Math.Max(1, stage.Width * 1.2);
+                rockets.Add(new Rocket(k, drop, dir * speed, finals[k][j], rt, ignite, ignite + flight, random.NextDouble()));
+                lastRelease[k] = Math.Max(lastRelease[k], rt);
+            }
         }
         if (!carpet) for (int k = 0; k < 2; k++) climbFrom[k] = lastRelease[k] + 0.25;   // Su-34 zieht nach dem letzten Abwurf hoch
         else for (int k = 0; k < 2; k++) sweepFrom[k] = lastRelease[k] + 0.3;            // Tu-22M3 schwenkt die Flügel zurück
-        Blasts = drops.Select(d => (d.To, d.Impact)).ToList();
-        LastImpact = drops.Count > 0 ? drops.Max(d => d.Impact) : enter + 2;
+        Blasts = drops.Select(d => (d.To, d.Impact)).Concat(rockets.Select(r => (r.Target, r.Impact))).ToList();
+        LastImpact = Blasts.Count > 0 ? Blasts.Max(b => b.T) : enter + 2;
         End = Math.Max(LastImpact, enter + gap + (stage.Right + span * 1.5 - startX) / speed);
     }
 
@@ -797,18 +892,63 @@ sealed class RowRaid : IAttack
     {
         double x = startX + speed * (t - enter - k * gap);
         // Tu-22M3: nach dem Zurückschwenken Nachbrenner und Beschleunigung auf gut das Dreifache 
-        double a = t - sweepFrom[k] - 0.9;
-        if (a > 0) x += speed * (a * a * 0.9 / (1 + a * 0.45));
+        double a = t - sweepFrom[k] - 0.6;
+        if (a > 0) x += speed * (a * a * 1.7 / (1 + a * 0.3));   // 20.11.2026: sehr schnell weg wie die Tu-160M (gut das Sechsfache)
         double y = rows[k] + Math.Sin(x / stage.Width * 3 + k * 1.7) * stage.Height * 0.012;
         double c = t - climbFrom[k];
-        if (c > 0) y -= c * c * stage.Height * 0.12;
+        if (c > 0) y -= c * c * c / (c + 0.7) * stage.Height * 0.17;   // weich einrollen statt Knick 
         return new Point(x, y);
     }
     double HeadingAt(int k, double t) { var a = PlaneAt(k, t - 0.02); var b = PlaneAt(k, t + 0.02); return Math.Atan2(b.Y - a.Y, b.X - a.X); }
+    public IEnumerable<(Func<double, Point> At, double From, double To)> Flights => [(t => PlaneAt(0, t), enter, End), (t => PlaneAt(1, t), enter + gap, End)];
+
+    (Point Pos, Vector Dir, bool Burning, double Altitude) RocketAt(Rocket m, double t)
+    {
+        if (t < m.Ignite)
+        {   // Fall: mit der Bombergeschwindigkeit weiter, sinkt
+            double k = t - m.Release;
+            var dir = m.V0; dir.Normalize();
+            return (m.Drop + m.V0 * k * 0.9, dir, false, 1 - 0.3 * k);
+        }
+        double d = m.Impact - m.Ignite, q = Math.Clamp((t - m.Ignite) / d, 0, 1);
+        var start = m.Drop + m.V0 * (m.Ignite - m.Release) * 0.9;
+        var v0 = m.V0 * 0.9 * d;              // Schwung vom Bomber: weiter Bogen nach vorn
+        var aim = m.Target - start; aim.Normalize();
+        var v1 = aim * (m.Target - start).Length * 1.1;
+        double q2 = q * q, q3 = q2 * q;
+        var pos = (Vector)start * (2 * q3 - 3 * q2 + 1) + v0 * (q3 - 2 * q2 + q) + (Vector)m.Target * (-2 * q3 + 3 * q2) + v1 * (q3 - q2);
+        var vel = (Vector)start * (6 * q2 - 6 * q) + v0 * (3 * q2 - 4 * q + 1) + (Vector)m.Target * (-6 * q2 + 6 * q) + v1 * (3 * q2 - 2 * q);
+        if (vel.LengthSquared < 1e-6) vel = aim;
+        vel.Normalize();
+        return ((Point)pos, vel, true, 0.7 * (1 - q));
+    }
+
+    static readonly Pen RocketTrailWide = Fly.P("#28E6E6EB", 6), RocketTrailCore = Fly.P("#70F5F5FA", 1.6);
 
     public void Draw(DrawingContext dc, double t)
     {
         double u = span / 100;
+        foreach (var m in rockets)
+        {   // Rauchspur und Flugkörper
+            if (t < m.Release || t >= m.Impact) continue;
+            if (t > m.Ignite)
+            {
+                var trail = new StreamGeometry();
+                using (var g = trail.Open())
+                {
+                    bool first = true;
+                    for (double q = Math.Max(m.Ignite, t - 0.8); q <= t; q += 0.04)
+                    {
+                        var p0 = RocketAt(m, q).Pos;
+                        if (first) { g.BeginFigure(p0, false, false); first = false; } else g.LineTo(p0, true, true);
+                    }
+                }
+                trail.Freeze();
+                dc.DrawGeometry(null, RocketTrailWide, trail); dc.DrawGeometry(null, RocketTrailCore, trail);
+            }
+            var (pos, dir, burning, alt) = RocketAt(m, t);
+            Art.Missile(dc, pos, dir, 0.25, burning, alt, rocketU, t + m.Seed);
+        }
         foreach (var d in drops)
         {
             if (t < d.Release || t >= d.Impact) continue;
@@ -1022,6 +1162,7 @@ sealed class HelicopterRaid : IAttack
         return keys[^1].H;
     }
 
+    public IEnumerable<(Func<double, Point> At, double From, double To)> Flights => [(t => Pose(t).Pos, Enter, gone)];
     (Point Pos, double Heading, double Altitude) Pose(double t)
     {
         var bob = new Vector(0, Math.Sin(t * 2.3) * span * 0.012);
@@ -1134,6 +1275,7 @@ sealed class BearRaid : IAttack
     }
 
     Point PlaneAt(double t) { double x = startX + speed * (t - enter); return new Point(x, stage.Top + stage.Height * 0.15 + Math.Sin(x / stage.Width * 2) * stage.Height * 0.015); }
+    public IEnumerable<(Func<double, Point> At, double From, double To)> Flights => [(PlaneAt, enter, End)];
 
     // wie bei der Tu-160: kurz fallen, zünden, weiter Bogen ins Ziel
     (Point Pos, Vector Dir, double Fold, bool Burning, double Altitude) MissileAt(Missile m, double t)
@@ -1233,6 +1375,7 @@ sealed class AirborneRaid : IAttack
     }
 
     Point PlaneAt(double t) { double x = startX + speed * (t - enter); return new Point(x, stage.Top + stage.Height * 0.2 + Math.Sin(x / stage.Width * 2.4) * stage.Height * 0.012); }
+    public IEnumerable<(Func<double, Point> At, double From, double To)> Flights => [(PlaneAt, enter, End)];
 
     public void Draw(DrawingContext dc, double t)
     {
@@ -1462,7 +1605,7 @@ sealed class GunshipRaid : IAttack
             // Kreisen
             double theta0 = Math.Atan2(p0.Y - orbit.Y, p0.X - orbit.X);
             double sign = Vector.CrossProduct(p0 - orbit, tangent) > 0 ? 1 : -1;
-            double omega = speed / radius * sign;
+            double omega = Math.Min(speed, radius * 0.9) / radius * sign;   // Kreis höchstens ~50°/s: gemächliche Linkskurve wie ein echter Gunship
             var members = g.Members.OrderBy(m => (m - g.Center).LengthSquared).ToList();
             double stay = Warm + members.Count * Per + 0.6;
             double t0 = t, c0 = theta0; var center = orbit;
@@ -1515,8 +1658,10 @@ sealed class GunshipRaid : IAttack
         End = t + outHop;
         Blasts = blasts; BlastSizes = sizes;
         LastImpact = blasts.Count > 0 ? blasts.Max(b => b.Item2) : 2;
+        track = new FlightTrack(Planned, 0.3, End, 75, 45, 0.45);   // 20.11.2026: kein abrupter Richtungswechsel mehr
     }
 
+    FlightTrack? track;
     record Group(Point Center, double Radius, List<Point> Members);
 
     /// <summary>Benachbarte Symbole (Radius r) zu Gruppen zusammenfassen; jede Gruppe wird einmal umkreist.</summary>
@@ -1540,13 +1685,15 @@ sealed class GunshipRaid : IAttack
         return (Point)((Vector)a * (2 * k3 - 3 * k2 + 1) + da * (k3 - 2 * k2 + k) + (Vector)b * (-2 * k3 + 3 * k2) + db * (k3 - k2));
     });
 
-    Point At(double t)
+    Point Planned(double t)
     {
         foreach (var s in path) if (t <= s.To) return s.At(Math.Max(t, s.From));
         return path[^1].At(path[^1].To);
     }
-    double HeadingAt(double t) { var a = At(t - 0.02); var b = At(t + 0.02); return Math.Atan2(b.Y - a.Y, b.X - a.X); }
+    Point At(double t) => track?.At(t) ?? Planned(t);
+    double HeadingAt(double t) => track?.Heading(t) ?? 0;
     internal Point PlaneAt(double t) => At(t);
+    public IEnumerable<(Func<double, Point> At, double From, double To)> Flights => [(At, 0.3, End)];
 
     Point Muzzle(Gun gun, double t)
     {

@@ -233,6 +233,9 @@ sealed class StealthRaid : IAttack
         End = Math.Max(LastImpact + 0.3, passes.Count > 0 ? passes.Max(p => p.End) : 2);
     }
 
+    public IEnumerable<(Func<double, Point> At, double From, double To)> Flights =>
+        passes.Select(p => ((Func<double, Point>)(t => p.From + p.Dir * ((t - p.Start) * speed)), p.Start, p.End));
+
     public void Draw(DrawingContext dc, double t)
     {
         foreach (var w in weapons)
@@ -314,6 +317,9 @@ sealed class SpiritRaid : IAttack
         LastImpact = blasts.Count > 0 ? blasts.Max(b => b.Item2) : 2;
         End = Math.Max(LastImpact + 0.3, t);
     }
+
+    public IEnumerable<(Func<double, Point> At, double From, double To)> Flights =>
+        passes.Select(p => ((Func<double, Point>)(t => new Point((p.Dir > 0 ? area.Left - span : area.Right + span) + p.Dir * (t - p.Start) * speed, p.Y)), p.Start, p.End));
 
     public void Draw(DrawingContext dc, double t)
     {
@@ -485,10 +491,11 @@ sealed class GravityRaid : IAttack
         {
             var screen = this.screens.FirstOrDefault(r => r.Contains(p)); if (screen.IsEmpty) screen = area;
             double lift = iconSize * (0.6 + 0.9 * rnd.NextDouble()), drift = (rnd.NextDouble() - 0.5) * iconSize * 1.2, phase = rnd.NextDouble() * Math.Tau;
-            double b = back + rnd.NextDouble() * 0.25;
-            double g = screen.Height * 3.2;
+            // nacheinander statt alle auf einmal: oben zuerst, dazu etwas Zufall; sanftere Schwerkraft (20.11.2026: „funktioniert sehr schlecht“)
+            double b = back + 0.9 * Math.Clamp((p.Y - screen.Top) / Math.Max(1, screen.Height), 0, 1) + rnd.NextDouble() * 0.35;
+            double g = screen.Height * 1.5;
             // Höhe zum Zeitpunkt der Rückkehr der Schwerkraft, dann freier Fall bis unter den Rand
-            double y0 = p.Y - lift * (b - 0.3);
+            double y0 = p.Y - lift * (b - 0.3) - lift * Coast;
             double fallTo = screen.Bottom + iconSize * 1.2;
             double exit = b + Math.Sqrt(2 * Math.Max(1, fallTo - y0) / g);
             fallers[p] = new Faller(p, lift, drift, phase, b, g, exit);
@@ -506,8 +513,11 @@ sealed class GravityRaid : IAttack
         var floating = new Vector(f.Drift * up / f.Back + Math.Sin(t * 1.7 + f.Phase) * iconSize * 0.08, -f.Lift * up + Math.Cos(t * 1.3 + f.Phase) * iconSize * 0.05);
         if (t <= f.Back) return start + floating;
         double fall = t - f.Back;
-        return start + floating + new Vector(f.Drift * 0.2 * fall, 0.5 * f.G * fall * fall);
+        // Auftrieb klingt stetig aus (kein Geschwindigkeitssprung), dann freier Fall
+        double coast = Coast * (1 - Math.Exp(-fall / Coast));
+        return start + floating + new Vector(f.Drift * 0.2 * fall, -f.Lift * coast + 0.5 * f.G * fall * fall);
     }
+    const double Coast = 0.25;
 
     static readonly Brush Pulse = Art.Glow("#604CC2FF"), Slam = Art.Glow("#80FFFFFF");
     static readonly Pen Streak = Fly.P("#50FFFFFF", 2);

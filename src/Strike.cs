@@ -335,7 +335,7 @@ sealed class StrafeRaid : IAttack
         span = Scale.PerMeter(iconSize) * meters;   // Spannweite im gemeinsamen Maßstab
         u = span / (kind == Kind.A10 ? 107.8 : 93.4);
         Reach = iconSize * 0.5;
-        double speed = span * (kind == Kind.A10 ? 3.8 : 4.4);
+        double speed = span * (kind == Kind.A10 ? 3.2 : 3.7);   // etwas gemächlicher: kleinerer Wendekreis 
         double lead = span * 1.15;   // Schrägentfernung beim Feuern: der Einschlag liegt so weit vor der Nase
         var random = new Random(kind == Kind.A10 ? 10 : 25);
         // Gruppen: höchstens acht Anflüge
@@ -354,22 +354,29 @@ sealed class StrafeRaid : IAttack
             pending.Remove(g);
             var c = Mid(g);
             // Anflugrichtung: Hauptachse der Gruppe (Reihe/Spalte wird der Länge nach bestrichen), vom Flugzeug weg orientiert
-            var axis = Axis(g, c - pos);
+            var axis0 = Axis(g, c - pos);
+            // beide Richtungen probefliegen, die kürzere nehmen (keine unnötige Platzrunde)
+            var axis = axis0; double quickest = double.MaxValue;
+            foreach (var candidate in new[] { axis0, -axis0 })
+            {
+                var sorted = g.OrderBy(m => Vector.Multiply(m - c, candidate)).ToList();
+                var probeStart = c + candidate * (Vector.Multiply(sorted[0] - c, candidate) - lead - span * 1.6);
+                double tt = t; var pp = pos; var dd = dir; double keep = rate;
+                Approach(ref tt, ref pp, ref dd, probeStart, candidate, speed, alt, 0.32, dry: true);
+                rate = keep;
+                if (tt - t < quickest - 0.3) { quickest = tt - t; axis = candidate; }
+            }
             var members = g.OrderBy(m => Vector.Multiply(m - c, axis)).ToList();
             double s0 = Vector.Multiply(members[0] - c, axis), s1 = Vector.Multiply(members[^1] - c, axis);
             var runStart = c + axis * (s0 - lead - span * 1.6);
             var fireStart = c + axis * (s0 - lead - iconSize * 0.8);
             var runEnd = c + axis * (s1 - lead + span * 2.2);
             // Kurve zum Anflugbeginn
-            double gap = (runStart - pos).Length;
-            double turn = Math.Abs(Vector.AngleBetween(dir, axis)) * Math.PI / 180;
-            double hop = Math.Max(1.1, (gap * 1.15 + turn * span * 1.2) / speed);
-            path.Add(Hermite(t, t + hop, pos, dir * Math.Max(gap, span * 3), runStart, axis * Math.Max(gap, span * 3), alt, 0.32));
-            t += hop;
+            Approach(ref t, ref pos, ref dir, runStart, axis, speed, alt, 0.32);
             // Anflug geradeaus
             double run = (runEnd - runStart).Length / speed;
-            double t0 = t; var start = runStart;
-            path.Add(new Segment(t0, t0 + run, q => start + axis * ((q - t0) * speed), 0.32, 0.32));
+            double t0 = t - Vector.Multiply(pos - runStart, axis) / speed; var start = runStart;   // die Simulation endet knapp hinter dem Startpunkt
+            path.Add(new Segment(t, t0 + run, q => start + axis * ((q - t0) * speed), 0.32, 0.32));
             double TimeAt(Point onTrack) => t0 + Vector.Multiply(onTrack - start, axis) / speed;
             bool rockets = kind == Kind.Su25 && pass % 2 == 0 && members.Count >= 2;
             int k0 = 0;
@@ -430,14 +437,126 @@ sealed class StrafeRaid : IAttack
             pass++;
         }
         Passes = pass;
-        var exit = new Point(stage.Left - span * 2, stage.Top - span);
-        double outGap = (exit - pos).Length;
-        double outHop = Math.Max(1.2, outGap * 1.15 / speed);
-        path.Add(Hermite(t, t + outHop, pos, dir * outGap, exit, new Vector(-1, -0.4) * outGap, alt, 1));
-        End = t + outHop;
+        // Abflug: weiter Bogen nach links oben aus dem Bild
+        var exit = new Point(stage.Left - span * 6, stage.Top - span * 3);
+        var outside = stage; outside.Inflate(span * 1.5, span * 1.5);
+        Steer(ref t, ref pos, ref dir, speed, alt, 1, (p, _) => (exit, !outside.Contains(p)));
+        End = t;
         Blasts = blasts; BlastSizes = sizes;
         LastImpact = blasts.Count > 0 ? blasts.Max(b => b.Item2) : 2;
+        track = new FlightTrack(q => Planned(q).P, 0.3, End, 85, 90, 0.5);   // Querlage weich einnehmen statt sprunghafter Drehrate
     }
+
+    // ------------------------------------------------------------ Flugbahn (20.11.2026: „die A-10C … abrupt“)
+    // Anflüge als Dubins-Bahn (Kurve, Gerade, Kurve) mit festem Wendekreis bei fester Geschwindigkeit, am Ende genau auf der Angriffsspur;
+    // danach glättet ein simulierter Pilot die Übergänge (Drehrate und Rollbeschleunigung begrenzt). Abflug als einfache Verfolgung.
+    const double TurnRate = 85 * Math.PI / 180, RollRate = 90 * Math.PI / 180, Dt = 1 / 120.0;
+    double rate;
+
+    void Steer(ref double t, ref Point pos, ref Vector dir, double speed, double alt0, double alt1, Func<Point, Vector, (Point Aim, bool Done)> steer, Func<Point, Point>? land = null, bool dry = false)
+    {
+        var points = new List<Point> { pos };
+        double hd = Math.Atan2(dir.Y, dir.X), t0 = t;
+        for (int guard = 0; guard < 120 * 40; guard++)
+        {
+            var (aim, done) = steer(pos, new Vector(Math.Cos(hd), Math.Sin(hd)));
+            if (done && guard > 0) break;
+            double delta = Math.IEEERemainder(Math.Atan2(aim.Y - pos.Y, aim.X - pos.X) - hd, 2 * Math.PI);
+            double want = Math.Clamp(delta * 1.6, -TurnRate, TurnRate);
+            double stop = Math.Sqrt(2 * RollRate * Math.Abs(delta));
+            want = Math.Clamp(want, -stop, stop);
+            rate += Math.Clamp(want - rate, -RollRate * Dt, RollRate * Dt);
+            hd += rate * Dt;
+            pos += new Vector(Math.Cos(hd), Math.Sin(hd)) * speed * Dt;
+            points.Add(pos);
+        }
+        double t1 = t0 + (points.Count - 1) * Dt;
+        var list = points.ToArray();
+        if (dry) { t = t1; return; }
+        if (land is not null)
+        {   // die letzte Sekunde weich auf die Spur legen: Lage und Richtung gehen nahtlos in den geraden Anflug über
+            int n = Math.Min(list.Length - 1, 120);
+            for (int i = 0; i <= n; i++) { int j = list.Length - 1 - i; list[j] += (land(list[j]) - list[j]) * Fly.Smooth(1 - i / (double)n); }
+            pos = list[^1];
+        }
+        path.Add(new Segment(t0, t1, q =>
+        {
+            double f = Math.Clamp((q - t0) / Dt, 0, list.Length - 1.001);
+            int i = (int)f; return list[i] + (list[i + 1] - list[i]) * (f - i);
+        }, alt0, alt1));
+        t = t1; dir = new Vector(Math.Cos(hd), Math.Sin(hd));
+    }
+
+    /// <summary>Auf die Angriffsspur (Start, Richtung) einschwenken: kürzeste Kurve-Gerade-Kurve-Bahn (Dubins) mit einem Wendekreis, der
+    /// dem Glätten Reserve lässt. Endet genau am Startpunkt in Spurrichtung; dry: nur die Dauer bestimmen.</summary>
+    void Approach(ref double t, ref Point pos, ref Vector dir, Point start, Vector axis, double speed, double alt0, double alt1, bool dry = false)
+    {
+        double radius = speed / TurnRate * 1.35;
+        var (kinds, lengths) = Dubins(pos, Math.Atan2(dir.Y, dir.X), start, Math.Atan2(axis.Y, axis.X), radius);
+        double total = lengths.Sum();
+        if (dry) { t += total / speed; return; }
+        var points = new List<Point> { pos };
+        double h = Math.Atan2(dir.Y, dir.X), step = speed * Dt; var p = pos;
+        for (int seg = 0; seg < 3; seg++)
+        {
+            double left = lengths[seg];
+            while (left > 1e-9)
+            {
+                double ds = Math.Min(step, left); left -= ds;
+                if (kinds[seg] == 0) p += new Vector(Math.Cos(h), Math.Sin(h)) * ds;
+                else { double k = kinds[seg], h1 = h + k * ds / radius; p += new Vector(Math.Sin(h1) - Math.Sin(h), Math.Cos(h) - Math.Cos(h1)) * (radius * k); h = h1; }
+                if (left <= 1e-9 && seg < 2) continue;
+                points.Add(p);
+            }
+        }
+        var list = points.ToArray();
+        var shift = start - list[^1];   // Rundungsrest, wenige Pixel
+        int n = Math.Min(list.Length - 1, 60);
+        for (int i = 0; i <= n; i++) list[list.Length - 1 - i] += shift * Fly.Smooth(1 - i / (double)n);
+        double t0 = t, t1 = t + (list.Length - 1) * Dt;
+        path.Add(new Segment(t0, t1, q =>
+        {
+            double f = Math.Clamp((q - t0) / Dt, 0, list.Length - 1.001);
+            int i = (int)f; return list[i] + (list[i + 1] - list[i]) * (f - i);
+        }, alt0, alt1));
+        t = t1; pos = start; dir = axis; rate = 0;
+    }
+
+    /// <summary>Kürzeste Dubins-Bahn (Kurve, Gerade, Kurve) zwischen zwei Lagen: Art je Teil (+1 links, −1 rechts, 0 gerade) und Längen in Pixeln.</summary>
+    static (int[] Kinds, double[] Lengths) Dubins(Point a, double ha, Point b, double hb, double r)
+    {
+        static double Mod(double x) { x %= 2 * Math.PI; return x < 0 ? x + 2 * Math.PI : x; }
+        var dv = b - a; double d = dv.Length / r, th = Math.Atan2(dv.Y, dv.X);
+        double al = Mod(ha - th), be = Mod(hb - th), sa = Math.Sin(al), sb = Math.Sin(be), ca = Math.Cos(al), cb = Math.Cos(be), cab = Math.Cos(al - be);
+        var best = (Kinds: new[] { 1, 0, 1 }, L: double.MaxValue, Parts: new double[3]);
+        void Try(int k1, int k3, double tt, double pp, double qq)
+        {
+            if (double.IsNaN(pp) || pp < 0) return;
+            double len = tt + pp + qq;
+            if (len < best.L) best = (new[] { k1, 0, k3 }, len, new[] { tt * r, pp * r, qq * r });
+        }
+        {   // LSL
+            double p2 = 2 + d * d - 2 * cab + 2 * d * (sa - sb);
+            if (p2 >= 0) { double tmp = Math.Atan2(cb - ca, d + sa - sb); Try(1, 1, Mod(-al + tmp), Math.Sqrt(p2), Mod(be - tmp)); }
+        }
+        {   // RSR
+            double p2 = 2 + d * d - 2 * cab + 2 * d * (sb - sa);
+            if (p2 >= 0) { double tmp = Math.Atan2(ca - cb, d - sa + sb); Try(-1, -1, Mod(al - tmp), Math.Sqrt(p2), Mod(-be + tmp)); }
+        }
+        {   // LSR
+            double p2 = -2 + d * d + 2 * cab + 2 * d * (sa + sb);
+            if (p2 >= 0) { double pp = Math.Sqrt(p2), tmp = Math.Atan2(-ca - cb, d + sa + sb) - Math.Atan2(-2, pp); Try(1, -1, Mod(-al + tmp), pp, Mod(-Mod(be) + tmp)); }
+        }
+        {   // RSL
+            double p2 = d * d - 2 + 2 * cab - 2 * d * (sa + sb);
+            if (p2 >= 0) { double pp = Math.Sqrt(p2), tmp = Math.Atan2(ca + cb, d - sa - sb) - Math.Atan2(2, pp); Try(-1, 1, Mod(al - tmp), pp, Mod(be - tmp)); }
+        }
+        return (best.Kinds, best.Parts);
+    }
+
+    FlightTrack? track;
+    /// <summary>Größte Abweichung der geglätteten Flugbahn von der Angriffsspur während des Feuerns, in Spannweiten.</summary>
+    internal double RunMiss() => Shots.Count == 0 || track is null ? 0 : Shots.Max(s => (track.At(s.Fire) - Planned(s.Fire).P).Length) / span;
 
     static Point Mid(List<Point> g) => new(g.Average(p => p.X), g.Average(p => p.Y));
 
@@ -486,7 +605,8 @@ sealed class StrafeRaid : IAttack
         return (Point)((Vector)a * (2 * k3 - 3 * k2 + 1) + da * (k3 - 2 * k2 + k) + (Vector)b * (-2 * k3 + 3 * k2) + db * (k3 - k2));
     }, alt0, alt1);
 
-    (Point P, double Alt) State(double t)
+    (Point P, double Alt) State(double t) { var (p, alt) = Planned(t); return (track?.At(t) ?? p, alt); }
+    (Point P, double Alt) Planned(double t)
     {
         foreach (var s in path)
             if (t <= s.To)
@@ -497,7 +617,8 @@ sealed class StrafeRaid : IAttack
         return (path[^1].At(path[^1].To), path[^1].Altitude1);
     }
     internal Point PlaneAt(double t) => State(t).P;
-    double HeadingAt(double t) { var a = State(t - 0.02).P; var b = State(t + 0.02).P; return Math.Atan2(b.Y - a.Y, b.X - a.X); }
+    public IEnumerable<(Func<double, Point> At, double From, double To)> Flights => [(PlaneAt, 0.3, End)];
+    double HeadingAt(double t) { if (track is not null) return track.Heading(t); var a = State(t - 0.02).P; var b = State(t + 0.02).P; return Math.Atan2(b.Y - a.Y, b.X - a.X); }
 
     Point Muzzle(Weapon w, double t, int index)
     {

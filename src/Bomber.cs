@@ -79,14 +79,18 @@ sealed class Bomber : IAttack
         int i = (int)f; return distance[i] + (distance[i + 1] - distance[i]) * (f - i);
     }
 
+    public IEnumerable<(Func<double, Point> At, double From, double To)> Flights => [(t => Pose(t).Pos, enter, End)];
     (Point Pos, double Heading) Pose(double t)
     {
         // leichter Bogen von links oben nach rechts, zuletzt steigend aus dem Bild
+        return (Place(t), Math.Atan2(Place(t + 0.02).Y - Place(t - 0.02).Y, Place(t + 0.02).X - Place(t - 0.02).X));
+    }
+
+    Point Place(double t)
+    {
         double s = Distance(t);
-        double x = stage.Left - span * 0.8 + s;
-        double y = stage.Top + stage.Height * 0.24 + Math.Sin(s / stage.Width * 2.2) * stage.Height * 0.05 - Math.Max(0, t - sweepStart) * stage.Height * 0.03;
-        double slope = Math.Cos(s / stage.Width * 2.2) * stage.Height * 0.05 * 2.2 / stage.Width;
-        return (new Point(x, y), Math.Atan(slope));
+        double climb = t - sweepStart; climb = climb > 0 ? climb * climb / (climb + 1.2) : 0;   // weich ins Steigen statt Knick 
+        return new Point(stage.Left - span * 0.8 + s, stage.Top + stage.Height * 0.24 + Math.Sin(s / stage.Width * 2.2) * stage.Height * 0.05 - climb * stage.Height * 0.03);
     }
 
     /// <summary>Flügelpfeilung in Grad: 20° beim Anflug, 65° nach dem Abwurf.</summary>

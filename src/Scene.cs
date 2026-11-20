@@ -198,8 +198,10 @@ sealed class Scene
         else if (nuke) DrawNuke(dc, t);
         else if (jericho) DrawJericho(dc, t);
         if (jericho && bomber?.Explodes != false) DrawAsh(dc, t);
-        DrawCarried(dc, t);
+        // Fahrzeug zuerst, getragene Symbole darüber (20.11.2026: „setzen was drauf … ist unsichtbar“ – vorher verdeckten Palette,
+        // Ladefläche und Rumpf die geladenen Symbole, bis sie abgesetzt waren)
         robot.Draw(dc, t);
+        DrawCarried(dc, t);
     }
 
     /// <summary>Raster bleibt an : Symbole unterwegs zeichnet die Bühne als Bild, das echte Symbol wartet außerhalb

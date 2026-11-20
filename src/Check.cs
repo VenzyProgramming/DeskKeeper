@@ -31,9 +31,34 @@ static class Check
         var sc = new Scene(icons, homes, iconSize, screens, primary, true, 64, attack: attack);
         Console.WriteLine($"{attack}: Dauer {sc.Duration:0.0} s, Einschläge {sc.Raid.Count}, Roboter ab {sc.RobotStart:0.0} s, " +
             $"jedes Symbol getroffen {icons.All(i => sc.Raid.Any(b => (b.P - i.Center).Length <= iconSize * 2.2))}");
+        if (sc.Attack is { } flying && flying.Flights.Any()) { var a = Attitude(flying, all); Console.WriteLine($"fluglage: drehrate max {a.Turn:0} grad/s, drehbeschleunigung max {a.Roll:0} grad/s² ({a.Where})"); }
+        if (sc.Attack is StrafeRaid strafe) Console.WriteLine($"anflug: groesste abweichung von der spur beim feuern {strafe.RunMiss():0.00} spannweiten");
         if (sc.Attack is DuelRaid duel) { var m = duel.Metrics(iconSize); Console.WriteLine($"duel-messwerte: geschwindigkeit {m.SpeedRatio:0.00}x, startwinkel {m.LaunchAngle:0} grad, abstand gegner-einschlag {m.TargetMiss:0.0} symbole, gegner vor der nase: groesster winkel {180 - m.Behind:0} grad"); var u = duel.Unrest(1920); Console.WriteLine($"duel-unruhe: drehrate max {u.TurnRate:0} grad/s, richtungswechsel {u.Wobble:0.00} je s, beschleunigung max {u.Accel:0.0}x/s, tempo {u.ScreensPerSecond:0.00} bildschirmbreiten/s, kleinster abstand {duel.ClosestPass():0.00} spannweiten"); var j = duel.Jerk(); Console.WriteLine($"duel-ruck: drehbeschleunigung jet max {j.Jet:0} grad/s² (bei {j.JetAt:0.0} s), bahn max {j.Path:0} grad/s²"); }
         foreach (var t in times) Save(Frame(sc, all, icons, t, 0.5), Path.Combine(output, $"{attack}-{t:0.0}.png"));
         return 0;
+    }
+
+    /// <summary>Fluglage aller Luftfahrzeuge eines Angriffs (20.11.2026: „Flugbahn natürlicher“): größte Drehrate (Grad/s) und größte
+    /// Drehbeschleunigung (Grad/s², über 0,1 s gemittelt), nur im Bild und solange sich das Flugzeug bewegt.</summary>
+    internal static (double Turn, double Roll, string Where) Attitude(IAttack attack, Rect view)
+    {
+        double turn = 0, roll = 0; string where = "";
+        int index = 0;
+        foreach (var (at, from, to) in attack.Flights)
+        {
+            const double h = 0.05;
+            double? Heading(double t) { var v = at(t + 0.02) - at(t - 0.02); return v.Length < 0.5 ? null : Math.Atan2(v.Y, v.X); }
+            double? Rate(double t) => Heading(t + h) is { } b && Heading(t - h) is { } a ? Math.IEEERemainder(b - a, 2 * Math.PI) / (2 * h) * 180 / Math.PI : null;
+            var grown = view; grown.Inflate(view.Width * 0.1, view.Height * 0.1);
+            for (double t = from + 0.2; t < to - 0.2; t += 1 / 60.0)
+            {
+                if (!grown.Contains(at(t))) continue;
+                if (Rate(t) is { } r && Math.Abs(r) > turn) { turn = Math.Abs(r); }
+                if (Rate(t + 0.05) is { } r1 && Rate(t - 0.05) is { } r0 && Math.Abs(r1 - r0) / 0.1 > roll) { roll = Math.Abs(r1 - r0) / 0.1; where = $"flug {index} bei {t:0.0} s"; }
+            }
+            index++;
+        }
+        return (turn, roll, where);
     }
 
     public static Task<int> Run(string output)
@@ -183,7 +208,7 @@ static class Check
                 if (attack != Attacks.Il76) Pass(attack + "-kein-einschlag-ins-leere", sc.Raid.All(b => icons.Any(i => (b.P - i.Center).Length <= iconSize * 1.2)));
                 Pass(attack + "-alle-symbole-weg-vor-dume", sc.IconCenters(sc.RobotStart - 0.05).Values.All(v => v is null));
                 Pass(attack + "-am-ende-alle-zuhause", sc.IconCenters(sc.Duration).All(e => e.Value is { } v && (v - homes[e.Key]).Length < 0.5));
-                double limit = attack == Attacks.Ka52 ? 110 : attack == Attacks.Ac130 ? 140 : attack is Attacks.A10 or Attacks.Su25 or Attacks.Vacuum ? 130 : attack == Attacks.Duel ? 125 : 100;   // Duell langsamer, ohne ruckartige Manöver, mit Abschuss am Ende    // AC-130: Show je Gruppe    // Ka-52 greift jedes Symbol einzeln an : dauert mit der Symbolzahl länger
+                double limit = attack == Attacks.Ka52 ? 110 : attack == Attacks.Ac130 ? 140 : attack is Attacks.A10 or Attacks.Su25 ? 145 : attack == Attacks.Vacuum ? 130 : attack == Attacks.Duel ? 125 : 100;   // Duell langsamer, ohne ruckartige Manöver, mit Abschuss am Ende    // AC-130: Show je Gruppe    // Ka-52 greift jedes Symbol einzeln an : dauert mit der Symbolzahl länger
                 Pass($"{attack}-dauer-unter-{limit:0}-s", sc.Duration < limit);
                 results[attack + "-dauer-s"] = Math.Round(sc.Duration, 1);
                 var (mean, p95) = DrawCost(sc, sc.RobotStart);
@@ -192,10 +217,18 @@ static class Check
                 results[attack + "-render-ms"] = soft; results[attack + "-render-ms-max"] = softMax;
                 // Deckkraftebenen je brennendem Symbol und je Funkenregen kosteten 60 % bzw. 30 % der Bildzeit (Tu-22M3 149 ms → 17 ms)
                 Pass($"{attack}-rendern-unter-60-ms", soft < 60);
+                if (attack != Attacks.Ka52 && sc.Attack is { } flying && flying.Flights.Any())
+                {   // 20.11.2026: Flugbahnen natürlich, keine abrupten Richtungswechsel (Hubschrauber darf auf der Stelle drehen)
+                    var a = Attitude(flying, all);
+                    results[$"{attack}-drehrate-max"] = Math.Round(a.Turn); results[$"{attack}-drehbeschleunigung-max"] = Math.Round(a.Roll);
+                    Pass($"{attack}-fluglage-ohne-ruck", a.Turn <= 125 && a.Roll <= 120);
+                }
                 for (int f = 0; f < frames.Length; f++) Save(Frame(sc, all, icons, frames[f], 0.5), Path.Combine(output, $"{attack}-{f + 1}.png"));
                 if (sc.Attack is GunshipRaid gunship)
                 {
                     var kills = gunship.Shots.Where(s => s.Kill).ToList();
+                    var off = kills.Where(s => !screens.Any(r => r.Contains(gunship.PlaneAt(s.Fire)))).Select(s => $"{s.Fire:0.0}s@{gunship.PlaneAt(s.Fire).X:0},{gunship.PlaneAt(s.Fire).Y:0}").ToList();
+                    if (off.Count > 0) Console.WriteLine("ac130 ausserhalb: " + string.Join(" ", off));
                     Pass("ac130-kreist-auf-dem-bildschirm", kills.All(s => screens.Any(r => r.Contains(gunship.PlaneAt(s.Fire)))));
                     Pass("ac130-gruppe-haelt-erst-durch", kills.Count > 0 && gunship.Shots.Any(s => !s.Kill && s.Fire < kills.Min(k => k.Fire)));
                     results["ac130-kreise"] = gunship.Orbits;
@@ -241,6 +274,10 @@ static class Check
                     double mid = after.RobotStart + (after.Duration - after.RobotStart) * 0.35;
                     Save(Frame(after, all, icons, mid, 0.5), Path.Combine(output, $"helfer-{helper}-1.png"));
                     Save(Frame(after, all, icons, after.RobotStart + (after.Duration - after.RobotStart) * 0.7, 0.5), Path.Combine(output, $"helfer-{helper}-2.png"));
+                    // geladene Symbole müssen über dem Fahrzeug sichtbar sein : Bild, sobald mindestens zwei unterwegs sind
+                    for (double q = after.RobotStart; q < after.Duration; q += 0.1)
+                        if (after.IconCenters(q).Count(e => e.Value is { } v && !after.Resting(e.Key, v)) >= 2)
+                        { Save(Frame(after, all, icons, q + 0.6, 1.0), Path.Combine(output, $"helfer-{helper}-geladen.png")); break; }
                     var moved = icons.Select((i, n) => i with { Center = i.Center + new Vector(300 + n * 13, 40) }).ToList();
                     var back = new Scene(moved, homes, iconSize, screens, primary, false, 64);
                     Pass($"helfer-{helper}-wiederherstellen-alle-zuhause", back.IconCenters(back.Duration).All(e => e.Value is { } v && (v - homes[e.Key]).Length < 0.5));
@@ -582,6 +619,15 @@ static class Check
     static readonly string[] Names = ["Проекты", "Заметки", "Корзина", "Картинки", "Документы", "Музыка", "Игры", "Загрузки"];
 
     /// <summary>Testbild: Tapete, Testsymbole an ihrer Szenenposition, darüber die Darsteller.</summary>
+    static readonly DrawingImage Placeholder = MakePlaceholder();
+    static DrawingImage MakePlaceholder()
+    {
+        var g = new DrawingGroup();
+        g.Children.Add(new GeometryDrawing(Brushes.Transparent, null, new RectangleGeometry(new Rect(0, 0, 48, 48))));
+        g.Children.Add(new GeometryDrawing(new SolidColorBrush(Color.FromRgb(0xE7, 0xB4, 0x7B)), new Pen(new SolidColorBrush(Color.FromRgb(0x7A, 0x4E, 0x22)), 1.5), new RectangleGeometry(new Rect(0, 0, 48, 40), 6, 6)));
+        var image = new DrawingImage(g); image.Freeze(); return image;
+    }
+
     static BitmapSource Frame(Scene scene, Rect all, List<IconInfo> icons, double t, double scale)
     {
         var visual = new DrawingVisual();
@@ -594,6 +640,7 @@ static class Check
             dc.DrawRectangle(wall, null, new Rect(0, 0, 1920, 1080));
             dc.DrawRectangle(wall, null, new Rect(1920, -360, 1280, 1440));
             var centers = scene.IconCenters(t);
+            scene.IconImage ??= _ => Placeholder;   // wie auf dem Desktop: getragene Symbole zeichnet die Bühne über dem Fahrzeug
             var face = new Typeface("Segoe UI");
             foreach (var icon in icons)
             {
