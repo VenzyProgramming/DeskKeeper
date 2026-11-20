@@ -201,7 +201,12 @@ sealed class Scene
         // Fahrzeug zuerst, getragene Symbole darüber (20.11.2026: „setzen was drauf … ist unsichtbar“ – vorher verdeckten Palette,
         // Ladefläche und Rumpf die geladenen Symbole, bis sie abgesetzt waren)
         robot.Draw(dc, t);
-        DrawCarried(dc, t);
+        DrawCarried(dc, t, false);
+        if (bomber is not null)
+        {   // Tiere stehen vor den Symbolen; was sie im Maul tragen, liegt darüber
+            bomber.DrawAbove(dc, t);
+            DrawCarried(dc, t, true);
+        }
     }
 
     /// <summary>Raster bleibt an : Symbole unterwegs zeichnet die Bühne als Bild, das echte Symbol wartet außerhalb
@@ -222,7 +227,7 @@ sealed class Scene
     /// hat (20.11.2026: „anfangs unsichtbar, nach einer gewissen Zeit sichtbar“).</summary>
     const double Settle = 0.8;
 
-    void DrawCarried(DrawingContext dc, double t)
+    void DrawCarried(DrawingContext dc, double t, bool above)
     {
         if (IconImage is null) return;
         double s = CarriedSize > 0 ? CarriedSize : iconSize;
@@ -232,11 +237,21 @@ sealed class Scene
             bool draw = !Resting(icon.Id, c) || DrawnOnly(icon.Id, t)
                 || IconAt(icon.Id, t - Settle) is { } b && (!Resting(icon.Id, b) || DrawnOnly(icon.Id, t - Settle));
             if (!draw) continue;
-            dc.DrawImage(image, new Rect(c.X - s / 2, c.Y - s / 2, s, s));
-            var label = Label(icon, s);
-            var at = new Point(c.X - label.MaxTextWidth / 2, c.Y + s / 2 + s * 0.06);   // zentriert im Textfeld
-            dc.DrawText(LabelShadow(icon, s), at + new Vector(1, 1));
-            dc.DrawText(label, at);
+            bool mine = bomber is not null && !robot.IconAt(icon.Id, t).Handled;
+            if ((mine && bomber!.Above(start[icon.Id], t)) != above) continue;
+            var (sy, alpha) = mine ? bomber!.Look(start[icon.Id], t) : (1.0, 1.0);
+            if (alpha <= 0.01 || sy <= 0.01) continue;
+            if (alpha < 0.99) dc.PushOpacity(alpha);
+            double sx = 1 + (1 - sy) * 0.5;   // platt gedrückt: breiter, nach unten gestaucht
+            dc.DrawImage(image, new Rect(c.X - s * sx / 2, c.Y + s / 2 - s * sy, s * sx, s * sy));
+            if (sy > 0.6)
+            {
+                var label = Label(icon, s);
+                var at = new Point(c.X - label.MaxTextWidth / 2, c.Y + s / 2 + s * 0.06);   // zentriert im Textfeld
+                dc.DrawText(LabelShadow(icon, s), at + new Vector(1, 1));
+                dc.DrawText(label, at);
+            }
+            if (alpha < 0.99) dc.Pop();
         }
     }
 

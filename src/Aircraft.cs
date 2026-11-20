@@ -28,6 +28,12 @@ interface IAttack
     /// <summary>Flugbahnen aller Luftfahrzeuge (Lage über der Zeit, von, bis) für die Prüfung der Fluglage (Drehrate, Ruck).</summary>
     IEnumerable<(Func<double, Point> At, double From, double To)> Flights => [];
     void Draw(DrawingContext dc, double t);
+    /// <summary>Über den von der Bühne gezeichneten Symbolen (Tiere stehen vor den Symbolen, 20.11.2026).</summary>
+    void DrawAbove(DrawingContext dc, double t) { }
+    /// <summary>Stauchung (1 = normal, 0 = platt, nach unten) und Deckkraft eines bewegten Symbols (Mops legt sich drauf, Schäferhund vergräbt).</summary>
+    (double Sy, double Alpha) Look(Point start, double t) => (1, 1);
+    /// <summary>Symbol liegt über dem Angreifer (im Maul getragen).</summary>
+    bool Above(Point start, double t) => false;
 }
 
 /// <summary>
@@ -102,8 +108,9 @@ sealed class FlightTrack
 static class Attacks
 {
     public const string Tu160 = "tu160", Tu22 = "tu22m3", Su34 = "su34", Ka52 = "ka52", Tu95 = "tu95", Il76 = "il76", Ac130 = "ac130", Shahed = "shahed", A10 = "a10", Su25 = "su25",
-        F35 = "f35", Su57 = "su57", B2 = "b2", Vacuum = "vacuum", Gravity = "gravity", Duel = "duel", MiG31 = "mig31", Hunter = "s70", Su35 = "su35", MQ9 = "mq9", SR71 = "sr71";
-    public static readonly string[] All = [Tu160, Tu22, Su34, Ka52, Tu95, Il76, Ac130, Shahed, A10, Su25, F35, Su57, Duel, B2, MiG31, Hunter, Su35, MQ9, SR71, Vacuum, Gravity];
+        F35 = "f35", Su57 = "su57", B2 = "b2", Vacuum = "vacuum", Gravity = "gravity", Duel = "duel", MiG31 = "mig31", Hunter = "s70", Su35 = "su35", MQ9 = "mq9", SR71 = "sr71",
+        Cat = "cat", Pug = "pug", Shepherd = "shepherd";
+    public static readonly string[] All = [Tu160, Tu22, Su34, Ka52, Tu95, Il76, Ac130, Shahed, A10, Su25, F35, Su57, Duel, B2, MiG31, Hunter, Su35, MQ9, SR71, Vacuum, Gravity, Cat, Pug, Shepherd];
 
     /// <param name="clusters">dichteste Gruppen zuerst (für Marschflugkörper)</param>
     /// <param name="icons">Symbolmitten auf dem Hauptbildschirm (für Treffer je Symbol)</param>
@@ -140,6 +147,9 @@ static class Attacks
             MQ9 => new ReaperRaid(area, all.Count > 0 ? all : each, iconSize, screens),
             SR71 => new SonicRaid(area, all.Count > 0 ? all : each, iconSize, screens),
             Gravity => new GravityRaid(area, all.Count > 0 ? all : each, iconSize, screens),
+            Cat => new PetRaid(PetRaid.Kind.Cat, stage, all.Count > 0 ? all : each, iconSize, screens),   // Tiere 
+            Pug => new PetRaid(PetRaid.Kind.Pug, stage, all.Count > 0 ? all : each, iconSize, screens),
+            Shepherd => new PetRaid(PetRaid.Kind.Shepherd, stage, all.Count > 0 ? all : each, iconSize, screens),
             _ => null,
         };
     }

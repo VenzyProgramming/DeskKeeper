@@ -9,7 +9,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>DeskKeeper</AssemblyName>
     <RootNamespace>DeskKeeper</RootNamespace>
-    <Version>1.6.0</Version>
+    <Version>1.7.0</Version>
     <Product>DeskKeeper</Product>
     <InvariantGlobalization>true</InvariantGlobalization>
     <DefineConstants>$(DefineConstants);PUBLIC_EDITION</DefineConstants>
@@ -17,5 +17,6 @@
   <ItemGroup>
     <Resource Include="Assets/explosion-*.png" />
     <Resource Include="Assets/s70-tarnung.png" />
+    <Resource Include="Assets/tiere-*.png" />
   </ItemGroup>
 </Project>

@@ -57,6 +57,16 @@ And since it is open source, you can fix it yourself, mod it, or add your own sc
   <img src="docs/media/displays-light.png" width="49%" alt="Light theme"> <img src="docs/media/displays-win10.png" width="49%" alt="Windows 10 look">
 </p>
 
+## What's new in 1.7.0
+
+Three animal scenes in pixel art, 26 scenes in total. Each animal has its own way of wrecking your desktop:
+
+- **Bengal cat:** sneaks up, wiggles, pounces on an icon, then knocks everything off the table, one paw swat at a time, over the edge of the screen. The first icon near the edge only gets a careful nudge and a look before it goes. Now and then it gets the zoomies and runs straight through your icons.
+- **Pug:** carries the first icon to its basket, sniffs at the rest and blows whole rows off the screen with a sneeze. It flattens the last icons by lying down on them, then falls asleep in its basket while the helper tidies up.
+- **German Shepherd:** barks, herds the icons of each screen into one pile, fetches the strays (the first one gets a good shake) and buries the pile under a mound of dirt.
+
+The animals stand in front of your icons, carried icons sit in their mouths, and the whole scene is drawn crisp at whole-number pixel scales. The sprites come from `tools/pixeltiere.py`.
+
 ## What's new in 1.6.0
 
 Five new scenes, 23 in total:
@@ -229,7 +239,7 @@ Switch *Restore style* to **With DUM-E** and a small top-down robot arm with a t
 
 <p align="center"><img src="docs/media/dum-e.gif" width="70%" alt="DUM-E carrying icons back"></p>
 
-And if you are having a really bad day, the **Scene** page lets you wipe your desktop first, 23 ways so far: a Jericho strike, a mushroom cloud, Tu-160M and Tu-95MS cruise missiles, Tu-22M3 carpet bombing, Su-34 precision strikes, a Ka-52 attack, Il-76 paratroopers who simply carry your icons away, an AC-130U circling each group, a Shahed-136 drone swarm, A-10C or Su-25 gun runs, F-35A and Su-57 stealth strikes, an F-35A vs Su-57 dogfight, a B-2 Spirit, a MiG-31K with a Kinzhal, a Su-57 with the S-70 Okhotnik drone, a Su-35S, an MQ-9 Reaper, an SR-71 whose shock wave sweeps your icons away, a robot vacuum that sucks your icons up, or simply turning gravity off. Icons turn to ash. Then a helper of your choice rebuilds everything, exactly as it was: DUM-E, a forklift, a crane truck, delivery drones, a CH-47 Chinook or a Mi-26. Therapy, basically.
+And if you are having a really bad day, the **Scene** page lets you wipe your desktop first, 26 ways so far: a Jericho strike, a mushroom cloud, Tu-160M and Tu-95MS cruise missiles, Tu-22M3 carpet bombing, Su-34 precision strikes, a Ka-52 attack, Il-76 paratroopers who simply carry your icons away, an AC-130U circling each group, a Shahed-136 drone swarm, A-10C or Su-25 gun runs, F-35A and Su-57 stealth strikes, an F-35A vs Su-57 dogfight, a B-2 Spirit, a MiG-31K with a Kinzhal, a Su-57 with the S-70 Okhotnik drone, a Su-35S, an MQ-9 Reaper, an SR-71 whose shock wave sweeps your icons away, a robot vacuum that sucks your icons up, simply turning gravity off, or a Bengal cat, a pug or a German Shepherd in pixel art. Icons turn to ash. Then a helper of your choice rebuilds everything, exactly as it was: DUM-E, a forklift, a crane truck, delivery drones, a CH-47 Chinook or a Mi-26. Therapy, basically.
 
 <p align="center"><img src="docs/media/scene.png" width="70%" alt="Scene page"></p>
 

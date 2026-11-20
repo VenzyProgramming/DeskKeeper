@@ -123,6 +123,11 @@ static class Loc
         ["w.vacuum"] = new("Saugroboter", "Robot vacuum", "Робот-пылесос"),
         ["w.duel"] = new("Duell F-35 gegen Su-57", "Duel: F-35 vs Su-57", "Дуэль F-35 и Су-57"),
         ["w.gravity"] = new("Schwerkraft aus", "Gravity off", "Без гравитации"),
+        ["w.cat"] = new("Bengalkatze", "Bengal cat", "Бенгальская кошка"),
+        ["w.pug"] = new("Mops", "Pug", "Мопс"),
+        ["w.shepherd"] = new("Deutscher Schäferhund", "German Shepherd", "Немецкая овчарка"),
+        ["pet.woof"] = new("WUFF!", "WOOF!", "ГАВ!"),
+        ["pet.sneeze"] = new("HATSCHI!", "ACHOO!", "АПЧХИ!"),
         // Werkzeuge
         ["t.windows"] = new("Fenster", "Windows", "Окна"),
         ["t.minimize"] = new("Alle Fenster minimieren", "Minimize all windows", "Свернуть все окна"),

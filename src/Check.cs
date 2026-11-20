@@ -34,7 +34,8 @@ static class Check
         if (sc.Attack is { } flying && flying.Flights.Any()) { var a = Attitude(flying, all); Console.WriteLine($"fluglage: drehrate max {a.Turn:0} grad/s, drehbeschleunigung max {a.Roll:0} grad/s² ({a.Where})"); }
         if (sc.Attack is StrafeRaid strafe) Console.WriteLine($"anflug: groesste abweichung von der spur beim feuern {strafe.RunMiss():0.00} spannweiten");
         if (sc.Attack is DuelRaid duel) { var m = duel.Metrics(iconSize); Console.WriteLine($"duel-messwerte: geschwindigkeit {m.SpeedRatio:0.00}x, startwinkel {m.LaunchAngle:0} grad, abstand gegner-einschlag {m.TargetMiss:0.0} symbole, gegner vor der nase: groesster winkel {180 - m.Behind:0} grad"); var u = duel.Unrest(1920); Console.WriteLine($"duel-unruhe: drehrate max {u.TurnRate:0} grad/s, richtungswechsel {u.Wobble:0.00} je s, beschleunigung max {u.Accel:0.0}x/s, tempo {u.ScreensPerSecond:0.00} bildschirmbreiten/s, kleinster abstand {duel.ClosestPass():0.00} spannweiten"); var j = duel.Jerk(); Console.WriteLine($"duel-ruck: drehbeschleunigung jet max {j.Jet:0} grad/s² (bei {j.JetAt:0.0} s), bahn max {j.Path:0} grad/s²"); }
-        foreach (var t in times) Save(Frame(sc, all, icons, t, 0.5), Path.Combine(output, $"{attack}-{t:0.0}.png"));
+        double scale = double.TryParse(Environment.GetEnvironmentVariable("DK_FRAME_SCALE"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var fs) ? fs : 0.5;   // Prüfbild in Originalgröße: DK_FRAME_SCALE=1
+        foreach (var t in times) Save(Frame(sc, all, icons, t, scale), Path.Combine(output, $"{attack}-{t:0.0}.png"));
         return 0;
     }
 
@@ -199,7 +200,7 @@ static class Check
             }
 
             // Neue Luftangriffe : je Angriff alle Symbole weg vor DUM-E, am Ende alle zuhause, Dauer begrenzt, Standbilder
-            foreach (var (attack, frames) in new (string, double[])[] { (Attacks.Tu22, [1.6, 2.6, 4.2]), (Attacks.Su34, [1.0, 1.9, 2.9]), (Attacks.Ka52, [1.6, 3.8, 6.0]), (Attacks.Tu95, [2.2, 3.8, 5.4]), (Attacks.Il76, [2.6, 4.2, 6.8]), (Attacks.Ac130, [2.4, 4.6, 7.4]), (Attacks.Shahed, [3.0, 4.4, 6.5]), (Attacks.A10, [2.0, 3.4, 5.5]), (Attacks.Su25, [2.0, 3.4, 5.5]), (Attacks.F35, [1.4, 2.2, 3.2]), (Attacks.Duel, [2.0, 3.2, 4.6]), (Attacks.Su57, [1.4, 2.2, 3.2]), (Attacks.B2, [2.0, 3.6, 5.2]), (Attacks.MiG31, [1.6, 2.6, 3.4]), (Attacks.Hunter, [1.4, 2.2, 3.2]), (Attacks.Su35, [2.0, 3.4, 5.5]), (Attacks.MQ9, [2.0, 3.4, 5.5]), (Attacks.SR71, [1.0, 1.6, 2.2]), (Attacks.Vacuum, [2.0, 5.0, 9.0]), (Attacks.Gravity, [1.6, 2.8, 3.3]) })
+            foreach (var (attack, frames) in new (string, double[])[] { (Attacks.Tu22, [1.6, 2.6, 4.2]), (Attacks.Su34, [1.0, 1.9, 2.9]), (Attacks.Ka52, [1.6, 3.8, 6.0]), (Attacks.Tu95, [2.2, 3.8, 5.4]), (Attacks.Il76, [2.6, 4.2, 6.8]), (Attacks.Ac130, [2.4, 4.6, 7.4]), (Attacks.Shahed, [3.0, 4.4, 6.5]), (Attacks.A10, [2.0, 3.4, 5.5]), (Attacks.Su25, [2.0, 3.4, 5.5]), (Attacks.F35, [1.4, 2.2, 3.2]), (Attacks.Duel, [2.0, 3.2, 4.6]), (Attacks.Su57, [1.4, 2.2, 3.2]), (Attacks.B2, [2.0, 3.6, 5.2]), (Attacks.MiG31, [1.6, 2.6, 3.4]), (Attacks.Hunter, [1.4, 2.2, 3.2]), (Attacks.Su35, [2.0, 3.4, 5.5]), (Attacks.MQ9, [2.0, 3.4, 5.5]), (Attacks.SR71, [1.0, 1.6, 2.2]), (Attacks.Vacuum, [2.0, 5.0, 9.0]), (Attacks.Gravity, [1.6, 2.8, 3.3]), (Attacks.Cat, [3.0, 6.0, 12.0]), (Attacks.Pug, [4.0, 9.0, 16.0]), (Attacks.Shepherd, [3.0, 7.0, 12.0]) })
             {
                 var sc = new Scene(icons, homes, iconSize, screens, primary, true, 64, attack: attack);
                 Pass(attack + "-einschlaege-vorhanden", sc.Raid.Count >= 1);
@@ -208,7 +209,7 @@ static class Check
                 if (attack != Attacks.Il76) Pass(attack + "-kein-einschlag-ins-leere", sc.Raid.All(b => icons.Any(i => (b.P - i.Center).Length <= iconSize * 1.2)));
                 Pass(attack + "-alle-symbole-weg-vor-dume", sc.IconCenters(sc.RobotStart - 0.05).Values.All(v => v is null));
                 Pass(attack + "-am-ende-alle-zuhause", sc.IconCenters(sc.Duration).All(e => e.Value is { } v && (v - homes[e.Key]).Length < 0.5));
-                double limit = attack == Attacks.Ka52 ? 110 : attack == Attacks.Ac130 ? 140 : attack is Attacks.A10 or Attacks.Su25 or Attacks.Su35 or Attacks.MQ9 ? 145 : attack == Attacks.Vacuum ? 130 : attack == Attacks.Duel ? 125 : 100;   // Duell langsamer, ohne ruckartige Manöver, mit Abschuss am Ende    // AC-130: Show je Gruppe    // Ka-52 greift jedes Symbol einzeln an : dauert mit der Symbolzahl länger
+                double limit = attack == Attacks.Ka52 ? 110 : attack == Attacks.Ac130 ? 140 : attack is Attacks.A10 or Attacks.Su25 or Attacks.Su35 or Attacks.MQ9 ? 145 : attack is Attacks.Vacuum or Attacks.Cat or Attacks.Pug or Attacks.Shepherd ? 130 : attack == Attacks.Duel ? 125 : 100;   // Duell langsamer, ohne ruckartige Manöver, mit Abschuss am Ende    // AC-130: Show je Gruppe    // Ka-52 greift jedes Symbol einzeln an : dauert mit der Symbolzahl länger
                 Pass($"{attack}-dauer-unter-{limit:0}-s", sc.Duration < limit);
                 results[attack + "-dauer-s"] = Math.Round(sc.Duration, 1);
                 var (mean, p95) = DrawCost(sc, sc.RobotStart);
@@ -224,6 +225,11 @@ static class Check
                     Pass($"{attack}-fluglage-ohne-ruck", a.Turn <= 125 && a.Roll <= 120);
                 }
                 for (int f = 0; f < frames.Length; f++) Save(Frame(sc, all, icons, frames[f], 0.5), Path.Combine(output, $"{attack}-{f + 1}.png"));
+                if (sc.Attack is PetRaid pet)
+                {   // Tiere : jedes Symbol räumt das Tier selbst ab, keines verschwindet nur durch die Zeitgrenze
+                    results[attack + "-uebrig"] = pet.Leftovers;
+                    Pass(attack + "-alle-vom-tier-abgeraeumt", pet.Leftovers == 0);
+                }
                 if (sc.Attack is SonicRaid sonic)
                 {   // 20.11.2026: Symbole fliegen weg, während die SR-71 vorbeizieht, nicht erst nach dem Abflug
                     double lag = sonic.Targets.Select(p => sonic.HitAt(p) - sonic.Passes(p)).DefaultIfEmpty(0).Max();

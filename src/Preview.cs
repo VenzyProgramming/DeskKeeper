@@ -55,6 +55,10 @@ static class Preview
         [Attacks.MQ9] = (9, 0.3, (dc, c, h, u) => Planes.MQ9(dc, c, h, u, 0.35, 0.3)),
         [Attacks.SR71] = (8.4, 0.62, (dc, c, h, u) => Planes.SR71(dc, c, h, u, 0.35, 0.3, 0.5)),
         [Attacks.MiG31] = (8.4, 0.6, (dc, c, h, u) => Planes.MiG31(dc, c, h, u, 0.35, 0.3, kinzhal: true, burner: 0.5)),
+        // Tiere : Pixelart in ganzzahliger Vergrößerung, Seitenansicht
+        [Attacks.Cat] = (1, 0.5, (dc, c, h, u) => PetSprites.Hero(dc, PetSprites.Cat, "pounce", 1, c, u * 900)),
+        [Attacks.Pug] = (1, 0.42, (dc, c, h, u) => PetSprites.Hero(dc, PetSprites.Pug, "idle", 0, c, u * 900)),
+        [Attacks.Shepherd] = (1, 0.6, (dc, c, h, u) => PetSprites.Hero(dc, PetSprites.Shepherd, "run", 1, c, u * 900)),
     };
 
     static BitmapSource RenderHero(string scene, int width)
@@ -114,6 +118,7 @@ static class Preview
         if (s.Attack is StealthRaid or SpiritRaid && s.Raid.Count > 0) t = s.Raid.Min(r => r.T) - 0.45;   // Flugzeug im Bild, Waffen unterwegs
         if (s.Attack is VacuumRaid && s.Raid.Count > 2) t = s.Raid.OrderBy(r => r.T).ElementAt(2).T - 0.15;
         if (s.Attack is GravityRaid) t = 2.9;
+        if (s.Attack is PetRaid pet) t = pet.PreviewTime;
         if (s.Attack is DuelRaid duel && duel.Shots.Count > 1) t = duel.Shots[1].Fire + 0.55;   // Raketen unterwegs, Täuschkörper, beide Jets im Bild
         if (s.Attack is StrafeRaid strafe)
         {   // Tiefflieger ganz im Bild mitten im Feuerstoß
